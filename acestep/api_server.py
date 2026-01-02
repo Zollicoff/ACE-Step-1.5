@@ -33,8 +33,8 @@ from fastapi import FastAPI, HTTPException, Request
 from pydantic import BaseModel, Field
 from starlette.datastructures import UploadFile as StarletteUploadFile
 
-from .handler import AceStepHandler
-from .llm_inference import LLMHandler
+from acestep.handler import AceStepHandler
+from acestep.llm_inference import LLMHandler
 
 
 JobStatus = Literal["queued", "running", "succeeded", "failed"]
@@ -275,6 +275,15 @@ def create_app() -> FastAPI:
 
     INITIAL_AVG_JOB_SECONDS = float(os.getenv("ACESTEP_AVG_JOB_SECONDS", "5.0"))
     AVG_WINDOW = int(os.getenv("ACESTEP_AVG_WINDOW", "50"))
+
+    def _path_to_audio_url(path: str) -> str:
+        """将本地文件路径转换为可下载的相对 URL"""
+        if not path:
+            return path
+        if path.startswith("http://") or path.startswith("https://"):
+            return path
+        encoded_path = urllib.parse.quote(path, safe="")
+        return f"/v1/audio?path={encoded_path}"
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -732,9 +741,9 @@ def create_app() -> FastAPI:
                     progress=None,
                 )
                 return {
-                    "first_audio_path": first,
-                    "second_audio_path": second,
-                    "audio_paths": paths,
+                    "first_audio_path": _path_to_audio_url(first) if first else None,
+                    "second_audio_path": _path_to_audio_url(second) if second else None,
+                    "audio_paths": [_path_to_audio_url(p) for p in (paths or [])],
                     "generation_info": gen_info,
                     "status_message": status_msg,
                     "seed_value": seed_value,
@@ -1069,6 +1078,34 @@ def create_app() -> FastAPI:
             error=rec.error,
         )
 
+    @app.get("/health")
+    async def health_check():
+        """Health check endpoint for service status."""
+        return {
+            "status": "ok",
+            "service": "ACE-Step API",
+            "version": "1.0",
+        }
+
+    @app.get("/v1/audio")
+    async def get_audio(path: str):
+        """Serve audio file by path."""
+        from fastapi.responses import FileResponse
+
+        if not os.path.exists(path):
+            raise HTTPException(status_code=404, detail=f"Audio file not found: {path}")
+
+        ext = os.path.splitext(path)[1].lower()
+        media_types = {
+            ".mp3": "audio/mpeg",
+            ".wav": "audio/wav",
+            ".flac": "audio/flac",
+            ".ogg": "audio/ogg",
+        }
+        media_type = media_types.get(ext, "audio/mpeg")
+
+        return FileResponse(path, media_type=media_type)
+
     return app
 
 
@@ -1076,13 +1113,31 @@ app = create_app()
 
 
 def main() -> None:
+    import argparse
     import uvicorn
 
-    host = os.getenv("ACESTEP_API_HOST", "127.0.0.1")
-    port = int(os.getenv("ACESTEP_API_PORT", "8001"))
+    parser = argparse.ArgumentParser(description="ACE-Step API server")
+    parser.add_argument(
+        "--host",
+        default=os.getenv("ACESTEP_API_HOST", "127.0.0.1"),
+        help="Bind host (default from ACESTEP_API_HOST or 127.0.0.1)",
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=int(os.getenv("ACESTEP_API_PORT", "8001")),
+        help="Bind port (default from ACESTEP_API_PORT or 8001)",
+    )
+    args = parser.parse_args()
 
     # IMPORTANT: in-memory queue/store -> workers MUST be 1
-    uvicorn.run("acestep.api_server:app", host=host, port=port, reload=False, workers=1)
+    uvicorn.run(
+        "acestep.api_server:app",
+        host=str(args.host),
+        port=int(args.port),
+        reload=False,
+        workers=1,
+    )
 
 
 if __name__ == "__main__":
