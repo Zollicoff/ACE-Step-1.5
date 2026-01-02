@@ -2,12 +2,15 @@
 
 ## Overview
 
-The Playground is a Gradio-based UI for testing and interacting with the ACE-Step music generation pipeline. It consists of two main sections: **LLM Section** (for generating audio codes) and **ACEStep Section** (for generating audio from codes).
+The Playground is a Gradio-based UI for testing and interacting with the ACE-Step music generation pipeline. It consists of two main sections:
+
+1. **LLM Section** - For generating audio codes from text descriptions using the 5Hz LM model
+2. **ACEStep Section** - For generating audio from codes using the DiT model
 
 **Key Principles:**
 - Keep logic simple - no automatic data flow between sections
 - Dynamic UI based on task selection
-- Advanced parameters in collapsible panels
+- Advanced parameters in collapsible accordions
 - Only modify playground module files, do not touch existing acestep modules
 
 ---
@@ -26,96 +29,111 @@ playground/
 
 ## 1. LLM Section
 
-The LLM Section generates audio codes from text descriptions.
+The LLM Section generates audio codes from text descriptions using the 5Hz Language Model.
 
-### 1.1 Model Loading
+### 1.1 Model Loading Sub-Section
 
 | Component | Type | Description |
 |-----------|------|-------------|
-| `llm_model_dropdown` | Dropdown | Available LLM models from `handler.get_available_llm_models()` |
-| `llm_backend` | Dropdown | Options: `["vllm", "pt"]`, default: `"vllm"` |
-| `llm_device` | Dropdown | Options: `["auto", "cuda", "cpu"]`, default: `"auto"` |
-| `load_llm_btn` | Button | Triggers `handler.initialize_llm()` |
-| `llm_status` | Textbox | Displays loading status (read-only) |
+| `llm_model_dropdown` | Dropdown | Available LLM models from `handler.get_available_llm_models()`, allow custom value, scale=3 |
+| `llm_backend` | Dropdown | Options: `["vllm", "pt"]`, default: `"vllm"`, scale=1 |
+| `llm_device` | Dropdown | Options: `["auto", "cuda", "cpu"]`, default: `"auto"`, scale=1 |
+| `load_llm_btn` | Button (primary) | Triggers `handler.initialize_llm()`, scale=1 |
+| `llm_status` | Textbox (read-only) | Displays loading status, placeholder: "LLM not loaded" |
 
 **Handler Method:**
 ```python
 handler.initialize_llm(lm_model_path: str, backend: str, device: str) -> str
 ```
 
+**Implementation Details:**
+- Auto-detects checkpoint directory from project root
+- Calls `LLMHandler.initialize()` with proper parameters
+- Returns status message string
+
 ---
 
-### 1.2 Input Panel
+### 1.2 Input Sub-Section
 
-#### 1.2.1 Text Inputs (Left Column)
+#### 1.2.1 Layout Structure
 
-| Component | Type | Description |
-|-----------|------|-------------|
-| `caption` | Textbox | Music description, multiline (3 lines) |
-| `lyrics` | Textbox | Song lyrics, multiline (5 lines) |
-| `negative_caption` | Textbox | Negative prompt, default: `"NO USER INPUT"`, multiline (3 lines)|
-| `negative_lyrics` | Textbox | Negative prompt, default: `"NO USER INPUT"` , multiline (5 lines)|
+Two-column layout with `gr.Row`:
+- **Left Column (scale=1)**: Text inputs (caption, lyrics, negative_caption, negative_lyrics)
+- **Right Column (scale=1)**: Meta group + Config accordion
 
-remarks：
-1. caption and negative_caption use same style
-2. lyrics and negative_lyrics use same style
-
-
-#### 1.2.2 Meta (Right Column - Group)
+#### 1.2.2 Text Inputs (Left Column)
 
 | Component | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `bpm` | Number | `None` | Beats per minute |
+| `caption` | Textbox | `""` | Music description, 3 lines |
+| `lyrics` | Textbox | `""` | Song lyrics, 5 lines |
+| `negative_caption` | Textbox | `"NO USER INPUT"` | Negative prompt for caption, 3 lines |
+| `negative_lyrics` | Textbox | `"NO USER INPUT"` | Negative prompt for lyrics, 5 lines |
+
+#### 1.2.3 Meta Group (Right Column)
+
+Wrapped in `gr.Group` with Markdown header "#### Meta".
+
+| Component | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `bpm` | Number | `None` | Beats per minute, precision=0 |
+| `target_duration` | Number | `None` | Target duration in seconds, precision=0 |
 | `key_scale` | Textbox | `""` | e.g., "C Major", "A minor" |
 | `time_signature` | Textbox | `""` | e.g., "4/4", "3/4" |
-| `target_duration` | Number | `None` | Target duration in seconds |
 
-#### 1.2.3 Config (Right Column - Group)
-Accordion - Collapsed by Default
+Layout: Two rows with 2 components each.
+
+#### 1.2.4 Config Accordion (Right Column - Collapsed by Default)
 
 | Component | Type | Range | Default | Description |
 |-----------|------|-------|---------|-------------|
 | `temperature` | Slider | 0.1 - 2.0 | 0.85 | Sampling temperature |
 | `cfg_scale` | Slider | 1.0 - 5.0 | 2.0 | Classifier-free guidance scale |
-| `top_k` | Number | None | `None` | Top-K sampling (optional) |
+| `top_k` | Number | - | `None` | Top-K sampling (0 or None to disable) |
 | `top_p` | Slider | 0.0 - 1.0 | 0.9 | Top-P (nucleus) sampling |
 | `repetition_penalty` | Slider | 1.0 - 2.0 | 1.0 | Repetition penalty |
 | `metadata_temperature` | Slider | 0.1 - 2.0 | 0.85 | Temperature for metadata generation |
 | `codes_temperature` | Slider | 0.1 - 2.0 | 1.0 | Temperature for codes generation |
 
-#### 1.2.4 Generate Button
+#### 1.2.5 Generate Button
 
 | Component | Type | Description |
 |-----------|------|-------------|
-| `generate_codes_btn` | Button (primary) | Triggers LLM code generation |
+| `generate_codes_btn` | Button (primary, large) | Label: "🎼 Generate Codes" |
 
 **Handler Method:**
 ```python
 handler.generate_llm_codes(
     caption: str,
     lyrics: str,
-    temperature: float,
-    cfg_scale: float,
-    negative_prompt: str,
-    top_k: Optional[int],
-    top_p: Optional[float],
-    repetition_penalty: float,
-    metadata_temperature: float,
-    codes_temperature: float,
-    target_duration: Optional[float],
-    user_metadata: Optional[Dict[str, str]]  # {bpm, keyscale, timesignature}
+    temperature: float = 0.85,
+    cfg_scale: float = 2.0,
+    negative_prompt: str = "NO USER INPUT",
+    top_k: Optional[int] = None,
+    top_p: Optional[float] = 0.9,
+    repetition_penalty: float = 1.0,
+    metadata_temperature: float = 0.85,
+    codes_temperature: float = 1.0,
+    target_duration: Optional[float] = None,
+    user_metadata: Optional[Dict[str, str]] = None
 ) -> Tuple[Dict, str, str]  # (metadata, audio_codes, status)
 ```
 
+**Implementation Details:**
+- Calls `LLMHandler.generate_with_stop_condition()` with `infer_type="llm_dit"`
+- Converts `top_k=0` to `None` (disabled)
+- Converts `top_p>=1.0` to `None` (disabled)
+- Builds `user_metadata` dict from bpm, keyscale, timesignature
+
 ---
 
-### 1.3 Results Panel
+### 1.3 Results Sub-Section
 
 | Component | Type | Description |
 |-----------|------|-------------|
-| `metadata_output` | JSON | Generated metadata (read-only) |
-| `audio_codes_output` | Textbox | Generated audio codes (multiline, copyable) |
-| `llm_generation_status` | Textbox | Generation status message (read-only) |
+| `metadata_output` | JSON | Generated metadata (read-only), scale=1 |
+| `audio_codes_output` | Textbox | Generated audio codes, 8 lines, scale=2, `show_copy_button=True` |
+| `llm_generation_status` | Textbox (read-only) | Generation status message |
 
 ---
 
@@ -123,107 +141,122 @@ handler.generate_llm_codes(
 
 The ACEStep Section generates audio from codes using the DiT model.
 
-### 2.1 Model Loading
+### 2.1 Model Loading Sub-Section
 
 | Component | Type | Description |
 |-----------|------|-------------|
-| `dit_config_dropdown` | Dropdown | Available DiT configs from `handler.get_available_dit_models()` |
-| `dit_device` | Dropdown | Options: `["auto", "cuda", "cpu"]`, default: `"auto"` |
-| `load_dit_btn` | Button | Triggers `handler.initialize_dit()` |
-| `dit_status` | Textbox | Displays loading status (read-only) |
+| `dit_config_dropdown` | Dropdown | Available DiT configs from `handler.get_available_dit_models()`, scale=3 |
+| `dit_device` | Dropdown | Options: `["auto", "cuda", "cpu"]`, default: `"auto"`, scale=1 |
+| `load_dit_btn` | Button (primary) | Triggers `handler.initialize_dit()`, scale=1 |
+| `dit_status` | Textbox (read-only) | Placeholder: "DiT model not loaded" |
 
 **Handler Method:**
 ```python
 handler.initialize_dit(config_path: str, device: str) -> str
 ```
 
+**Implementation Details:**
+- Auto-detects project root
+- Calls `AceStepHandler.initialize_service()` with:
+  - `use_flash_attention`: Auto-detected via `is_flash_attention_available()`
+  - `compile_model`: False
+  - `offload_to_cpu`: False
+
 ---
 
-### 2.2 Task Selection
+### 2.2 Task Type Sub-Section
 
 | Component | Type | Options | Default |
 |-----------|------|---------|---------|
 | `task_type` | Dropdown | `["generate", "repaint", "cover", "add", "complete", "extract"]` | `"generate"` |
 
-**Task Descriptions:**
+**Task Mapping (UI → Internal):**
 
-| Task | Internal Type | Description | Required Inputs |
-|------|---------------|-------------|-----------------|
-| `generate` | `text2music` | Generate music from text | caption, lyrics, audio_codes |
-| `repaint` | `repaint` | Regenerate a portion of audio | + reference_audio, repaint_start, repaint_end |
-| `cover` | `cover` | Create a cover version | + reference_audio, cover_strength |
-| `add` | `lego` | Add a track to existing audio | + reference_audio, track_type |
-| `complete` | `complete` | Complete partial audio | + reference_audio |
-| `extract` | `extract` | Extract audio features | + reference_audio |
+| UI Task | Internal Type | Description |
+|---------|---------------|-------------|
+| `generate` | `text2music` | Generate music from text |
+| `repaint` | `repaint` | Regenerate a portion of audio |
+| `cover` | `cover` | Create a cover version |
+| `add` | `lego` | Add a track to existing audio |
+| `complete` | `complete` | Complete partial audio |
+| `extract` | `extract` | Extract audio features |
 
 ---
 
-### 2.3 Logical Conditions (Always Visible)
+### 2.3 Model Conditions Sub-Section (Dynamic Visibility)
+
+Two-column layout:
+- **Left Column (scale=1)**: Common inputs + Logical conditions
+- **Right Column (scale=1)**: Dynamic groups + Advanced settings
+
+#### 2.3.1 Common Inputs Group (All Tasks)
+
+| Component | Type | Description |
+|-----------|------|-------------|
+| `ace_caption` | Textbox | Music description, 2 lines |
+| `ace_lyrics` | Textbox | Lyrics, 3 lines |
+| `ace_audio_codes` | Textbox | Audio codes, 3 lines |
+
+#### 2.3.2 Logical Conditions Group (All Tasks)
 
 | Component | Type | Range | Default | Description |
 |-----------|------|-------|---------|-------------|
 | `inference_steps` | Slider | 1 - 100 | 20 | Number of diffusion steps |
-| `guidance_scale` | Slider | 1.0 - 20.0 | 7.0 | Classifier-free guidance scale |
+| `guidance_scale` | Slider | 1.0 - 20.0 | 7.0 | CFG scale |
 | `seed` | Number | - | -1 | Random seed (-1 for random) |
-| `use_random_seed` | Checkbox | - | True | Use random seed each time |
+| `use_random_seed` | Checkbox | - | True | Use random seed |
 
----
+#### 2.3.3 Reference Audio Group (Dynamic)
 
-### 2.4 Model Conditions (Dynamic Based on Task)
-
-#### 2.4.1 Common Inputs (All Tasks)
-
-| Component | Type | Description |
-|-----------|------|-------------|
-| `ace_caption` | Textbox | Music description (can copy from LLM section) |
-| `ace_lyrics` | Textbox | Lyrics (can copy from LLM section) |
-| `ace_audio_codes` | Textbox | Audio codes (can copy from LLM section) |
-
-#### 2.4.2 Reference Audio (Tasks: repaint, cover, add, complete, extract)
+**Visible for:** repaint, cover, add, complete, extract
 
 | Component | Type | Description |
 |-----------|------|-------------|
 | `reference_audio` | Audio (filepath) | Input audio file |
 
-#### 2.4.3 Repaint Parameters (Task: repaint)
+#### 2.3.4 Repaint Parameters Group (Dynamic)
 
-| Component | Type | Range | Default | Description |
-|-----------|------|-------|---------|-------------|
-| `repainting_start` | Number | - | 0.0 | Start time in seconds |
-| `repainting_end` | Number | - | 10.0 | End time in seconds |
+**Visible for:** repaint
 
-#### 2.4.4 Cover Parameters (Task: cover)
-
-| Component | Type | Range | Default | Description |
-|-----------|------|-------|---------|-------------|
-| `audio_cover_strength` | Slider | 0.0 - 1.0 | 1.0 | Cover transformation strength |
-
-#### 2.4.5 Track Parameters (Tasks: add, complete)
-
-| Component | Type | Options | Description |
+| Component | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `track_type` | Dropdown | `["vocal", "bass", "drums", "guitar", "piano", "other"]` | Track to add/complete |
+| `repainting_start` | Number | 0.0 | Start time in seconds |
+| `repainting_end` | Number | 10.0 | End time in seconds |
+
+#### 2.3.5 Cover Parameters Group (Dynamic)
+
+**Visible for:** cover
+
+| Component | Type | Range | Default |
+|-----------|------|-------|---------|
+| `audio_cover_strength` | Slider | 0.0 - 1.0 | 1.0 |
+
+#### 2.3.6 Track Parameters Group (Dynamic)
+
+**Visible for:** add, complete
+
+| Component | Type | Options | Default |
+|-----------|------|---------|---------|
+| `track_type` | Dropdown | `["vocal", "bass", "drums", "guitar", "piano", "other"]` | `"vocal"` |
+
+#### 2.3.7 Advanced Settings Accordion (Collapsed by Default)
+
+| Component | Type | Range | Default |
+|-----------|------|-------|---------|
+| `cfg_interval_start` | Slider | 0.0 - 1.0 | 0.0 |
+| `cfg_interval_end` | Slider | 0.0 - 1.0 | 1.0 |
+| `use_adg` | Checkbox | - | False |
+| `use_tiled_decode` | Checkbox | - | True |
+| `audio_format` | Dropdown | `["mp3", "wav", "flac"]` | `"mp3"` |
+| `vocal_language` | Dropdown | `["en", "zh", "ja", "ko"]` | `"en"` |
 
 ---
 
-### 2.5 Advanced Settings (Accordion - Collapsed by Default)
-
-| Component | Type | Range | Default | Description |
-|-----------|------|-------|---------|-------------|
-| `cfg_interval_start` | Slider | 0.0 - 1.0 | 0.0 | CFG interval start |
-| `cfg_interval_end` | Slider | 0.0 - 1.0 | 1.0 | CFG interval end |
-| `use_adg` | Checkbox | - | False | Use ADG |
-| `audio_format` | Dropdown | `["mp3", "wav", "flac"]` | `"mp3"` | Output audio format |
-| `use_tiled_decode` | Checkbox | - | True | Use tiled decoding |
-| `vocal_language` | Dropdown | `["en", "zh", "ja", "ko"]` | `"en"` | Vocal language |
-
----
-
-### 2.6 Generate Button
+### 2.4 Generate Button
 
 | Component | Type | Description |
 |-----------|------|-------------|
-| `generate_audio_btn` | Button (primary) | Triggers audio generation |
+| `generate_audio_btn` | Button (primary, large) | Label: "🎵 Generate Audio" |
 
 **Handler Method:**
 ```python
@@ -247,24 +280,32 @@ handler.generate_audio(
     cfg_interval_start: float,
     cfg_interval_end: float,
     audio_format: str,
-    use_tiled_decode: bool
+    use_tiled_decode: bool,
+    track_type: Optional[str] = None,
+    progress=None
 ) -> Tuple[Optional[str], str]  # (audio_path, status)
 ```
 
+**Implementation Details:**
+- Maps UI task names to internal task names
+- Generates instruction via `dit_handler.generate_instruction()`
+- Calls `dit_handler.generate_music()` with all parameters
+- Extracts audio path and status from result tuple
+
 ---
 
-### 2.7 Results Panel
+### 2.5 Results Sub-Section
 
 | Component | Type | Description |
 |-----------|------|-------------|
-| `audio_output` | Audio | Generated audio player |
-| `audio_status` | Textbox | Generation status (read-only) |
+| `audio_output` | Audio (filepath) | Generated audio player |
+| `audio_generation_status` | Textbox (read-only) | Status message |
 
 ---
 
 ## 3. Dynamic UI Logic
 
-When `task_type` changes, show/hide relevant components:
+### 3.1 Task Visibility Configuration
 
 ```python
 TASK_VISIBILITY = {
@@ -307,22 +348,18 @@ TASK_VISIBILITY = {
 }
 ```
 
-**Implementation:**
+### 3.2 Visibility Update Function
+
 ```python
 def update_task_visibility(task: str):
-    vis = TASK_VISIBILITY[task]
+    """Update visibility of task-specific components based on selected task."""
+    vis = TASK_VISIBILITY.get(task, TASK_VISIBILITY["generate"])
     return (
         gr.update(visible=vis["reference_audio"]),
         gr.update(visible=vis["repaint_params"]),
         gr.update(visible=vis["cover_params"]),
         gr.update(visible=vis["track_params"]),
     )
-
-task_type.change(
-    fn=update_task_visibility,
-    inputs=[task_type],
-    outputs=[reference_audio_group, repaint_group, cover_group, track_group]
-)
 ```
 
 ---
@@ -330,74 +367,185 @@ task_type.change(
 ## 4. UI Layout Structure
 
 ```
-gr.Blocks
+gr.Blocks(title="ACE-Step Playground", theme=gr.themes.Soft())
+├── gr.Markdown("# 🎵 ACE-Step Playground")
+├── gr.Markdown("Generate music using LLM...")
+│
 └── gr.Tabs
-    ├── gr.TabItem("LLM Section")
-    │   ├── gr.Accordion("1. Model Loading")
-    │   │   ├── gr.Row [model_dropdown, backend, device, load_btn]
-    │   │   └── status
-    │   ├── gr.Accordion("2. Inputs")
+    ├── gr.TabItem("🤖 LLM Section")
+    │   ├── gr.Markdown("### Generate audio codes from text descriptions")
+    │   │
+    │   ├── gr.Accordion("1. Model Loading", open=True)
+    │   │   ├── gr.Row [llm_model_dropdown, llm_backend, llm_device, load_llm_btn]
+    │   │   └── llm_status
+    │   │
+    │   ├── gr.Accordion("2. Inputs", open=True)
     │   │   ├── gr.Row
-    │   │   │   ├── gr.Column [caption, lyrics, negative_caption]
-    │   │   │   └── gr.Column
-    │   │   │       ├── gr.Group("Meta") [bpm, key_scale, time_sig, duration]
-    │   │   │       └── gr.Group("Config") [temp, cfg, top_k, top_p, ...]
+    │   │   │   ├── gr.Column(scale=1)
+    │   │   │   │   ├── caption
+    │   │   │   │   ├── lyrics
+    │   │   │   │   ├── negative_caption
+    │   │   │   │   └── negative_lyrics
+    │   │   │   └── gr.Column(scale=1)
+    │   │   │       ├── gr.Group("#### Meta")
+    │   │   │       │   ├── gr.Row [bpm, target_duration]
+    │   │   │       │   └── gr.Row [key_scale, time_signature]
+    │   │   │       └── gr.Accordion("Config", open=False)
+    │   │   │           ├── gr.Row [temperature, cfg_scale]
+    │   │   │           ├── gr.Row [top_k, top_p]
+    │   │   │           ├── repetition_penalty
+    │   │   │           └── gr.Row [metadata_temperature, codes_temperature]
     │   │   └── generate_codes_btn
-    │   └── gr.Accordion("3. Results")
-    │       ├── gr.Row [metadata_json, audio_codes_text]
-    │       └── status
+    │   │
+    │   └── gr.Accordion("3. Results", open=True)
+    │       ├── gr.Row [metadata_output, audio_codes_output]
+    │       └── llm_generation_status
     │
-    └── gr.TabItem("ACEStep Section")
-        ├── gr.Accordion("1. Model Loading")
-        │   ├── gr.Row [config_dropdown, device, load_btn]
-        │   └── status
-        ├── gr.Accordion("2. Task & Conditions")
-        │   ├── task_type_dropdown
-        │   ├── gr.Group("Common Inputs") [caption, lyrics, codes]
-        │   ├── gr.Group("Reference Audio", visible=dynamic)
-        │   ├── gr.Group("Repaint Params", visible=dynamic)
-        │   ├── gr.Group("Cover Params", visible=dynamic)
-        │   ├── gr.Group("Track Params", visible=dynamic)
-        │   ├── gr.Group("Logical Conditions") [steps, guidance, seed]
-        │   └── gr.Accordion("Advanced", open=False) [cfg_interval, adg, format, ...]
+    └── gr.TabItem("🎹 ACEStep Section")
+        ├── gr.Markdown("### Generate audio from codes using DiT model")
+        │
+        ├── gr.Accordion("1. Model Loading", open=True)
+        │   ├── gr.Row [dit_config_dropdown, dit_device, load_dit_btn]
+        │   └── dit_status
+        │
+        ├── gr.Accordion("2. Task & Conditions", open=True)
+        │   ├── task_type
+        │   └── gr.Row
+        │       ├── gr.Column(scale=1)
+        │       │   ├── gr.Group("#### Common Inputs")
+        │       │   │   ├── ace_caption
+        │       │   │   ├── ace_lyrics
+        │       │   │   └── ace_audio_codes
+        │       │   └── gr.Group("#### Logical Conditions")
+        │       │       ├── inference_steps
+        │       │       ├── guidance_scale
+        │       │       └── gr.Row [seed, use_random_seed]
+        │       └── gr.Column(scale=1)
+        │           ├── gr.Group("#### Reference Audio", visible=dynamic)
+        │           │   └── reference_audio
+        │           ├── gr.Group("#### Repaint Parameters", visible=dynamic)
+        │           │   └── gr.Row [repainting_start, repainting_end]
+        │           ├── gr.Group("#### Cover Parameters", visible=dynamic)
+        │           │   └── audio_cover_strength
+        │           ├── gr.Group("#### Track Parameters", visible=dynamic)
+        │           │   └── track_type
+        │           └── gr.Accordion("Advanced Settings", open=False)
+        │               ├── gr.Row [cfg_interval_start, cfg_interval_end]
+        │               ├── gr.Row [use_adg, use_tiled_decode]
+        │               └── gr.Row [audio_format, vocal_language]
+        │
         ├── generate_audio_btn
-        └── gr.Accordion("3. Results")
+        │
+        └── gr.Accordion("3. Results", open=True)
             ├── audio_output
-            └── status
+            └── audio_generation_status
 ```
 
 ---
 
-## 5. Error Handling
+## 5. Wrapper Functions
 
-1. **Model Not Loaded**: Check initialization status before generation
-2. **Empty Inputs**: Validate required fields before calling handler
-3. **Generation Errors**: Display traceback in status textbox
+### 5.1 LLM Generate Codes Wrapper
 
 ```python
-# Example validation
-def validate_llm_inputs(caption, lyrics):
-    if not caption.strip():
-        return None, None, "Error: Caption is required"
-    return None  # Continue with generation
+def generate_codes_wrapper(
+    caption, lyrics, negative_caption, negative_lyrics,
+    bpm, key_scale, time_signature, target_duration,
+    temperature, cfg_scale, top_k, top_p,
+    repetition_penalty, metadata_temperature, codes_temperature
+):
+    """Wrapper function to prepare inputs and call handler."""
+    negative_prompt = negative_caption if negative_caption else "NO USER INPUT"
+    
+    user_metadata = {}
+    if bpm is not None:
+        user_metadata["bpm"] = str(int(bpm))
+    if key_scale:
+        user_metadata["keyscale"] = key_scale
+    if time_signature:
+        user_metadata["timesignature"] = time_signature
+    
+    return handler.generate_llm_codes(
+        caption=caption,
+        lyrics=lyrics,
+        temperature=temperature,
+        cfg_scale=cfg_scale,
+        negative_prompt=negative_prompt,
+        top_k=int(top_k) if top_k is not None else None,
+        top_p=top_p,
+        repetition_penalty=repetition_penalty,
+        metadata_temperature=metadata_temperature,
+        codes_temperature=codes_temperature,
+        target_duration=target_duration,
+        user_metadata=user_metadata if user_metadata else None
+    )
+```
 
-# In handler, errors are returned as status string
-if not self.llm_handler.llm_initialized:
-    return {}, "", "LLM not initialized"
+### 5.2 ACEStep Generate Audio Wrapper
+
+```python
+def generate_audio_wrapper(
+    task, caption, lyrics, codes,
+    steps, guidance, seed_val, random_seed,
+    ref_audio, repaint_start, repaint_end, cover_strength,
+    track_type_val,
+    bpm_val, key_val, time_sig_val, vocal_lang,
+    adg, cfg_start, cfg_end, fmt, tiled,
+    progress=gr.Progress(track_tqdm=True)
+):
+    """Wrapper function to call handler."""
+    actual_seed = -1 if random_seed else int(seed_val) if seed_val is not None else -1
+    
+    return handler.generate_audio(
+        task_type=task,
+        caption=caption,
+        lyrics=lyrics,
+        audio_codes=codes,
+        inference_steps=int(steps),
+        guidance_scale=guidance,
+        seed=actual_seed,
+        reference_audio_path=ref_audio,
+        repainting_start=repaint_start,
+        repainting_end=repaint_end,
+        audio_cover_strength=cover_strength,
+        bpm=int(bpm_val) if bpm_val is not None else None,
+        key_scale=key_val or "",
+        time_signature=time_sig_val or "",
+        vocal_language=vocal_lang,
+        use_adg=adg,
+        cfg_interval_start=cfg_start,
+        cfg_interval_end=cfg_end,
+        audio_format=fmt,
+        use_tiled_decode=tiled,
+        track_type=track_type_val,
+        progress=progress
+    )
 ```
 
 ---
 
-## 6. Implementation Checklist
+## 6. Error Handling
 
-- [ ] Update `playground_ui.py` with new layout
-- [ ] Add dynamic visibility for task-specific components
-- [ ] Add Advanced accordion with additional parameters
-- [ ] Add device selection for both LLM and DiT
-- [ ] Update `playground_handler.py` if needed for new parameters
-- [ ] Test all task types
-- [ ] Test dynamic UI visibility
-- [ ] Test error handling
+### 6.1 Model Not Loaded Checks
+
+```python
+# In handler.generate_llm_codes()
+if not self.llm_handler.llm_initialized:
+    return {}, "", "❌ LLM not initialized. Please load the LLM model first."
+
+# In handler.generate_audio()
+if self.dit_handler.model is None:
+    return None, "❌ DiT model not initialized. Please load the DiT model first."
+```
+
+### 6.2 Exception Handling
+
+```python
+try:
+    # Generation logic
+except Exception as e:
+    return {}, "", f"❌ Error generating codes: {str(e)}\n{traceback.format_exc()}"
+```
 
 ---
 
@@ -418,3 +566,20 @@ python playground/playground.py
 # With options
 python playground/playground.py --port 7860 --listen --share
 ```
+
+---
+
+## 9. Implementation Checklist
+
+- [x] Create `playground_handler.py` with proper integration to `llm_inference.py` and `handler.py`
+- [x] Create `playground_ui.py` with Tabs layout
+- [x] Implement LLM Section with 3 sub-sections
+- [x] Implement ACEStep Section with model loading, task selection, conditions, and results
+- [x] Add dynamic visibility for task-specific components
+- [x] Add Config/Advanced accordions (collapsed by default)
+- [x] Add `track_type` parameter for add/complete tasks
+- [x] Create `playground.py` entry point
+- [ ] Test all task types
+- [ ] Test dynamic UI visibility
+- [ ] Test error handling
+- [ ] Add progress tracking for generation

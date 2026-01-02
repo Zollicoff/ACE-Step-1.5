@@ -1,3 +1,7 @@
+"""
+ACE-Step Playground
+Entry point for the Gradio-based music generation playground.
+"""
 import os
 import sys
 import argparse
@@ -12,10 +16,11 @@ try:
     from playground.playground_handler import PlaygroundHandler
     from playground.playground_ui import create_ui
 except ImportError:
-    # Fallback if running as script
+    # Fallback if running as script from playground directory
     sys.path.append(os.path.join(project_root, "playground"))
     from playground_handler import PlaygroundHandler
     from playground_ui import create_ui
+
 
 def main():
     parser = argparse.ArgumentParser(description="ACE-Step Playground")
@@ -25,23 +30,30 @@ def main():
     
     args = parser.parse_args()
     
-    print("Initializing Playground Handler...")
+    print("=" * 60)
+    print("ACE-Step Playground")
+    print("=" * 60)
+    
+    print("\n[1/2] Initializing Playground Handler...")
     handler = PlaygroundHandler()
     
-    # TODO: Initialize models here or inside the UI
-    # handler.initialize()
-    
-    print("Creating UI...")
+    print("[2/2] Creating UI...")
     demo = create_ui(handler)
     
     server_name = "0.0.0.0" if args.listen else "127.0.0.1"
     
-    print(f"Starting server on {server_name}:{args.port}")
+    print(f"\nStarting server on {server_name}:{args.port}")
+    if args.share:
+        print("Public link will be created...")
+    
+    print("\n" + "=" * 60)
+    
     demo.launch(
         server_name=server_name,
         server_port=args.port,
         share=args.share
     )
+
 
 if __name__ == "__main__":
     main()

@@ -249,8 +249,7 @@ def create_ui(handler):
                         audio_codes_output = gr.Textbox(
                             label="Audio Codes",
                             lines=8,
-                            scale=2,
-                            buttons=["copy"]
+                            scale=2
                         )
                     llm_generation_status = gr.Textbox(
                         label="Generation Status",
@@ -532,6 +531,7 @@ def create_ui(handler):
             task, caption, lyrics, codes,
             steps, guidance, seed_val, random_seed,
             ref_audio, repaint_start, repaint_end, cover_strength,
+            track_type_val,
             bpm_val, key_val, time_sig_val, vocal_lang,
             adg, cfg_start, cfg_end, fmt, tiled,
             progress=gr.Progress(track_tqdm=True)
@@ -561,6 +561,7 @@ def create_ui(handler):
                 cfg_interval_end=cfg_end,
                 audio_format=fmt,
                 use_tiled_decode=tiled,
+                track_type=track_type_val,
                 progress=progress
             )
         
@@ -570,6 +571,7 @@ def create_ui(handler):
                 task_type, ace_caption, ace_lyrics, ace_audio_codes,
                 inference_steps, guidance_scale, seed, use_random_seed,
                 reference_audio, repainting_start, repainting_end, audio_cover_strength,
+                track_type,
                 bpm, key_scale, time_signature, vocal_language,
                 use_adg, cfg_interval_start, cfg_interval_end, audio_format, use_tiled_decode
             ],
