@@ -249,8 +249,7 @@ def create_ui(handler):
                         audio_codes_output = gr.Textbox(
                             label="Audio Codes",
                             lines=8,
-                            scale=2,
-                            show_copy_button=True
+                            scale=2
                         )
                     llm_generation_status = gr.Textbox(
                         label="Generation Status",
