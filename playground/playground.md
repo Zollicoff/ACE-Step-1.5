@@ -206,15 +206,28 @@ Two-column layout:
 | `seed` | Number | - | -1 | Random seed (-1 for random) |
 | `use_random_seed` | Checkbox | - | True | Use random seed |
 
-#### 2.3.3 Reference Audio Group (Dynamic)
+#### 2.3.3 Meta Group (All Tasks)
 
-**Visible for:** repaint, cover, add, complete, extract
+Wrapped in `gr.Group` with Markdown header "#### Meta".
+
+| Component | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `ace_bpm` | Number | `None` | Beats per minute, precision=0 |
+| `ace_target_duration` | Number | `None` | Target duration in seconds, precision=0 |
+| `ace_key_scale` | Textbox | `""` | e.g., "C Major", "A minor" |
+| `ace_time_signature` | Textbox | `""` | e.g., "4/4", "3/4" |
+
+Layout: Two rows with 2 components each.
+
+#### 2.3.4 Reference Audio Group (All Tasks)
+
+**Visible for:** all tasks (generate, repaint, cover, add, complete, extract)
 
 | Component | Type | Description |
 |-----------|------|-------------|
-| `reference_audio` | Audio (filepath) | Input audio file |
+| `reference_audio` | Audio (filepath) | Reference audio file for style guidance (optional for generate task, required for others) |
 
-#### 2.3.4 Repaint Parameters Group (Dynamic)
+#### 2.3.5 Repaint Parameters Group (Dynamic)
 
 **Visible for:** repaint
 
@@ -223,7 +236,7 @@ Two-column layout:
 | `repainting_start` | Number | 0.0 | Start time in seconds |
 | `repainting_end` | Number | 10.0 | End time in seconds |
 
-#### 2.3.5 Cover Parameters Group (Dynamic)
+#### 2.3.6 Cover Parameters Group (Dynamic)
 
 **Visible for:** cover
 
@@ -231,7 +244,7 @@ Two-column layout:
 |-----------|------|-------|---------|
 | `audio_cover_strength` | Slider | 0.0 - 1.0 | 1.0 |
 
-#### 2.3.6 Track Parameters Group (Dynamic)
+#### 2.3.7 Track Parameters Group (Dynamic)
 
 **Visible for:** add, complete
 
@@ -239,7 +252,7 @@ Two-column layout:
 |-----------|------|---------|---------|
 | `track_type` | Dropdown | `["vocal", "bass", "drums", "guitar", "piano", "other"]` | `"vocal"` |
 
-#### 2.3.7 Advanced Settings Accordion (Collapsed by Default)
+#### 2.3.8 Advanced Settings Accordion (Collapsed by Default)
 
 | Component | Type | Range | Default |
 |-----------|------|-------|---------|
@@ -283,7 +296,7 @@ handler.generate_audio(
     use_tiled_decode: bool,
     track_type: Optional[str] = None,
     progress=None
-) -> Tuple[Optional[str], str]  # (audio_path, status)
+) -> Tuple[Optional[str], str, str]  # (audio_path, status, actual_texts)
 ```
 
 **Implementation Details:**
@@ -299,8 +312,8 @@ handler.generate_audio(
 | Component | Type | Description |
 |-----------|------|-------------|
 | `audio_output` | Audio (filepath) | Generated audio player |
+| `actual_texts` | Textbox (read-only) | Actual text input |
 | `audio_generation_status` | Textbox (read-only) | Status message |
-
 ---
 
 ## 3. Dynamic UI Logic
@@ -310,7 +323,7 @@ handler.generate_audio(
 ```python
 TASK_VISIBILITY = {
     "generate": {
-        "reference_audio": False,
+        "reference_audio": True,
         "repaint_params": False,
         "cover_params": False,
         "track_params": False,
@@ -416,12 +429,15 @@ gr.Blocks(title="ACE-Step Playground", theme=gr.themes.Soft())
         │       │   │   ├── ace_caption
         │       │   │   ├── ace_lyrics
         │       │   │   └── ace_audio_codes
+        │       │   ├── gr.Group("#### Meta")
+        │       │   │   ├── gr.Row [ace_bpm, ace_target_duration]
+        │       │   │   └── gr.Row [ace_key_scale, ace_time_signature]
         │       │   └── gr.Group("#### Logical Conditions")
         │       │       ├── inference_steps
         │       │       ├── guidance_scale
         │       │       └── gr.Row [seed, use_random_seed]
         │       └── gr.Column(scale=1)
-        │           ├── gr.Group("#### Reference Audio", visible=dynamic)
+        │           ├── gr.Group("#### Reference Audio")
         │           │   └── reference_audio
         │           ├── gr.Group("#### Repaint Parameters", visible=dynamic)
         │           │   └── gr.Row [repainting_start, repainting_end]
@@ -438,6 +454,7 @@ gr.Blocks(title="ACE-Step Playground", theme=gr.themes.Soft())
         │
         └── gr.Accordion("3. Results", open=True)
             ├── audio_output
+            ├── actual_texts
             └── audio_generation_status
 ```
 

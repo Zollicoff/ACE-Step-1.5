@@ -20,7 +20,7 @@ if project_root not in sys.path:
 
 TASK_VISIBILITY = {
     "generate": {
-        "reference_audio": False,
+        "reference_audio": True,
         "repaint_params": False,
         "cover_params": False,
         "track_params": False,
@@ -249,7 +249,8 @@ def create_ui(handler):
                         audio_codes_output = gr.Textbox(
                             label="Audio Codes",
                             lines=8,
-                            scale=2
+                            scale=2,
+                            show_copy_button=True
                         )
                     llm_generation_status = gr.Textbox(
                         label="Generation Status",
@@ -376,8 +377,8 @@ def create_ui(handler):
                         
                         # Right Column - Dynamic Model Conditions
                         with gr.Column(scale=1):
-                            # Reference Audio Group (dynamic visibility)
-                            with gr.Group(visible=False) as reference_audio_group:
+                            # Reference Audio Group (visible for all tasks)
+                            with gr.Group(visible=True) as reference_audio_group:
                                 gr.Markdown("#### Reference Audio")
                                 reference_audio = gr.Audio(
                                     label="Reference Audio",
@@ -467,8 +468,8 @@ def create_ui(handler):
                         label="Generated Audio",
                         type="filepath"
                     )
-                    actural_texts = gr.Textbox(
-                        label="actural_texts_input",
+                    actual_texts = gr.Textbox(
+                        label="Actual Text Input",
                         interactive=False
                     )
                     audio_generation_status = gr.Textbox(
@@ -606,7 +607,7 @@ def create_ui(handler):
                 ace_bpm, ace_key_scale, ace_time_signature, vocal_language,
                 use_adg, cfg_interval_start, cfg_interval_end, audio_format, use_tiled_decode
             ],
-            outputs=[audio_output, audio_generation_status, actural_texts]
+            outputs=[audio_output, audio_generation_status, actual_texts]
         )
     
     return demo

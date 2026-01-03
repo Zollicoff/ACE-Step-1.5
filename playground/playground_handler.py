@@ -325,10 +325,10 @@ class PlaygroundHandler:
             if result and len(result) >= 5:
                 audio_path = result[0]  # first_audio
                 status = result[4]  # status_message
-                actural_texts = result[6] if len(result) > 6 else ""
-                if actural_texts and len(actural_texts) > 0:
-                    actural_texts_str = actural_texts[0].replace("\\n", "\n")
-                return audio_path, status, actural_texts_str
+                actual_texts = result[6] if len(result) > 6 else ""
+                if actual_texts and len(actual_texts) > 0:
+                    actual_texts_str = actual_texts[0].replace("\\n", "\n")
+                return audio_path, status, actual_texts_str
             else:
                 return None, "❌ Unexpected result format"
             
