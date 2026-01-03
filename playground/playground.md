@@ -290,6 +290,7 @@ handler.generate_audio(
     guidance_scale: float,
     seed: int,
     reference_audio_path: Optional[str],
+    source_audio_path: Optional[str],
     repainting_start: float,
     repainting_end: float,
     audio_cover_strength: float,
@@ -304,7 +305,7 @@ handler.generate_audio(
     use_tiled_decode: bool,
     track_type: Optional[str] = None,
     progress=None
-) -> Tuple[Optional[str], str, str]  # (audio_path, status, actual_texts)
+) -> Tuple[Optional[str], Optional[str], str, str]  # (first_audio, second_audio, status, actual_texts)
 ```
 
 **Implementation Details:**
@@ -319,7 +320,8 @@ handler.generate_audio(
 
 | Component | Type | Description |
 |-----------|------|-------------|
-| `audio_output` | Audio (filepath) | Generated audio player |
+| `audio_output_1` | Audio (filepath) | First generated audio player |
+| `audio_output_2` | Audio (filepath) | Second generated audio player |
 | `actual_texts` | Textbox (read-only) | Actual text input |
 | `audio_generation_status` | Textbox (read-only) | Status message |
 ---
@@ -470,7 +472,7 @@ gr.Blocks(title="ACE-Step Playground", theme=gr.themes.Soft())
         ├── generate_audio_btn
         │
         └── gr.Accordion("3. Results", open=True)
-            ├── audio_output
+            ├── gr.Row [audio_output_1, audio_output_2]
             ├── actual_texts
             └── audio_generation_status
 ```
@@ -603,7 +605,40 @@ python playground/playground.py --port 7860 --listen --share
 
 ---
 
-## 9. Implementation Checklist
+## 9. Studio Integration
+
+### 9.1 Overview
+
+The Playground integrates with ACE Studio via the WebBridge REST API for audio exchange.
+
+### 9.2 Components
+
+| Component | Type | Description |
+|-----------|------|-------------|
+| `studio_token` | Textbox (password) | Bearer token for Studio authentication |
+| `connect_studio_btn` | Button | Connect to Studio |
+| `studio_connection_status` | Textbox (read-only) | Connection status |
+| `get_ref_from_studio_btn` | Button | Get reference audio from Studio clipboard |
+| `get_src_from_studio_btn` | Button | Get source audio from Studio clipboard |
+| `send_audio1_to_studio_btn` | Button | Send generated audio 1 to Studio |
+| `send_audio2_to_studio_btn` | Button | Send generated audio 2 to Studio |
+
+### 9.3 Workflow
+
+1. **Connect**: Enter Studio token and click "🔗 Connect"
+2. **Receive Audio**: Click "📥 Get from Studio" to import clipboard audio
+3. **Send Audio**: Click "📤 Send to Studio" to export generated audio
+
+### 9.4 Files
+
+| File | Description |
+|------|-------------|
+| `studio_client.py` | Python client for WebBridge API |
+| `studio_api.md` | API documentation |
+
+---
+
+## 10. Implementation Checklist
 
 - [x] Create `playground_handler.py` with proper integration to `llm_inference.py` and `handler.py`
 - [x] Create `playground_ui.py` with Tabs layout
@@ -613,7 +648,10 @@ python playground/playground.py --port 7860 --listen --share
 - [x] Add Config/Advanced accordions (collapsed by default)
 - [x] Add `track_type` parameter for add/complete tasks
 - [x] Create `playground.py` entry point
+- [x] Add Studio integration (studio_client.py)
+- [x] Add Studio UI components (token, connect, send/receive buttons)
 - [ ] Test all task types
 - [ ] Test dynamic UI visibility
 - [ ] Test error handling
 - [ ] Add progress tracking for generation
+- [ ] Test Studio integration

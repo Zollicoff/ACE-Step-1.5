@@ -322,20 +322,21 @@ class PlaygroundHandler:
             
             # Unpack result from generate_music:
             # (first_audio, second_audio, all_audio_paths, generation_info, status_message, 
-            #  seed_value_for_ui, align_score_1, align_text_1, align_plot_1, 
+            #  seed_value_for_ui, actual_texts, align_score_1, align_text_1, align_plot_1, 
             #  align_score_2, align_text_2, align_plot_2)
             if result and len(result) >= 5:
-                audio_path = result[0]  # first_audio
+                first_audio = result[0]  # first_audio
+                second_audio = result[1]  # second_audio
                 status = result[4]  # status_message
                 actual_texts = result[6] if len(result) > 6 else ""
                 if actual_texts and len(actual_texts) > 0:
                     actual_texts_str = actual_texts[0].replace("\\n", "\n")
-                return audio_path, status, actual_texts_str
+                return first_audio, second_audio, status, actual_texts_str
             else:
-                return None, "❌ Unexpected result format"
+                return None, None, "❌ Unexpected result format", ""
             
         except Exception as e:
-            return None, f"❌ Error generating audio: {str(e)}\n{traceback.format_exc()}"
+            return None, None, f"❌ Error generating audio: {str(e)}\n{traceback.format_exc()}", ""
     
     # =========================================================================
     # Status Properties

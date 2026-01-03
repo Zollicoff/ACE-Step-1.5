@@ -4,6 +4,7 @@ Gradio-based UI for the ACE-Step Playground.
 """
 import os
 import sys
+import tempfile
 import gradio as gr
 from typing import Optional, List
 
@@ -12,6 +13,17 @@ current_file = os.path.abspath(__file__)
 project_root = os.path.dirname(os.path.dirname(current_file))
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
+
+# Import Studio client
+from playground.studio_client import (
+    get_studio_client,
+    init_studio_client,
+    check_studio_connection,
+)
+
+# Temp directory for Studio audio files
+STUDIO_TEMP_DIR = os.path.join(tempfile.gettempdir(), "acestep_studio")
+os.makedirs(STUDIO_TEMP_DIR, exist_ok=True)
 
 
 # =============================================================================
@@ -390,6 +402,19 @@ def create_ui(handler):
                                     label="Reference Audio (for style guidance)",
                                     type="filepath"
                                 )
+                                with gr.Row():
+                                    get_ref_from_studio_btn = gr.Button(
+                                        "📥 Get from Studio",
+                                        size="sm",
+                                        scale=1
+                                    )
+                                    ref_studio_status = gr.Textbox(
+                                        label="",
+                                        interactive=False,
+                                        scale=2,
+                                        show_label=False,
+                                        max_lines=1
+                                    )
                             
                             # Source Audio Group (for repaint, cover, add, complete, extract)
                             with gr.Group(visible=False) as source_audio_group:
@@ -398,6 +423,19 @@ def create_ui(handler):
                                     label="Source Audio (to be processed)",
                                     type="filepath"
                                 )
+                                with gr.Row():
+                                    get_src_from_studio_btn = gr.Button(
+                                        "📥 Get from Studio",
+                                        size="sm",
+                                        scale=1
+                                    )
+                                    src_studio_status = gr.Textbox(
+                                        label="",
+                                        interactive=False,
+                                        scale=2,
+                                        show_label=False,
+                                        max_lines=1
+                                    )
                             
                             # Repaint Parameters Group (dynamic visibility)
                             with gr.Group(visible=False) as repaint_params_group:
@@ -478,10 +516,43 @@ def create_ui(handler):
                 # 3. Results
                 # ---------------------------------------------------------
                 with gr.Accordion("3. Results", open=True):
-                    audio_output = gr.Audio(
-                        label="Generated Audio",
-                        type="filepath"
-                    )
+                    with gr.Row():
+                        with gr.Column():
+                            audio_output_1 = gr.Audio(
+                                label="Generated Audio 1",
+                                type="filepath"
+                            )
+                            with gr.Row():
+                                send_audio1_to_studio_btn = gr.Button(
+                                    "📤 Send to Studio",
+                                    size="sm",
+                                    scale=1
+                                )
+                                audio1_studio_status = gr.Textbox(
+                                    label="",
+                                    interactive=False,
+                                    scale=2,
+                                    show_label=False,
+                                    max_lines=1
+                                )
+                        with gr.Column():
+                            audio_output_2 = gr.Audio(
+                                label="Generated Audio 2",
+                                type="filepath"
+                            )
+                            with gr.Row():
+                                send_audio2_to_studio_btn = gr.Button(
+                                    "📤 Send to Studio",
+                                    size="sm",
+                                    scale=1
+                                )
+                                audio2_studio_status = gr.Textbox(
+                                    label="",
+                                    interactive=False,
+                                    scale=2,
+                                    show_label=False,
+                                    max_lines=1
+                                )
                     actual_texts = gr.Textbox(
                         label="Actual Text Input",
                         interactive=False
@@ -489,6 +560,29 @@ def create_ui(handler):
                     audio_generation_status = gr.Textbox(
                         label="Status",
                         interactive=False
+                    )
+                
+                # ---------------------------------------------------------
+                # 4. Studio Integration
+                # ---------------------------------------------------------
+                with gr.Accordion("4. Studio Integration", open=False):
+                    gr.Markdown("Connect to ACE Studio for audio exchange")
+                    with gr.Row():
+                        studio_token = gr.Textbox(
+                            label="Studio Token",
+                            placeholder="Enter token from ACE Studio WebView...",
+                            type="password",
+                            scale=3
+                        )
+                        connect_studio_btn = gr.Button(
+                            "🔗 Connect",
+                            variant="primary",
+                            scale=1
+                        )
+                    studio_connection_status = gr.Textbox(
+                        label="Connection Status",
+                        interactive=False,
+                        placeholder="Not connected"
                     )
 
         
@@ -623,7 +717,85 @@ def create_ui(handler):
                 ace_bpm, ace_key_scale, ace_time_signature, vocal_language,
                 use_adg, cfg_interval_start, cfg_interval_end, audio_format, use_tiled_decode
             ],
-            outputs=[audio_output, audio_generation_status, actual_texts]
+            outputs=[audio_output_1, audio_output_2, audio_generation_status, actual_texts]
+        )
+        
+        # -----------------------------------------------------------------
+        # Studio Integration Events
+        # -----------------------------------------------------------------
+        
+        def connect_to_studio(token: str):
+            """Connect to ACE Studio with the provided token."""
+            if not token or not token.strip():
+                return "❌ Please enter a token"
+            success, message = init_studio_client(token.strip())
+            return message
+        
+        def get_audio_from_studio():
+            """Get audio from Studio clipboard."""
+            client = get_studio_client()
+            if not client.token:
+                return None, "❌ Not connected to Studio. Please connect first."
+            
+            try:
+                file_path, message = client.receive_audio_from_studio(output_dir=STUDIO_TEMP_DIR)
+                return file_path, message
+            except Exception as e:
+                return None, f"❌ Error: {str(e)}"
+        
+        def send_audio_to_studio(audio_path: str):
+            """Send audio to Studio clipboard."""
+            if not audio_path:
+                return "❌ No audio to send"
+            
+            client = get_studio_client()
+            if not client.token:
+                return "❌ Not connected to Studio. Please connect first."
+            
+            try:
+                # For local files, we need to use file:// URL or the Gradio served URL
+                # Since Studio expects an HTTP URL, this may need a local server
+                # For now, we'll attempt with the file path directly
+                success, message = client.send_audio_to_studio(
+                    audio_url=audio_path,
+                    filename=os.path.basename(audio_path) if audio_path else None,
+                    wait=True
+                )
+                return message
+            except Exception as e:
+                return f"❌ Error: {str(e)}"
+        
+        # Connect button
+        connect_studio_btn.click(
+            fn=connect_to_studio,
+            inputs=[studio_token],
+            outputs=[studio_connection_status]
+        )
+        
+        # Get from Studio buttons
+        get_ref_from_studio_btn.click(
+            fn=get_audio_from_studio,
+            inputs=[],
+            outputs=[reference_audio, ref_studio_status]
+        )
+        
+        get_src_from_studio_btn.click(
+            fn=get_audio_from_studio,
+            inputs=[],
+            outputs=[source_audio, src_studio_status]
+        )
+        
+        # Send to Studio buttons
+        send_audio1_to_studio_btn.click(
+            fn=send_audio_to_studio,
+            inputs=[audio_output_1],
+            outputs=[audio1_studio_status]
+        )
+        
+        send_audio2_to_studio_btn.click(
+            fn=send_audio_to_studio,
+            inputs=[audio_output_2],
+            outputs=[audio2_studio_status]
         )
     
     return demo

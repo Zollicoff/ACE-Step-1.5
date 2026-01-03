@@ -23,4 +23,5 @@
         meta条件：bpm, target_duration, key_scale, time_signature
         vocal language 条件
     5. 结果展示模块
+        结果要展示两条音频，而不是只有一条
 
