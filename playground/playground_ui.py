@@ -299,6 +299,8 @@ def create_ui(handler):
                         label="Task Type"
                     )
                     
+
+
                     with gr.Row():
                         # Left Column - Common Inputs
                         with gr.Column(scale=1):
@@ -319,6 +321,30 @@ def create_ui(handler):
                                     placeholder="Paste audio codes from LLM section...",
                                     lines=3
                                 )
+                            
+                            # Meta
+                            with gr.Group():
+                                gr.Markdown("#### Meta")
+                                with gr.Row():
+                                    ace_bpm = gr.Number(
+                                        label="BPM",
+                                        value=None,
+                                        precision=0
+                                    )
+                                    ace_target_duration = gr.Number(
+                                        label="Target Duration (s)",
+                                        value=None,
+                                        precision=0
+                                    )
+                                with gr.Row():
+                                    ace_key_scale = gr.Textbox(
+                                        label="Key Scale",
+                                        placeholder="e.g., C Major"
+                                    )
+                                    ace_time_signature = gr.Textbox(
+                                        label="Time Signature",
+                                        placeholder="e.g., 4/4"
+                                    )
                             
                             # Logical Conditions
                             with gr.Group():
@@ -572,7 +598,7 @@ def create_ui(handler):
                 inference_steps, guidance_scale, seed, use_random_seed,
                 reference_audio, repainting_start, repainting_end, audio_cover_strength,
                 track_type,
-                bpm, key_scale, time_signature, vocal_language,
+                ace_bpm, ace_key_scale, ace_time_signature, vocal_language,
                 use_adg, cfg_interval_start, cfg_interval_end, audio_format, use_tiled_decode
             ],
             outputs=[audio_output, audio_generation_status]
