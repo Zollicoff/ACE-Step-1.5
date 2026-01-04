@@ -195,7 +195,6 @@ Two-column layout:
 |-----------|------|-------------|
 | `ace_caption` | Textbox | Music description, 2 lines |
 | `ace_lyrics` | Textbox | Lyrics, 3 lines |
-| `ace_audio_codes` | Textbox | Audio codes, 3 lines |
 
 #### 2.3.2 Logical Conditions Group (All Tasks)
 
@@ -205,6 +204,7 @@ Two-column layout:
 | `guidance_scale` | Slider | 1.0 - 20.0 | 7.0 | CFG scale |
 | `seed` | Number | - | -1 | Random seed (-1 for random) |
 | `use_random_seed` | Checkbox | - | True | Use random seed |
+| `vocal_language` | Dropdown | `["en", "zh", "ja", "ko"]` | `"en"` | Vocal language |
 
 #### 2.3.3 Meta Group (All Tasks)
 
@@ -219,7 +219,15 @@ Wrapped in `gr.Group` with Markdown header "#### Meta".
 
 Layout: Two rows with 2 components each.
 
-#### 2.3.4 Reference Audio Group (All Tasks)
+#### 2.3.4 Audio Codes Group (Dynamic - Right Column)
+
+**Visible for:** generate only
+
+| Component | Type | Description |
+|-----------|------|-------------|
+| `ace_audio_codes` | Textbox | Audio codes from LLM section, 3 lines |
+
+#### 2.3.5 Reference Audio Group (All Tasks - Right Column)
 
 **Visible for:** all tasks (generate, repaint, cover, add, complete, extract)
 
@@ -227,7 +235,7 @@ Layout: Two rows with 2 components each.
 |-----------|------|-------------|
 | `reference_audio` | Audio (filepath) | Reference audio file for style guidance (optional) |
 
-#### 2.3.5 Source Audio Group (Dynamic)
+#### 2.3.6 Source Audio Group (Dynamic - Right Column)
 
 **Visible for:** repaint, cover, add, complete, extract
 
@@ -235,7 +243,7 @@ Layout: Two rows with 2 components each.
 |-----------|------|-------------|
 | `source_audio` | Audio (filepath) | Source audio file to be processed (required for non-generate tasks) |
 
-#### 2.3.6 Repaint Parameters Group (Dynamic)
+#### 2.3.7 Repaint Parameters Group (Dynamic - Right Column)
 
 **Visible for:** repaint
 
@@ -244,7 +252,7 @@ Layout: Two rows with 2 components each.
 | `repainting_start` | Number | 0.0 | Start time in seconds |
 | `repainting_end` | Number | 10.0 | End time in seconds |
 
-#### 2.3.7 Cover Parameters Group (Dynamic)
+#### 2.3.8 Cover Parameters Group (Dynamic - Right Column)
 
 **Visible for:** cover
 
@@ -252,7 +260,7 @@ Layout: Two rows with 2 components each.
 |-----------|------|-------|---------|
 | `audio_cover_strength` | Slider | 0.0 - 1.0 | 1.0 |
 
-#### 2.3.8 Track Parameters Group (Dynamic)
+#### 2.3.9 Track Parameters Group (Dynamic - Right Column)
 
 **Visible for:** add, complete
 
@@ -260,7 +268,7 @@ Layout: Two rows with 2 components each.
 |-----------|------|---------|---------|
 | `track_type` | Dropdown | `["vocal", "bass", "drums", "guitar", "piano", "other"]` | `"vocal"` |
 
-#### 2.3.9 Advanced Settings Accordion (Collapsed by Default)
+#### 2.3.10 Advanced Settings Accordion (Collapsed by Default - Right Column)
 
 | Component | Type | Range | Default |
 |-----------|------|-------|---------|
@@ -269,7 +277,6 @@ Layout: Two rows with 2 components each.
 | `use_adg` | Checkbox | - | False |
 | `use_tiled_decode` | Checkbox | - | True |
 | `audio_format` | Dropdown | `["mp3", "wav", "flac"]` | `"mp3"` |
-| `vocal_language` | Dropdown | `["en", "zh", "ja", "ko"]` | `"en"` |
 
 ---
 
@@ -333,6 +340,7 @@ handler.generate_audio(
 ```python
 TASK_VISIBILITY = {
     "generate": {
+        "audio_codes": True,
         "reference_audio": True,
         "source_audio": False,
         "repaint_params": False,
@@ -340,6 +348,7 @@ TASK_VISIBILITY = {
         "track_params": False,
     },
     "repaint": {
+        "audio_codes": False,
         "reference_audio": True,
         "source_audio": True,
         "repaint_params": True,
@@ -347,6 +356,7 @@ TASK_VISIBILITY = {
         "track_params": False,
     },
     "cover": {
+        "audio_codes": False,
         "reference_audio": True,
         "source_audio": True,
         "repaint_params": False,
@@ -354,6 +364,7 @@ TASK_VISIBILITY = {
         "track_params": False,
     },
     "add": {
+        "audio_codes": False,
         "reference_audio": True,
         "source_audio": True,
         "repaint_params": False,
@@ -361,6 +372,7 @@ TASK_VISIBILITY = {
         "track_params": True,
     },
     "complete": {
+        "audio_codes": False,
         "reference_audio": True,
         "source_audio": True,
         "repaint_params": False,
@@ -368,6 +380,7 @@ TASK_VISIBILITY = {
         "track_params": True,
     },
     "extract": {
+        "audio_codes": False,
         "reference_audio": True,
         "source_audio": True,
         "repaint_params": False,
@@ -384,6 +397,7 @@ def update_task_visibility(task: str):
     """Update visibility of task-specific components based on selected task."""
     vis = TASK_VISIBILITY.get(task, TASK_VISIBILITY["generate"])
     return (
+        gr.update(visible=vis["audio_codes"]),
         gr.update(visible=vis["reference_audio"]),
         gr.update(visible=vis["source_audio"]),
         gr.update(visible=vis["repaint_params"]),
@@ -441,19 +455,21 @@ gr.Blocks(title="ACE-Step Playground", theme=gr.themes.Soft())
         ├── gr.Accordion("2. Task & Conditions", open=True)
         │   ├── task_type
         │   └── gr.Row
-        │       ├── gr.Column(scale=1)
+        │       ├── gr.Column(scale=1)  # Left - Always visible
         │       │   ├── gr.Group("#### Common Inputs")
         │       │   │   ├── ace_caption
-        │       │   │   ├── ace_lyrics
-        │       │   │   └── ace_audio_codes
+        │       │   │   └── ace_lyrics
         │       │   ├── gr.Group("#### Meta")
         │       │   │   ├── gr.Row [ace_bpm, ace_target_duration]
         │       │   │   └── gr.Row [ace_key_scale, ace_time_signature]
         │       │   └── gr.Group("#### Logical Conditions")
         │       │       ├── inference_steps
         │       │       ├── guidance_scale
-        │       │       └── gr.Row [seed, use_random_seed]
-        │       └── gr.Column(scale=1)
+        │       │       ├── gr.Row [seed, use_random_seed]
+        │       │       └── vocal_language
+        │       └── gr.Column(scale=1)  # Right - Dynamic visibility
+        │           ├── gr.Group("#### Audio Codes", visible=generate only)
+        │           │   └── ace_audio_codes
         │           ├── gr.Group("#### Reference Audio")
         │           │   └── reference_audio
         │           ├── gr.Group("#### Source Audio", visible=dynamic)
@@ -467,7 +483,7 @@ gr.Blocks(title="ACE-Step Playground", theme=gr.themes.Soft())
         │           └── gr.Accordion("Advanced Settings", open=False)
         │               ├── gr.Row [cfg_interval_start, cfg_interval_end]
         │               ├── gr.Row [use_adg, use_tiled_decode]
-        │               └── gr.Row [audio_format, vocal_language]
+        │               └── audio_format
         │
         ├── generate_audio_btn
         │

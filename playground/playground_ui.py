@@ -28,6 +28,7 @@ from studio_bridge import (
 
 TASK_VISIBILITY = {
     "generate": {
+        "audio_codes": True,
         "reference_audio": True,
         "source_audio": False,
         "repaint_params": False,
@@ -35,6 +36,7 @@ TASK_VISIBILITY = {
         "track_params": False,
     },
     "repaint": {
+        "audio_codes": False,
         "reference_audio": True,
         "source_audio": True,
         "repaint_params": True,
@@ -42,6 +44,7 @@ TASK_VISIBILITY = {
         "track_params": False,
     },
     "cover": {
+        "audio_codes": False,
         "reference_audio": True,
         "source_audio": True,
         "repaint_params": False,
@@ -49,6 +52,7 @@ TASK_VISIBILITY = {
         "track_params": False,
     },
     "add": {
+        "audio_codes": False,
         "reference_audio": True,
         "source_audio": True,
         "repaint_params": False,
@@ -56,6 +60,7 @@ TASK_VISIBILITY = {
         "track_params": True,
     },
     "complete": {
+        "audio_codes": False,
         "reference_audio": True,
         "source_audio": True,
         "repaint_params": False,
@@ -63,6 +68,7 @@ TASK_VISIBILITY = {
         "track_params": True,
     },
     "extract": {
+        "audio_codes": False,
         "reference_audio": True,
         "source_audio": True,
         "repaint_params": False,
@@ -76,6 +82,7 @@ def update_task_visibility(task: str):
     """Update visibility of task-specific components based on selected task."""
     vis = TASK_VISIBILITY.get(task, TASK_VISIBILITY["generate"])
     return (
+        gr.update(visible=vis["audio_codes"]),
         gr.update(visible=vis["reference_audio"]),
         gr.update(visible=vis["source_audio"]),
         gr.update(visible=vis["repaint_params"]),
@@ -344,7 +351,7 @@ def create_ui(handler):
 
 
                     with gr.Row():
-                        # Left Column - Common Inputs
+                        # Left Column - Common Inputs (always visible)
                         with gr.Column(scale=1):
                             with gr.Group():
                                 gr.Markdown("#### Common Inputs")
@@ -356,11 +363,6 @@ def create_ui(handler):
                                 ace_lyrics = gr.Textbox(
                                     label="Lyrics",
                                     placeholder="Copy from LLM section or enter new...",
-                                    lines=3
-                                )
-                                ace_audio_codes = gr.Textbox(
-                                    label="Audio Codes",
-                                    placeholder="Paste audio codes from LLM section...",
                                     lines=3
                                 )
                             
@@ -415,9 +417,23 @@ def create_ui(handler):
                                         label="Use Random Seed",
                                         value=True
                                     )
+                                vocal_language = gr.Dropdown(
+                                    choices=["en", "zh", "ja", "ko"],
+                                    value="en",
+                                    label="Vocal Language"
+                                )
                         
-                        # Right Column - Dynamic Model Conditions
+                        # Right Column - Dynamic Task-specific Inputs
                         with gr.Column(scale=1):
+                            # Audio Codes Group (only visible for generate task)
+                            with gr.Group(visible=True) as audio_codes_group:
+                                gr.Markdown("#### Audio Codes")
+                                ace_audio_codes = gr.Textbox(
+                                    label="Audio Codes",
+                                    placeholder="Paste audio codes from LLM section...",
+                                    lines=3
+                                )
+                            
                             # Reference Audio Group (visible for all tasks)
                             with gr.Group(visible=True) as reference_audio_group:
                                 gr.Markdown("#### Reference Audio")
@@ -508,11 +524,6 @@ def create_ui(handler):
                                         choices=["mp3", "wav", "flac"],
                                         value="mp3",
                                         label="Audio Format"
-                                    )
-                                    vocal_language = gr.Dropdown(
-                                        choices=["en", "zh", "ja", "ko"],
-                                        value="en",
-                                        label="Vocal Language"
                                     )
                     
                     generate_audio_btn = gr.Button("🎵 Generate Audio", variant="primary", size="lg")
@@ -621,6 +632,7 @@ def create_ui(handler):
             fn=update_task_visibility,
             inputs=[task_type],
             outputs=[
+                audio_codes_group,
                 reference_audio_group,
                 source_audio_group,
                 repaint_params_group,
