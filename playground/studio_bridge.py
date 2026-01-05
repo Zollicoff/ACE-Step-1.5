@@ -176,9 +176,8 @@ async () => {
 JS_SEND_AUDIO_TO_STUDIO = """
 async (audioData) => {
     // audioData is the Gradio audio component value
-    // It could be a URL, blob URL, or file path depending on context
     if (!audioData) {
-        return '❌ No audio to send';
+        return [audioData, '❌ No audio to send'];
     }
     // Get the audio URL from Gradio component
     let audioUrl = audioData;
@@ -186,7 +185,8 @@ async (audioData) => {
         audioUrl = audioData.url;
     }
     const result = await window.StudioBridge.sendAudio(audioUrl, 'ACEStep_Generated.mp3');
-    return result;
+    // Return [original audio (unchanged), status message] to match outputs
+    return [audioData, result];
 }
 """
 
