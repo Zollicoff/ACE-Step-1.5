@@ -702,7 +702,7 @@ def create_ui(handler):
         
         # Connect button - uses frontend JS
         connect_studio_btn.click(
-            fn=lambda x: x,  # Pass-through function (JS handles the logic)
+            fn=None,  # Pass-through function (JS handles the logic)
             inputs=[studio_token],
             outputs=[studio_connection_status],
             js=JS_CONNECT_STUDIO
@@ -710,14 +710,14 @@ def create_ui(handler):
         
         # Get from Studio buttons - uses frontend JS
         get_ref_from_studio_btn.click(
-            fn=lambda: (None, ""),  # Placeholder (JS handles the logic)
+            fn=None,  # Placeholder (JS handles the logic)
             inputs=[],
             outputs=[reference_audio, studio_connection_status],
             js=JS_GET_AUDIO_FROM_STUDIO
         )
         
         get_src_from_studio_btn.click(
-            fn=lambda: (None, ""),  # Placeholder (JS handles the logic)
+            fn=None,  # Placeholder (JS handles the logic)
             inputs=[],
             outputs=[source_audio, studio_connection_status],
             js=JS_GET_AUDIO_FROM_STUDIO
@@ -725,14 +725,14 @@ def create_ui(handler):
         
         # Send to Studio buttons - uses frontend JS
         send_audio1_to_studio_btn.click(
-            fn=lambda x: (x, ""),
+            fn=None,
             inputs=[audio_output_1],
             outputs=[audio_output_1, studio_connection_status],
             js=JS_SEND_AUDIO_TO_STUDIO
         )
         
         send_audio2_to_studio_btn.click(
-            fn=lambda x: (x, ""),
+            fn=None,
             inputs=[audio_output_2],
             outputs=[audio_output_2, studio_connection_status],
             js=JS_SEND_AUDIO_TO_STUDIO
