@@ -22,6 +22,11 @@ except ImportError:
     from playground_ui import create_ui
 
 
+def auth_function(username: str, password: str) -> bool:
+    """Simple authentication - change username and password as needed."""
+    return username == "test" and password == "playground123"
+
+
 def main():
     parser = argparse.ArgumentParser(description="ACE-Step Playground")
     parser.add_argument("--port", type=int, default=7860, help="Port to run the gradio server on")
@@ -51,7 +56,8 @@ def main():
     demo.launch(
         server_name=server_name,
         server_port=args.port,
-        share=args.share
+        share=args.share,
+        auth=auth_function
     )
 
 
