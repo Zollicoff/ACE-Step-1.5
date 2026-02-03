@@ -429,6 +429,14 @@ class AceStepHandler:
                 self.model.eval()
                 
                 if compile_model:
+                    # Add __len__ method to model to support torch.compile
+                    # torch.compile's dynamo requires this method for introspection
+                    if not hasattr(self.model.__class__, '__len__'):
+                        def model_len(self):
+                            """Return 0 as default length for torch.compile compatibility"""
+                            return 0
+                        self.model.__class__.__len__ = model_len
+                    
                     self.model = torch.compile(self.model)
                     
                     if self.quantization is not None:
