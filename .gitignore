@@ -1,9 +1,9 @@
+#Exclude potential (c) training data
 *_lyrics.txt
 *.mp3
 AlbumArt*.jpg
 Folder.jpg
-Judie Tzuke - Welcome to the Cruise.jpg
-acestep/training/dataset_builder original.py
+
 
 data/
 *.mp3
