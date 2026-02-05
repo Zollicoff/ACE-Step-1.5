@@ -36,7 +36,7 @@ try:
     from .llm_inference import LLMHandler
     from .dataset_handler import DatasetHandler
     from .gradio_ui import create_gradio_interface
-    from .gpu_config import get_gpu_config, get_gpu_memory_gb, print_gpu_config_info, set_global_gpu_config
+    from .gpu_config import get_gpu_config, get_gpu_memory_gb, print_gpu_config_info, set_global_gpu_config, VRAM_16GB_MIN_GB
 except ImportError:
     # When executed as a script: `python acestep/acestep_v15_pipeline.py`
     project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -46,7 +46,7 @@ except ImportError:
     from acestep.llm_inference import LLMHandler
     from acestep.dataset_handler import DatasetHandler
     from acestep.gradio_ui import create_gradio_interface
-    from acestep.gpu_config import get_gpu_config, get_gpu_memory_gb, print_gpu_config_info, set_global_gpu_config
+    from acestep.gpu_config import get_gpu_config, get_gpu_memory_gb, print_gpu_config_info, set_global_gpu_config, VRAM_16GB_MIN_GB
 
 
 def create_demo(init_params=None, language='en'):
@@ -91,7 +91,7 @@ def main():
     set_global_gpu_config(gpu_config)  # Set global config for use across modules
     
     gpu_memory_gb = gpu_config.gpu_memory_gb
-    auto_offload = gpu_memory_gb > 0 and gpu_memory_gb < 16
+    auto_offload = gpu_memory_gb > 0 and gpu_memory_gb < VRAM_16GB_MIN_GB
     
     # Print GPU configuration info
     print(f"\n{'='*60}")

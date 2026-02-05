@@ -66,6 +66,7 @@ from acestep.gpu_config import (
     get_recommended_lm_model,
     is_lm_model_supported,
     GPUConfig,
+    VRAM_16GB_MIN_GB,
 )
 
 
@@ -1568,7 +1569,7 @@ def create_app() -> FastAPI:
         app.state.gpu_config = gpu_config
 
         gpu_memory_gb = gpu_config.gpu_memory_gb
-        auto_offload = gpu_memory_gb > 0 and gpu_memory_gb < 16
+        auto_offload = gpu_memory_gb > 0 and gpu_memory_gb < VRAM_16GB_MIN_GB
 
         # Print GPU configuration info
         print(f"\n{'='*60}")
