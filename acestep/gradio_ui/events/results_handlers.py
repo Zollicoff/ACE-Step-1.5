@@ -929,7 +929,7 @@ def generate_with_progress(
     for idx in range(8):
         path = audio_outputs[idx]
         if path:
-            # Pass path directly to Audio component
+            # Pass path directly; Gradio Audio component with type="filepath" expects a string path
             audio_playback_updates.append(gr.update(value=path, label=f"Sample {idx+1} (Ready)", interactive=True))
             logger.info(f"[generate_with_progress] Audio {idx+1} path: {path}")
         else:
@@ -1290,8 +1290,7 @@ def generate_lrc_handler(dit_handler, sample_idx, current_batch_index, batch_que
         Tuple of (lrc_display_update, details_accordion_update, batch_queue)
         Note: No audio_update - subtitles updated via lrc_display.change()
     """
-    import torch
-    
+
     if current_batch_index not in batch_queue:
         return gr.skip(), gr.skip(), batch_queue
 
