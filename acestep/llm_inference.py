@@ -815,6 +815,8 @@ class LLMHandler:
                 # Check for interrupt before processing each batch item
                 if self.is_stop_requested():
                     logger.info(f"Generation cancelled by user at batch item {i+1}/{len(formatted_prompt_list)}")
+                    # Clear generation flag and return partial results
+                    self._set_generation_in_progress(False)
                     # Return empty results for remaining items
                     output_texts.extend([""] * (len(formatted_prompt_list) - i))
                     break

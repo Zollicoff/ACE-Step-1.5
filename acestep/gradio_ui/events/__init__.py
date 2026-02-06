@@ -536,17 +536,14 @@ def setup_event_handlers(demo, dit_handler, llm_handler, dataset_handler, datase
     
     def generation_wrapper_with_button_states(*args):
         """
-        Wrapper that handles button states and generation.
-        Yields button state updates first, then generation results.
+        Simple pass-through wrapper for generation.
+        Button states are managed by separate click handlers (see lines below).
         """
-        # First yield: Update button states (disable Generate, enable Stop)
-        # This is a trick - we yield None for all generation outputs, but update button states
-        # The button states are handled via separate click handler below
         yield from res_h.generate_with_batch_management(dit_handler, llm_handler, *args)
     
     # ========== Generation Handler ==========
-    # Note: Button states are managed via separate handlers below for clarity
-    generate_click = generation_section["generate_btn"].click(
+    # Button states are managed via separate click handlers for immediate UI feedback
+    generation_section["generate_btn"].click(
         fn=generation_wrapper_with_button_states,
         inputs=[
             generation_section["captions"],
