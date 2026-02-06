@@ -825,6 +825,7 @@ class DatasetBuilder:
                     created_at=meta_dict.get("created_at", ""),
                     num_samples=meta_dict.get("num_samples", 0),
                     all_instrumental=meta_dict.get("all_instrumental", True),
+                    genre_ratio=meta_dict.get("genre_ratio", 0),
                 )
             
             # Load samples
@@ -1001,20 +1002,6 @@ class DatasetBuilder:
                     latent = vae.encode(audio).latent_dist.sample()
                     target_latents = latent.transpose(1, 2).to(dtype)
 
-                # Now handle text encoding
-                if 'text_input_ids' in locals() and text_input_ids is not None:
-
-                    # Determine text encoder device
-                    text_dev = next(text_encoder.parameters()).device
-
-                    # Move ids to match text encoder device as needed
-                    if text_input_ids.device != text_dev:
-                        text_input_ids = text_input_ids.to(text_dev)
-
-                    text_outputs = text_encoder(text_input_ids)
-                else:
-                    text_outputs = None
-
                 latent_length = target_latents.shape[1]
                 
                 # Step 3: Create attention mask (all ones for valid audio)
@@ -1052,6 +1039,11 @@ class DatasetBuilder:
                 )
                 text_input_ids = text_inputs.input_ids.to(device)
                 text_attention_mask = text_inputs.attention_mask.to(device).to(dtype)
+
+                # Ensure text inputs are on the same device as the text encoder
+                text_dev = next(text_encoder.parameters()).device
+                if text_input_ids.device != text_dev:
+                    text_input_ids = text_input_ids.to(text_dev)
 
                 with torch.no_grad():
                     text_outputs = text_encoder(text_input_ids)
