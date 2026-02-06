@@ -817,9 +817,9 @@ class LLMHandler:
                     logger.info(f"Generation cancelled by user at batch item {i+1}/{len(formatted_prompt_list)}")
                     # Clear generation flag and return partial results
                     self._set_generation_in_progress(False)
-                    # Return empty results for remaining items
+                    # Fill remaining items with empty strings
                     output_texts.extend([""] * (len(formatted_prompt_list) - i))
-                    break
+                    break  # Exit loop, then return output_texts at line 855
                 
                 # Set seed for this item if provided
                 if seeds and i < len(seeds):

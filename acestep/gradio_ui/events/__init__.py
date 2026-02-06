@@ -678,13 +678,16 @@ def setup_event_handlers(demo, dit_handler, llm_handler, dataset_handler, datase
         queue=False
     )
     
-    # Update button states when generation starts (runs before the main generation function)
-    # This separate handler ensures button states update immediately
+    # ========== Button State Management ==========
+    # Separate click handler for immediate button state update (before generation queue)
+    # Note: Gradio supports multiple handlers on same event - they execute in registration order
+    # This pattern ensures UI responsiveness: disable Generate & enable Stop immediately,
+    # even if generation is queued. Main handler (above) processes the actual generation.
     generation_section["generate_btn"].click(
         fn=lambda: (gr.update(interactive=False), gr.update(interactive=True)),
         inputs=None,
         outputs=[generation_section["generate_btn"], generation_section["stop_btn"]],
-        queue=False,  # Execute immediately without queuing
+        queue=False,  # Execute immediately without queuing for instant UI feedback
     )
     
     # ========== Stop Button Handler ==========
@@ -694,7 +697,7 @@ def setup_event_handlers(demo, dit_handler, llm_handler, dataset_handler, datase
         return (
             gr.update(interactive=True),   # Re-enable generate button
             gr.update(interactive=False),  # Disable stop button
-            "Stopping generation at next checkpoint..."
+            "Cancelling generation..."
         )
     
     generation_section["stop_btn"].click(
