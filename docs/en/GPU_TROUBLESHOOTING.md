@@ -95,8 +95,13 @@ pip install -r requirements-rocm-linux.txt
 #### For NVIDIA GPUs:
 
 ```bash
+# For CUDA 12.1 (check PyTorch website for latest version)
 pip install torch --index-url https://download.pytorch.org/whl/cu121
+# Or for CUDA 12.4+:
+# pip install torch --index-url https://download.pytorch.org/whl/cu124
 ```
+
+> **Note:** Check https://pytorch.org/get-started/locally/ for the latest CUDA version supported by PyTorch.
 
 ### Issue 3: NVIDIA GPU Not Detected (CUDA)
 
@@ -131,6 +136,7 @@ pip install torch --index-url https://download.pytorch.org/whl/cu121
 3. **Reinstall PyTorch if needed:**
    ```bash
    pip uninstall torch torchvision torchaudio
+   # Check https://pytorch.org/get-started/locally/ for the latest CUDA version
    pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
    ```
 
