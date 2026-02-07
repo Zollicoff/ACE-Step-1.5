@@ -686,6 +686,7 @@ def generate_with_progress(
     )
     time_module.sleep(0.1)
     
+    final_codes_display_updates = [gr.skip() for _ in range(8)]
     for i in range(8):
         if i < len(audios):
             key = audios[i]["key"]
@@ -817,6 +818,7 @@ def generate_with_progress(
             
             codes_display_updates = [gr.skip() for _ in range(8)]
             codes_display_updates[i] = gr.update(value=code_str, visible=True)  # Keep visible=True
+            final_codes_display_updates[i] = gr.update(value=code_str, visible=True)  # Keep visible=True
             
             details_accordion_updates = [gr.skip() for _ in range(8)]
             # Don't change accordion visibility - keep it always expandable
@@ -914,7 +916,6 @@ def generate_with_progress(
     )
     
     # Build final codes display, LRC display, accordion visibility updates
-    final_codes_display_updates = [gr.skip() for _ in range(8)]
     # final_lrc_display_updates = [gr.skip() for _ in range(8)]
     final_accordion_updates = [gr.skip() for _ in range(8)]
 
