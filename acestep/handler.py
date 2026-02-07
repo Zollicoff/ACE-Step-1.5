@@ -1096,8 +1096,8 @@ class AceStepHandler:
         device = device or self.device
         if device in ["cuda", "xpu", "mps"]:
             return torch.bfloat16
-        # Use float32 on CPU - bfloat16 on CPU is extremely slow (especially on Windows)
-        return torch.float32
+        # Use self.dtype on CPU (should be float32, respects handler configuration)
+        return self.dtype
     
     def _format_instruction(self, instruction: str) -> str:
         """Format instruction to ensure it ends with colon."""
