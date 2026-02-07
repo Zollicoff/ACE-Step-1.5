@@ -538,6 +538,19 @@ def setup_event_handlers(demo, dit_handler, llm_handler, dataset_handler, datase
         yield from res_h.generate_with_batch_management(dit_handler, llm_handler, *args)
     # ========== Generation Handler ==========
     generation_section["generate_btn"].click(
+        fn=res_h.clear_audio_outputs_for_new_generation,
+        outputs=[
+            results_section["generated_audio_1"],
+            results_section["generated_audio_2"],
+            results_section["generated_audio_3"],
+            results_section["generated_audio_4"],
+            results_section["generated_audio_5"],
+            results_section["generated_audio_6"],
+            results_section["generated_audio_7"],
+            results_section["generated_audio_8"],
+            results_section["generated_audio_batch"],
+        ],
+    ).then(
         fn=generation_wrapper,
         inputs=[
             generation_section["captions"],
@@ -647,7 +660,7 @@ def setup_event_handlers(demo, dit_handler, llm_handler, dataset_handler, datase
             results_section["next_batch_btn"],
             results_section["next_batch_status"],
             results_section["restore_params_btn"],
-        ]
+        ],
     ).then(
         fn=lambda *args: res_h.generate_next_batch_background(dit_handler, llm_handler, *args),
         inputs=[

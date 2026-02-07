@@ -30,6 +30,11 @@ DEFAULT_RESULTS_DIR = os.path.join(PROJECT_ROOT, "gradio_outputs").replace("\\",
 os.makedirs(DEFAULT_RESULTS_DIR, exist_ok=True)
 
 
+def clear_audio_outputs_for_new_generation():
+    """Return None for all 9 audio outputs so Gradio clears them and stops playback when a new generation starts."""
+    return (None,) * 9
+
+
 def parse_lrc_to_subtitles(lrc_text: str, total_duration: Optional[float] = None) -> List[Dict[str, Any]]:
     """
     Parse LRC lyrics text to Gradio subtitles format with SMART POST-PROCESSING.
