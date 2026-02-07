@@ -1091,12 +1091,15 @@ class AceStepHandler:
         """Get VAE dtype based on device.
         
         Returns bfloat16 for GPU devices (cuda/xpu/mps) for optimal performance.
-        Returns float32 for CPU to avoid extremely slow bfloat16 operations on CPU.
+        Returns self.dtype for CPU devices, which should be float32 based on
+        handler initialization (see initialize_service), but respects any custom configuration.
+        
+        Note: bfloat16 on CPU is extremely slow (especially on Windows).
         """
         device = device or self.device
         if device in ["cuda", "xpu", "mps"]:
             return torch.bfloat16
-        # Use self.dtype on CPU (should be float32, respects handler configuration)
+        # Use self.dtype on CPU (typically float32, respects handler configuration)
         return self.dtype
     
     def _format_instruction(self, instruction: str) -> str:

@@ -22,7 +22,12 @@ from acestep.debug_utils import (
 
 
 class PreprocessMixin:
-    """Preprocess labeled samples to tensor files."""
+    """Preprocess labeled samples to tensor files.
+    
+    Note: This class uses dit_handler._load_model_context (private method) for proper
+    device management during preprocessing. This is acceptable as PreprocessMixin is part
+    of the internal training infrastructure tightly coupled with the handler.
+    """
 
     def preprocess_to_tensors(
         self,
