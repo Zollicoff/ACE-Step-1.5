@@ -16,12 +16,17 @@ import os
 import sys
 import subprocess
 
+# Constants
+HEADER_WIDTH = 80
+PYTORCH_CUDA_INSTALL_URL = "https://download.pytorch.org/whl/cu121"
+PYTORCH_ROCM_INSTALL_URL = "https://download.pytorch.org/whl/rocm6.0"
+
 
 def print_section(title):
     """Print a section header."""
-    print(f"\n{'=' * 80}")
+    print(f"\n{'=' * HEADER_WIDTH}")
     print(f"  {title}")
-    print('=' * 80)
+    print('=' * HEADER_WIDTH)
 
 
 def check_pytorch():
@@ -45,10 +50,10 @@ def check_pytorch():
             print("\n❌ You have installed a CPU-only version of PyTorch!")
             print("\nTo enable GPU support:")
             print("  For NVIDIA GPUs:")
-            print("    pip install torch --index-url https://download.pytorch.org/whl/cu121")
+            print(f"    pip install torch --index-url {PYTORCH_CUDA_INSTALL_URL}")
             print("\n  For AMD GPUs with ROCm:")
             print("    Windows: See requirements-rocm.txt")
-            print("    Linux: pip install torch --index-url https://download.pytorch.org/whl/rocm6.0")
+            print(f"    Linux: pip install torch --index-url {PYTORCH_ROCM_INSTALL_URL}")
             return False
         
         return True
@@ -245,10 +250,10 @@ def print_recommendations():
             print("\nYou need to reinstall PyTorch with GPU support:")
             print("\nFor NVIDIA GPUs:")
             print("  pip uninstall torch torchvision torchaudio")
-            print("  pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121")
+            print(f"  pip install torch torchvision torchaudio --index-url {PYTORCH_CUDA_INSTALL_URL}")
             print("\nFor AMD GPUs:")
             print("  Windows: Follow instructions in requirements-rocm.txt")
-            print("  Linux: pip install torch --index-url https://download.pytorch.org/whl/rocm6.0")
+            print(f"  Linux: pip install torch --index-url {PYTORCH_ROCM_INSTALL_URL}")
             
     except ImportError:
         print("❌ PyTorch not installed")
@@ -257,9 +262,9 @@ def print_recommendations():
 
 def main():
     """Main diagnostic routine."""
-    print("=" * 80)
+    print("=" * HEADER_WIDTH)
     print("  ACE-Step GPU Detection Diagnostic Tool")
-    print("=" * 80)
+    print("=" * HEADER_WIDTH)
     print("\nThis tool will help diagnose GPU detection issues.")
     print("Please share the output with support when reporting issues.")
     
@@ -274,9 +279,9 @@ def main():
     
     print_recommendations()
     
-    print("\n" + "=" * 80)
+    print("\n" + "=" * HEADER_WIDTH)
     print("  Diagnostic Complete")
-    print("=" * 80)
+    print("=" * HEADER_WIDTH)
 
 
 if __name__ == "__main__":

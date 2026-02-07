@@ -24,6 +24,10 @@ DEBUG_MAX_CUDA_VRAM_ENV = "MAX_CUDA_VRAM"
 VRAM_16GB_TOLERANCE_GB = 0.5
 VRAM_16GB_MIN_GB = 16.0 - VRAM_16GB_TOLERANCE_GB  # treat as 16GB class if >= this
 
+# PyTorch installation URLs for diagnostics
+PYTORCH_CUDA_INSTALL_URL = "https://download.pytorch.org/whl/cu121"
+PYTORCH_ROCM_INSTALL_URL = "https://download.pytorch.org/whl/rocm6.0"
+
 
 @dataclass
 class GPUConfig:
@@ -178,21 +182,24 @@ def get_gpu_memory_gb() -> float:
         return 0
 
 
-def _log_gpu_diagnostic_info(torch):
+def _log_gpu_diagnostic_info(torch_module):
     """
     Log diagnostic information when GPU is not detected to help users troubleshoot.
+    
+    Args:
+        torch_module: The torch module to inspect for build information
     """
     logger.warning("=" * 80)
     logger.warning("⚠️ GPU NOT DETECTED - DIAGNOSTIC INFORMATION")
     logger.warning("=" * 80)
     
     # Check PyTorch build type
-    is_rocm_build = hasattr(torch.version, 'hip') and torch.version.hip is not None
-    is_cuda_build = hasattr(torch.version, 'cuda') and torch.version.cuda is not None
+    is_rocm_build = hasattr(torch_module.version, 'hip') and torch_module.version.hip is not None
+    is_cuda_build = hasattr(torch_module.version, 'cuda') and torch_module.version.cuda is not None
     
     if is_rocm_build:
         logger.warning("✓ PyTorch ROCm build detected")
-        logger.warning(f"  HIP version: {torch.version.hip}")
+        logger.warning(f"  HIP version: {torch_module.version.hip}")
         logger.warning("")
         logger.warning("❌ torch.cuda.is_available() returned False")
         logger.warning("")
@@ -227,7 +234,7 @@ def _log_gpu_diagnostic_info(torch):
         
     elif is_cuda_build:
         logger.warning("✓ PyTorch CUDA build detected")
-        logger.warning(f"  CUDA version: {torch.version.cuda}")
+        logger.warning(f"  CUDA version: {torch_module.version.cuda}")
         logger.warning("")
         logger.warning("❌ torch.cuda.is_available() returned False")
         logger.warning("")
@@ -241,7 +248,7 @@ def _log_gpu_diagnostic_info(torch):
         logger.warning("     nvidia-smi  # Should list your GPU")
         logger.warning("  2. Check CUDA version compatibility")
         logger.warning("  3. Reinstall PyTorch with CUDA support:")
-        logger.warning("     pip install torch --index-url https://download.pytorch.org/whl/cu121")
+        logger.warning(f"     pip install torch --index-url {PYTORCH_CUDA_INSTALL_URL}")
         
     else:
         logger.warning("⚠️ PyTorch build type: CPU-only")
@@ -249,11 +256,11 @@ def _log_gpu_diagnostic_info(torch):
         logger.warning("You have installed a CPU-only version of PyTorch!")
         logger.warning("")
         logger.warning("For NVIDIA GPUs:")
-        logger.warning("  pip install torch --index-url https://download.pytorch.org/whl/cu121")
+        logger.warning(f"  pip install torch --index-url {PYTORCH_CUDA_INSTALL_URL}")
         logger.warning("")
         logger.warning("For AMD GPUs with ROCm:")
         logger.warning("  Windows: See requirements-rocm.txt for detailed instructions")
-        logger.warning("  Linux: pip install torch --index-url https://download.pytorch.org/whl/rocm6.0")
+        logger.warning(f"  Linux: pip install torch --index-url {PYTORCH_ROCM_INSTALL_URL}")
         logger.warning("")
         logger.warning("For more information, see README.md section 'AMD / ROCm GPUs'")
     
