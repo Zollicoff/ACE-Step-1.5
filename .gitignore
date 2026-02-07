@@ -227,7 +227,10 @@ discord_bot/
 feishu_bot/
 tmp*
 torchinductor_root/
-scripts/
+scripts/*.pyc
+scripts/__pycache__/
+!scripts/check_gpu.py
+!scripts/prepare_vae_calibration_data.py
 checkpoints_legacy/
 lora_output/
 datasets/

@@ -110,6 +110,24 @@ ACE-Step works with AMD GPUs via PyTorch ROCm builds.
 
 This avoids CUDA wheel replacement and has been confirmed to work on ROCm systems. On Windows, use `.venv\Scripts\activate` and the same steps.
 
+#### Troubleshooting GPU Detection
+
+If you see "No GPU detected, running on CPU" with an AMD GPU:
+
+1. Run the GPU diagnostic tool:
+   ```bash
+   python scripts/check_gpu.py
+   ```
+
+2. For RDNA3 GPUs (RX 7000/9000 series), set `HSA_OVERRIDE_GFX_VERSION`:
+   - RX 7900 XT/XTX, RX 9070 XT: `export HSA_OVERRIDE_GFX_VERSION=11.0.0` (Linux) or `set HSA_OVERRIDE_GFX_VERSION=11.0.0` (Windows)
+   - RX 7800 XT, RX 7700 XT: `export HSA_OVERRIDE_GFX_VERSION=11.0.1`
+   - RX 7600: `export HSA_OVERRIDE_GFX_VERSION=11.0.2`
+
+3. On Windows, use `start_gradio_ui_rocm.bat` which automatically sets required environment variables.
+
+4. Verify ROCm installation: `rocm-smi` should list your GPU.
+
 ### AMD / ROCM Linux Specific (cachy-os tested)
 Date of the program this worked:
 07.02.2026 - 10:40 am UTC +1
