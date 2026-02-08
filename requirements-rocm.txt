@@ -41,7 +41,7 @@ vector-quantize-pytorch>=1.27.15
 modelscope
 
 # Training dependencies (optional - for LoRA fine-tuning)
-peft>=0.7.0
+peft>=0.18.0
 lightning>=2.0.0
 tensorboard>=2.0.0
 
