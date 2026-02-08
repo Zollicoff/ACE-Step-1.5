@@ -2648,6 +2648,34 @@ class LLMHandler:
         tqdm_desc = f"MLX {cfg_label}Gen (native)"
         prefill_step_size = 2048
 
+        # ---- Pre-convert constrained processor masks to MLX (one-time) ----
+        # This enables native MLX fast-path for CODES_GENERATION state,
+        # eliminating the PyTorch bridge for 99%+ of Phase 2 tokens.
+        from acestep.constrained_logits_processor import FSMState
+        _mlx_non_audio_mask = None
+        _mlx_eos_id = None
+        _target_codes = None
+        _use_native_codes_path = False
+
+        if constrained_processor is not None:
+            # Pre-convert the non-audio-code mask to MLX (blocks everything except audio codes + EOS)
+            if hasattr(constrained_processor, 'non_audio_code_mask') and constrained_processor.non_audio_code_mask is not None:
+                _mlx_non_audio_mask = mx.array(constrained_processor.non_audio_code_mask.float().numpy())
+            if hasattr(constrained_processor, 'eos_token_id') and constrained_processor.eos_token_id is not None:
+                _mlx_eos_id = int(constrained_processor.eos_token_id)
+            if hasattr(constrained_processor, 'target_codes'):
+                _target_codes = constrained_processor.target_codes
+
+            # For codes phase, the prompt already contains </think>.
+            # Pre-transition FSM to CODES_GENERATION so the native fast path
+            # activates from the very first generated token.
+            if generation_phase == "codes" and constrained_processor.state == FSMState.THINK_TAG:
+                if "</think>" in formatted_prompt:
+                    constrained_processor.state = FSMState.CODES_GENERATION
+                    constrained_processor.codes_count = 0
+                    _use_native_codes_path = True
+                    logger.info("MLX native: pre-transitioned FSM to CODES_GENERATION (native fast path)")
+
         # ===== PREFILL PHASE =====
         prefill_start = time.time()
 
@@ -2739,7 +2767,7 @@ class LLMHandler:
 
         pbar = tqdm(total=max_new_tokens, desc=tqdm_desc, unit="tok")
         for step in range(max_new_tokens):
-            # ---- Combine logits (CFG formula in MLX) ----
+            # ---- Combine logits (CFG formula in MLX, lazy) ----
             if use_cfg:
                 step_logits = last_uncond + cfg_scale * (last_cond - last_uncond)
             else:
@@ -2747,9 +2775,7 @@ class LLMHandler:
 
             step_logits = step_logits.reshape(1, -1)  # [1, vocab_size]
 
-            # ---- Native MLX repetition penalty ----
-            # Matches PyTorch RepetitionPenaltyLogitsProcessor behavior:
-            # tokens with positive logits are divided, negative are multiplied
+            # ---- Native MLX repetition penalty (lazy) ----
             if use_rep_penalty and len(all_token_ids) > 0:
                 token_indices = mx.array(all_token_ids)
                 selected = step_logits[:, token_indices]
@@ -2760,19 +2786,51 @@ class LLMHandler:
                 )
                 step_logits[:, token_indices] = modified
 
-            # ---- Bridge to PyTorch ONLY for constrained decoding FSM ----
+            # ---- Constrained decoding: native MLX fast path vs PyTorch bridge ----
             if constrained_processor is not None:
-                step_logits_f32 = step_logits.astype(mx.float32)
-                np_logits = np.array(step_logits_f32, copy=True)
-                t_logits = torch.from_numpy(np_logits)
-                t_ids = torch.tensor([all_token_ids], dtype=torch.long)
-                t_logits = constrained_processor(t_ids, t_logits)
-                step_logits = mx.array(t_logits.numpy())
+                _cp_state = constrained_processor.state
+
+                if _cp_state == FSMState.CODES_GENERATION:
+                    # === NATIVE MLX FAST PATH (no PyTorch bridge!) ===
+                    # Apply non-audio-code mask (blocks everything except audio codes + EOS)
+                    if _mlx_non_audio_mask is not None:
+                        step_logits = step_logits + _mlx_non_audio_mask
+                    # Duration constraint: block or force EOS
+                    if _target_codes is not None and _mlx_eos_id is not None:
+                        if constrained_processor.codes_count < _target_codes:
+                            # Block EOS until target codes reached
+                            step_logits = mx.concatenate([
+                                step_logits[:, :_mlx_eos_id],
+                                mx.array([[float('-inf')]]),
+                                step_logits[:, _mlx_eos_id + 1:],
+                            ], axis=1)
+                        else:
+                            # Force EOS when target reached
+                            eos_val = step_logits[:, _mlx_eos_id:_mlx_eos_id + 1]
+                            step_logits = mx.full(step_logits.shape, float('-inf'))
+                            step_logits = mx.concatenate([
+                                step_logits[:, :_mlx_eos_id],
+                                eos_val,
+                                step_logits[:, _mlx_eos_id + 1:],
+                            ], axis=1)
+
+                elif _cp_state == FSMState.COMPLETED:
+                    # No-op: COMPLETED state in codes/cot phase is passthrough
+                    pass
+
+                else:
+                    # === PYTORCH BRIDGE (metadata states during CoT phase) ===
+                    step_logits_f32 = step_logits.astype(mx.float32)
+                    np_logits = np.array(step_logits_f32, copy=True)
+                    t_logits = torch.from_numpy(np_logits)
+                    t_ids = torch.tensor([all_token_ids], dtype=torch.long)
+                    t_logits = constrained_processor(t_ids, t_logits)
+                    step_logits = mx.array(t_logits.numpy())
 
             # ---- Native MLX sampling (temperature + top-k + top-p) ----
             logprobs = step_logits - mx.logsumexp(step_logits, keepdims=True)
             token_arr = sampler(logprobs)
-            mx.eval(token_arr)
+            mx.eval(token_arr)  # SINGLE sync point per token
             token_id = token_arr.item()
 
             new_tokens.append(token_id)
@@ -2789,17 +2847,17 @@ class LLMHandler:
             if pad_token_id is not None and pad_token_id != eos_token_id and token_id == pad_token_id:
                 break
 
-            # ---- Next forward step in MLX ----
+            # ---- Next forward step in MLX (LAZY - no eval!) ----
+            # By deferring evaluation, the entire pipeline (forward + CFG + mask + sample)
+            # executes as one fused graph when mx.eval(token_arr) is called next iteration.
             next_input = mx.array([[token_id]])
             if use_cfg:
                 cond_logits = self._mlx_model(next_input, cache=cond_cache)
                 uncond_logits = self._mlx_model(next_input, cache=uncond_cache)
-                mx.eval(cond_logits, uncond_logits)
                 last_cond = cond_logits[:, -1:, :]
                 last_uncond = uncond_logits[:, -1:, :]
             else:
                 logits_out = self._mlx_model(next_input, cache=cache)
-                mx.eval(logits_out)
                 last_logits = logits_out[:, -1:, :]
 
             # Periodic memory cleanup (every 256 tokens, matching mlx-lm pattern)
