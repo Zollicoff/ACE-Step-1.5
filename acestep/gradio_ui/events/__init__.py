@@ -1195,7 +1195,7 @@ def setup_training_event_handlers(demo, dit_handler, llm_handler, training_secti
     
     # Start training from preprocessed tensors
     def training_wrapper(tensor_dir, r, a, d, lr, ep, bs, ga, se, sh, sd, od, ts):
-        from loguru import logger as log
+        from loguru import logger
         if not isinstance(ts, dict):
             ts = {"is_training": False, "should_stop": False}
         try:
@@ -1204,7 +1204,7 @@ def setup_training_event_handlers(demo, dit_handler, llm_handler, training_secti
             ):
                 yield progress, log_msg, plot, state
         except Exception as e:
-            log.exception("Training wrapper error")
+            logger.exception("Training wrapper error")
             yield f"❌ Error: {str(e)}", str(e), None, ts
     
     training_section["start_training_btn"].click(
