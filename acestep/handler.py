@@ -375,7 +375,7 @@ class AceStepHandler:
             (status_message, enable_generate_button)
         """
         try:
-            if not config_path:
+            if config_path is None:
                 config_path = "acestep-v15-turbo"
                 logger.warning(
                     "[initialize_service] config_path not set; defaulting to 'acestep-v15-turbo'."
