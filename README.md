@@ -75,6 +75,20 @@ Star ACE-Step on GitHub and be instantly notified of new releases
 
 > **Requirements:** Python 3.11, CUDA GPU recommended (works on CPU/MPS but slower)
 
+### CPU Support (Limited)
+
+ACE-Step can run on CPU for **inference only**, but performance will be significantly slower.
+
+- CPU inference is supported for testing and experimentation.
+- **Training (including LoRA) on CPU is not recommended** due to extremely long runtimes.
+- For low-VRAM systems, DiT-only mode (LLM disabled) is supported.
+- While CPU training may technically run, it is not practically usable due to extremely long runtimes; **for any practical training workflow, a CUDA-capable GPU or cloud GPU instance is required.**
+
+If you do not have a CUDA GPU, consider:
+- Using cloud GPU providers
+- Running inference-only workflows
+- Using DiT-only mode with `ACESTEP_INIT_LLM=false`
+
 ### AMD / ROCm GPUs
 
 ACE-Step works with AMD GPUs via PyTorch ROCm builds.
