@@ -43,7 +43,7 @@ from acestep.constants import (
     DEFAULT_DIT_INSTRUCTION,
 )
 from acestep.dit_alignment_score import MusicStampsAligner, MusicLyricScorer
-from acestep.gpu_config import get_gpu_memory_gb
+from acestep.gpu_config import get_gpu_memory_gb, get_global_gpu_config
 
 
 warnings.filterwarnings("ignore")
@@ -83,6 +83,7 @@ class AceStepHandler:
         self.offload_dit_to_cpu = False
         self.compiled = False
         self.current_offload_cost = 0.0
+        self.last_init_params = None
         
         # LoRA state
         self.lora_loaded = False
@@ -481,11 +482,13 @@ class AceStepHandler:
             vae_checkpoint_path = os.path.join(checkpoint_dir, "vae")
             if os.path.exists(vae_checkpoint_path):
                 self.vae = AutoencoderOobleck.from_pretrained(vae_checkpoint_path)
-                # Use bfloat16 for VAE on GPU, otherwise use self.dtype (float32 on CPU)
-                vae_dtype = self._get_vae_dtype(device)
                 if not self.offload_to_cpu:
+                    # Keep VAE in GPU precision when resident on accelerator.
+                    vae_dtype = self._get_vae_dtype(device)
                     self.vae = self.vae.to(device).to(vae_dtype)
                 else:
+                    # Use CPU-appropriate dtype when VAE is offloaded.
+                    vae_dtype = self._get_vae_dtype("cpu")
                     self.vae = self.vae.to("cpu").to(vae_dtype)
                 self.vae.eval()
             else:
@@ -527,6 +530,19 @@ class AceStepHandler:
             status_msg += f"Compiled: {compile_model}\n"
             status_msg += f"Offload to CPU: {self.offload_to_cpu}\n"
             status_msg += f"Offload DiT to CPU: {self.offload_dit_to_cpu}"
+
+            # Persist latest successful init settings for mode switching (e.g. training preset).
+            self.last_init_params = {
+                "project_root": project_root,
+                "config_path": config_path,
+                "device": device,
+                "use_flash_attention": use_flash_attention,
+                "compile_model": compile_model,
+                "offload_to_cpu": offload_to_cpu,
+                "offload_dit_to_cpu": offload_dit_to_cpu,
+                "quantization": quantization,
+                "prefer_source": prefer_source,
+            }
             
             return status_msg, True
             
@@ -534,6 +550,32 @@ class AceStepHandler:
             error_msg = f"❌ Error initializing model: {str(e)}\n\nTraceback:\n{traceback.format_exc()}"
             logger.exception("[initialize_service] Error initializing model")
             return error_msg, False
+
+    def switch_to_training_preset(self) -> Tuple[str, bool]:
+        """Best-effort switch to a training-safe preset (non-quantized DiT)."""
+        if self.quantization is None:
+            return "Already in training-safe preset (quantization disabled).", True
+
+        if not self.last_init_params:
+            return "Cannot switch preset automatically: no previous init parameters found.", False
+
+        params = dict(self.last_init_params)
+        params["quantization"] = None
+
+        status, ok = self.initialize_service(
+            project_root=params["project_root"],
+            config_path=params["config_path"],
+            device=params["device"],
+            use_flash_attention=params["use_flash_attention"],
+            compile_model=params["compile_model"],
+            offload_to_cpu=params["offload_to_cpu"],
+            offload_dit_to_cpu=params["offload_dit_to_cpu"],
+            quantization=None,
+            prefer_source=params.get("prefer_source"),
+        )
+        if ok:
+            return f"Switched to training preset (quantization disabled).\n{status}", True
+        return f"Failed to switch to training preset.\n{status}", False
     
     def _empty_cache(self):
         """Clear accelerator memory cache (CUDA, XPU, or MPS)."""
@@ -738,7 +780,10 @@ class AceStepHandler:
             # Offload to CPU
             logger.info(f"[_load_model_context] Offloading {model_name} to CPU")
             start_time = time.time()
-            self._recursive_to_device(model, "cpu")
+            if model_name == "vae":
+                self._recursive_to_device(model, "cpu", self._get_vae_dtype("cpu"))
+            else:
+                self._recursive_to_device(model, "cpu")
             
             # NOTE: Do NOT offload silence_latent to CPU here!
             # silence_latent is used in many places outside of model context,
@@ -1076,10 +1121,16 @@ class AceStepHandler:
         return os.path.dirname(os.path.dirname(current_file))
     
     def _get_vae_dtype(self, device: Optional[str] = None) -> torch.dtype:
-        """Get VAE dtype based on device."""
-        device = device or self.device
-        if device in ["cuda", "xpu", "mps"]:
+        """Get VAE dtype based on target device and GPU tier."""
+        target_device = device or self.device
+        if target_device in ["cuda", "xpu", "mps"]:
             return torch.bfloat16
+        if target_device == "cpu":
+            # On low-VRAM tiers (<=8GB), avoid CPU bfloat16 VAE path.
+            # This path is often extremely slow and can destabilize preprocessing.
+            gpu_config = get_global_gpu_config()
+            if gpu_config.tier in {"tier1", "tier2", "tier3"}:
+                return torch.float32
         return self.dtype
     
     def _format_instruction(self, instruction: str) -> str:

@@ -230,6 +230,17 @@ class LoRATrainer:
         self.is_training = True
         
         try:
+            # LoRA injection via PEFT is incompatible with torchao-quantized
+            # decoder modules in this runtime. Fail fast with actionable guidance.
+            quantization_mode = getattr(self.dit_handler, "quantization", None)
+            if quantization_mode is not None:
+                yield 0, 0.0, (
+                    "❌ LoRA training requires a non-quantized DiT model. "
+                    f"Current quantization: {quantization_mode}. "
+                    "Re-initialize service with INT8 Quantization disabled, then retry training."
+                )
+                return
+
             # Validate tensor directory
             if not os.path.exists(tensor_dir):
                 yield 0, 0.0, f"❌ Tensor directory not found: {tensor_dir}"
@@ -285,19 +296,26 @@ class LoRATrainer:
         # Force BFloat16 precision (only supported precision for this model)
         precision = "bf16-mixed"
         
-        # Create TensorBoard logger
-        tb_logger = TensorBoardLogger(
-            root_dir=self.training_config.output_dir,
-            name="logs"
-        )
+        # Create TensorBoard logger when available; continue without it otherwise.
+        tb_logger = None
+        try:
+            tb_logger = TensorBoardLogger(
+                root_dir=self.training_config.output_dir,
+                name="logs"
+            )
+        except ModuleNotFoundError as e:
+            logger.warning(f"TensorBoard logger unavailable, continuing without logger: {e}")
         
         # Initialize Fabric
-        self.fabric = Fabric(
-            accelerator="auto",
-            devices=1,
-            precision=precision,
-            loggers=[tb_logger],
-        )
+        fabric_kwargs = {
+            "accelerator": "auto",
+            "devices": 1,
+            "precision": precision,
+        }
+        if tb_logger is not None:
+            fabric_kwargs["loggers"] = [tb_logger]
+
+        self.fabric = Fabric(**fabric_kwargs)
         self.fabric.launch()
         
         yield 0, 0.0, f"🚀 Starting training (precision: {precision})..."

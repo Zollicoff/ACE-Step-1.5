@@ -12,6 +12,7 @@ import gradio as gr
 
 from acestep.training.dataset_builder import DatasetBuilder, AudioSample
 from acestep.debug_utils import debug_log_for, debug_start_for, debug_end_for
+from acestep.gpu_config import get_global_gpu_config
 
 
 def create_dataset_builder() -> DatasetBuilder:
@@ -549,6 +550,37 @@ def start_training(
         yield "� Model not initialized. Please initialize the service first.", "", None, training_state
         return
     
+    # Training preset: LoRA training must run on non-quantized DiT.
+    if getattr(dit_handler, "quantization", None) is not None:
+        gpu_config = get_global_gpu_config()
+        if gpu_config.gpu_memory_gb <= 0:
+            yield (
+                "WARNING: CPU-only training detected. Using best-effort training path "
+                "(non-quantized DiT). Performance will be sub-optimal.",
+                "",
+                None,
+                training_state,
+            )
+        elif gpu_config.tier in {"tier1", "tier2", "tier3", "tier4"}:
+            yield (
+                f"WARNING: Low VRAM tier detected ({gpu_config.gpu_memory_gb:.1f} GB, {gpu_config.tier}). "
+                "Using best-effort training path (non-quantized DiT). Performance may be sub-optimal.",
+                "",
+                None,
+                training_state,
+            )
+
+        yield "Switching model to training preset (disable quantization)...", "", None, training_state
+        if hasattr(dit_handler, "switch_to_training_preset"):
+            switch_status, switched = dit_handler.switch_to_training_preset()
+            if not switched:
+                yield f"ï¿½ {switch_status}", "", None, training_state
+                return
+            yield f"ï¿½ {switch_status}", "", None, training_state
+        else:
+            yield "ï¿½ Training requires non-quantized DiT, and auto-switch is unavailable in this build.", "", None, training_state
+            return
+
     # Check for required training dependencies
     try:
         from lightning.fabric import Fabric
@@ -603,9 +635,23 @@ def start_training(
         # Collect loss history
         step_list = []
         loss_list = []
+        training_failed = False
+        failure_message = ""
         
         # Train with progress updates using preprocessed tensors
         for step, loss, status in trainer.train_from_preprocessed(tensor_dir, training_state):
+            status_text = str(status)
+            status_lower = status_text.lower()
+            if (
+                status_text.startswith("âŒ")
+                or status_text.startswith("❌")
+                or "training failed" in status_lower
+                or "error:" in status_lower
+                or "module not found" in status_lower
+            ):
+                training_failed = True
+                failure_message = status_text
+
             # Calculate elapsed time and ETA
             elapsed_seconds = time.time() - start_time
             time_info = f"⏱️ Elapsed: {_format_duration(elapsed_seconds)}"
@@ -648,6 +694,12 @@ def start_training(
         
         total_time = time.time() - start_time
         training_state["is_training"] = False
+        if training_failed:
+            final_msg = f"{failure_message}\nElapsed: {_format_duration(total_time)}"
+            logger.warning(final_msg)
+            log_lines.append(failure_message)
+            yield final_msg, "\n".join(log_lines[-15:]), loss_data, training_state
+            return
         completion_msg = f"� Training completed! Total time: {_format_duration(total_time)}"
         
         logger.info(completion_msg)

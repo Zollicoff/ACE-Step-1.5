@@ -4,6 +4,7 @@ Main entry point for setting up all event handlers
 """
 import gradio as gr
 from typing import Optional
+from loguru import logger
 
 # Import handler modules
 from . import generation_handlers as gen_h
@@ -1194,9 +1195,11 @@ def setup_training_event_handlers(demo, dit_handler, llm_handler, training_secti
     
     # Start training from preprocessed tensors
     def training_wrapper(tensor_dir, r, a, d, lr, ep, bs, ga, se, sh, sd, od, ts):
+        if not isinstance(ts, dict):
+            ts = {"is_training": False, "should_stop": False}
         try:
             for progress, log, plot, state in train_h.start_training(
-                tensor_dir, dit_handler, llm_handler, r, a, d, lr, ep, bs, ga, se, sh, sd, od, ts
+                tensor_dir, dit_handler, r, a, d, lr, ep, bs, ga, se, sh, sd, od, ts
             ):
                 yield progress, log, plot, state
         except Exception as e:
