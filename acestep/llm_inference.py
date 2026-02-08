@@ -2554,6 +2554,274 @@ class LLMHandler:
                     "Cannot create MLX KV cache. Ensure mlx-lm version >= 0.20.0"
                 )
 
+    def _run_mlx_single_native(
+        self,
+        formatted_prompt: str,
+        temperature: float,
+        cfg_scale: float,
+        negative_prompt: str,
+        top_k: Optional[int],
+        top_p: Optional[float],
+        repetition_penalty: float,
+        use_constrained_decoding: bool,
+        constrained_decoding_debug: bool,
+        target_duration: Optional[float],
+        user_metadata: Optional[Dict[str, Optional[str]]],
+        stop_at_reasoning: bool,
+        skip_genres: bool,
+        skip_caption: bool,
+        skip_language: bool,
+        generation_phase: str,
+        caption: str,
+        lyrics: str,
+        cot_text: str,
+    ) -> str:
+        """
+        Optimized native MLX generation using mlx-lm infrastructure.
+
+        Key improvements over the hybrid approach:
+        1. Native MLX sampling (temperature, top-k, top-p) via mlx-lm make_sampler
+           - Eliminates numpy/PyTorch round-trip for EVERY generated token
+        2. Native MLX repetition penalty (no per-step PyTorch conversion)
+        3. Chunked prefill for memory-efficient long prompt processing
+        4. Periodic memory cleanup (mx.clear_cache) matching mlx-lm patterns
+        5. Bridges to PyTorch ONLY for constrained decoding FSM when active
+
+        Raises on failure so the caller can fall back to the legacy hybrid method.
+        """
+        import mlx.core as mx
+        import numpy as np
+        from mlx_lm.models.cache import make_prompt_cache
+        from mlx_lm.sample_utils import make_sampler
+
+        # ---- Tokenize ----
+        inputs = self.llm_tokenizer(
+            formatted_prompt,
+            return_tensors="np",
+            padding=False,
+            truncation=True,
+        )
+        input_ids_np = inputs["input_ids"]  # [1, seq_len]
+        prompt_length = input_ids_np.shape[1]
+        prompt = mx.array(input_ids_np[0])  # 1D [seq_len]
+
+        # ---- Setup constrained processor ----
+        constrained_processor = self._setup_constrained_processor(
+            use_constrained_decoding=use_constrained_decoding,
+            constrained_decoding_debug=constrained_decoding_debug,
+            target_duration=target_duration,
+            user_metadata=user_metadata,
+            stop_at_reasoning=stop_at_reasoning,
+            skip_genres=skip_genres,
+            skip_caption=skip_caption,
+            skip_language=skip_language,
+            generation_phase=generation_phase,
+            is_batch=False,
+        )
+
+        # ---- Calculate max_new_tokens ----
+        if target_duration is not None and target_duration > 0:
+            effective_duration = max(10, min(600, target_duration))
+            max_new_tokens = int(effective_duration * 5) + 500
+        else:
+            max_new_tokens = getattr(self, "max_model_len", 4096) - 64
+        if hasattr(self, "max_model_len"):
+            max_new_tokens = min(max_new_tokens, self.max_model_len - 64)
+
+        # ---- EOS tokens ----
+        eos_token_id = self.llm_tokenizer.eos_token_id
+        pad_token_id = self.llm_tokenizer.pad_token_id or eos_token_id
+
+        # ---- Native MLX sampler (replaces PyTorch top-k/top-p/temperature) ----
+        sampler = make_sampler(
+            temp=temperature if temperature > 0 else 0.0,
+            top_p=top_p if top_p is not None and 0.0 < top_p < 1.0 else 1.0,
+            top_k=top_k if top_k is not None and top_k > 0 else 0,
+        )
+
+        # ---- Repetition penalty config ----
+        use_rep_penalty = repetition_penalty != 1.0
+        rep_penalty_val = float(repetition_penalty)
+
+        use_cfg = cfg_scale > 1.0
+        cfg_label = "CFG " if use_cfg else ""
+        tqdm_desc = f"MLX {cfg_label}Gen (native)"
+        prefill_step_size = 2048
+
+        # ===== PREFILL PHASE =====
+        prefill_start = time.time()
+
+        if use_cfg:
+            # Build unconditional prompt
+            uncond_text = self._build_unconditional_prompt(
+                caption=caption,
+                lyrics=lyrics,
+                cot_text=cot_text,
+                negative_prompt=negative_prompt,
+                generation_phase=generation_phase,
+                is_batch=False,
+            )
+            uncond_inputs = self.llm_tokenizer(
+                uncond_text,
+                return_tensors="np",
+                padding=False,
+                truncation=True,
+            )
+            uncond_prompt = mx.array(uncond_inputs["input_ids"][0])
+            uncond_length = len(uncond_prompt)
+
+            # Create KV caches via mlx-lm infrastructure
+            cond_cache = make_prompt_cache(self._mlx_model)
+            uncond_cache = make_prompt_cache(self._mlx_model)
+
+            # Chunked prefill for conditional prompt
+            cond_remaining = prompt
+            while len(cond_remaining) > 1:
+                chunk_size = min(prefill_step_size, len(cond_remaining) - 1)
+                self._mlx_model(cond_remaining[:chunk_size][None], cache=cond_cache)
+                mx.eval([c.state for c in cond_cache])
+                cond_remaining = cond_remaining[chunk_size:]
+                mx.clear_cache()
+
+            # Chunked prefill for unconditional prompt
+            uncond_remaining = uncond_prompt
+            while len(uncond_remaining) > 1:
+                chunk_size = min(prefill_step_size, len(uncond_remaining) - 1)
+                self._mlx_model(uncond_remaining[:chunk_size][None], cache=uncond_cache)
+                mx.eval([c.state for c in uncond_cache])
+                uncond_remaining = uncond_remaining[chunk_size:]
+                mx.clear_cache()
+
+            # Process last tokens of both prompts
+            cond_logits = self._mlx_model(cond_remaining[None], cache=cond_cache)
+            uncond_logits = self._mlx_model(uncond_remaining[None], cache=uncond_cache)
+            mx.eval(cond_logits, uncond_logits)
+
+            last_cond = cond_logits[:, -1:, :]
+            last_uncond = uncond_logits[:, -1:, :]
+
+            prefill_time = time.time() - prefill_start
+            total_prefill_tokens = prompt_length + uncond_length
+            prefill_tps = total_prefill_tokens / prefill_time if prefill_time > 0 else 0
+            logger.info(
+                f"MLX native prefill: {total_prefill_tokens} tokens "
+                f"(cond={prompt_length}, uncond={uncond_length}) "
+                f"in {prefill_time:.2f}s ({prefill_tps:.1f} tok/s)"
+            )
+        else:
+            # Non-CFG: single cache
+            cache = make_prompt_cache(self._mlx_model)
+
+            # Chunked prefill
+            remaining = prompt
+            while len(remaining) > 1:
+                chunk_size = min(prefill_step_size, len(remaining) - 1)
+                self._mlx_model(remaining[:chunk_size][None], cache=cache)
+                mx.eval([c.state for c in cache])
+                remaining = remaining[chunk_size:]
+                mx.clear_cache()
+
+            logits_out = self._mlx_model(remaining[None], cache=cache)
+            mx.eval(logits_out)
+            last_logits = logits_out[:, -1:, :]
+
+            prefill_time = time.time() - prefill_start
+            prefill_tps = prompt_length / prefill_time if prefill_time > 0 else 0
+            logger.info(
+                f"MLX native prefill: {prompt_length} tokens "
+                f"in {prefill_time:.2f}s ({prefill_tps:.1f} tok/s)"
+            )
+
+        # ===== AUTOREGRESSIVE GENERATION LOOP =====
+        all_token_ids = list(input_ids_np[0])
+        new_tokens = []
+        decode_start = time.time()
+
+        pbar = tqdm(total=max_new_tokens, desc=tqdm_desc, unit="tok")
+        for step in range(max_new_tokens):
+            # ---- Combine logits (CFG formula in MLX) ----
+            if use_cfg:
+                step_logits = last_uncond + cfg_scale * (last_cond - last_uncond)
+            else:
+                step_logits = last_logits
+
+            step_logits = step_logits.reshape(1, -1)  # [1, vocab_size]
+
+            # ---- Native MLX repetition penalty ----
+            # Matches PyTorch RepetitionPenaltyLogitsProcessor behavior:
+            # tokens with positive logits are divided, negative are multiplied
+            if use_rep_penalty and len(all_token_ids) > 0:
+                token_indices = mx.array(all_token_ids)
+                selected = step_logits[:, token_indices]
+                modified = mx.where(
+                    selected > 0,
+                    selected / rep_penalty_val,
+                    selected * rep_penalty_val,
+                )
+                step_logits[:, token_indices] = modified
+
+            # ---- Bridge to PyTorch ONLY for constrained decoding FSM ----
+            if constrained_processor is not None:
+                step_logits_f32 = step_logits.astype(mx.float32)
+                np_logits = np.array(step_logits_f32, copy=True)
+                t_logits = torch.from_numpy(np_logits)
+                t_ids = torch.tensor([all_token_ids], dtype=torch.long)
+                t_logits = constrained_processor(t_ids, t_logits)
+                step_logits = mx.array(t_logits.numpy())
+
+            # ---- Native MLX sampling (temperature + top-k + top-p) ----
+            logprobs = step_logits - mx.logsumexp(step_logits, keepdims=True)
+            token_arr = sampler(logprobs)
+            mx.eval(token_arr)
+            token_id = token_arr.item()
+
+            new_tokens.append(token_id)
+            all_token_ids.append(token_id)
+            pbar.update(1)
+
+            # Update constrained processor FSM state
+            if constrained_processor is not None:
+                constrained_processor.update_state(token_id)
+
+            # Check EOS
+            if token_id == eos_token_id:
+                break
+            if pad_token_id is not None and pad_token_id != eos_token_id and token_id == pad_token_id:
+                break
+
+            # ---- Next forward step in MLX ----
+            next_input = mx.array([[token_id]])
+            if use_cfg:
+                cond_logits = self._mlx_model(next_input, cache=cond_cache)
+                uncond_logits = self._mlx_model(next_input, cache=uncond_cache)
+                mx.eval(cond_logits, uncond_logits)
+                last_cond = cond_logits[:, -1:, :]
+                last_uncond = uncond_logits[:, -1:, :]
+            else:
+                logits_out = self._mlx_model(next_input, cache=cache)
+                mx.eval(logits_out)
+                last_logits = logits_out[:, -1:, :]
+
+            # Periodic memory cleanup (every 256 tokens, matching mlx-lm pattern)
+            if step % 256 == 0 and step > 0:
+                mx.clear_cache()
+
+        pbar.close()
+
+        # ---- Log generation summary ----
+        decode_time = time.time() - decode_start
+        num_generated = len(new_tokens)
+        decode_tps = num_generated / decode_time if decode_time > 0 else 0
+        total_time = prefill_time + decode_time
+        logger.info(
+            f"MLX native generation complete: {num_generated} tokens in {decode_time:.2f}s "
+            f"({decode_tps:.1f} tok/s) | prefill {prefill_time:.2f}s + decode {decode_time:.2f}s = {total_time:.2f}s total"
+        )
+
+        # Decode new tokens only
+        output_text = self.llm_tokenizer.decode(new_tokens, skip_special_tokens=False)
+        return output_text
+
     def _run_mlx_single(
         self,
         formatted_prompt: str,
@@ -2578,11 +2846,41 @@ class LLMHandler:
     ) -> str:
         """
         MLX-accelerated single-item generation.
-        
-        Uses MLX for the model forward pass (fast on Apple Silicon) and bridges
-        to PyTorch for logits processing and sampling (reuses existing tested code).
-        This hybrid approach maximizes performance while ensuring correctness.
+
+        Tries optimized native MLX generation first (using mlx-lm infrastructure
+        for sampling, repetition penalty, and chunked prefill). Falls back to
+        hybrid MLX/PyTorch approach if native generation fails.
         """
+        # ---- Try optimized native MLX generation ----
+        try:
+            return self._run_mlx_single_native(
+                formatted_prompt=formatted_prompt,
+                temperature=temperature,
+                cfg_scale=cfg_scale,
+                negative_prompt=negative_prompt,
+                top_k=top_k,
+                top_p=top_p,
+                repetition_penalty=repetition_penalty,
+                use_constrained_decoding=use_constrained_decoding,
+                constrained_decoding_debug=constrained_decoding_debug,
+                target_duration=target_duration,
+                user_metadata=user_metadata,
+                stop_at_reasoning=stop_at_reasoning,
+                skip_genres=skip_genres,
+                skip_caption=skip_caption,
+                skip_language=skip_language,
+                generation_phase=generation_phase,
+                caption=caption,
+                lyrics=lyrics,
+                cot_text=cot_text,
+            )
+        except Exception as _native_err:
+            logger.warning(
+                f"Native MLX generation failed ({type(_native_err).__name__}: {_native_err}), "
+                f"falling back to hybrid mode"
+            )
+
+        # ---- Fallback: Legacy hybrid MLX/PyTorch generation ----
         import mlx.core as mx
         import numpy as np
 
