@@ -502,67 +502,6 @@ Currently, we support Intel GPUs.
 
 Models are automatically downloaded from [HuggingFace](https://huggingface.co/ACE-Step/Ace-Step1.5) or [ModelScope](https://modelscope.cn/organization/ACE-Step) on first run. You can also manually download models using the CLI or `huggingface-cli`.
 
-### Download Source Configuration
-
-ACE-Step supports multiple download sources with automatic fallback:
-
-| Source | Description | Configuration |
-|--------|-------------|---------------|
-| **auto** (default) | Automatic detection based on network, selects best source | `--download-source auto` or omit |
-| **modelscope** | Use ModelScope as download source | `--download-source modelscope` |
-| **huggingface** | Use HuggingFace Hub as download source | `--download-source huggingface` |
-
-**How it works:**
-- **Auto mode** (default): Tests Google connectivity. If accessible → HuggingFace Hub; if not → ModelScope
-- **Manual mode**: Uses your specified source, with automatic fallback to alternate source on failure
-- **Fallback protection**: If primary source fails, automatically tries the other source
-
-**Examples:**
-
-> **Note for Python users:** Replace `python` with your environment's Python executable (see note in Launch section above).
-
-```bash
-# Use ModelScope
-uv run acestep --download-source modelscope
-# Or using Python directly:
-python acestep/acestep_v15_pipeline.py --download-source modelscope
-
-# Use HuggingFace Hub
-uv run acestep --download-source huggingface
-# Or using Python directly:
-python acestep/acestep_v15_pipeline.py --download-source huggingface
-
-# Auto-detect (default, no configuration needed)
-uv run acestep
-# Or using Python directly:
-python acestep/acestep_v15_pipeline.py
-```
-
-**For Windows portable package users**, edit `start_gradio_ui.bat` or `start_api_server.bat`:
-
-```batch
-REM Use ModelScope
-set DOWNLOAD_SOURCE=--download-source modelscope
-
-REM Use HuggingFace Hub
-set DOWNLOAD_SOURCE=--download-source huggingface
-
-REM Auto-detect (default)
-set DOWNLOAD_SOURCE=
-```
-
-**For command line users:**
-
-> **Note for Python users:** Replace `python` with your environment's Python executable (see note in Launch section above).
-
-```bash
-# Using uv
-uv run acestep --download-source modelscope
-
-# Using Python directly
-python acestep/acestep_v15_pipeline.py --download-source modelscope
-```
-
 ### Automatic Download
 
 When you run `acestep` or `acestep-api`, the system will:
