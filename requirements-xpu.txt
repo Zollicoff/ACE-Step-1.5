@@ -23,5 +23,5 @@ torchao
 modelscope
 
 # LoRA Training dependencies (optional)
-peft>=0.7.0
+peft>=0.18.0
 lightning>=2.0.0
