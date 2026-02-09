@@ -533,14 +533,14 @@ class AceStepHandler:
                 # Use _recursive_to_device to handle pre-quantized checkpoints (e.g., AffineQuantizedTensor)
                 # which can fail on newer GPU architectures (e.g., Blackwell/RTX 50-series)
                 if not self.offload_to_cpu:
-                    self._recursive_to_device(self.model, device, self.dtype)
+                    self.model = self._recursive_to_device(self.model, device, self.dtype)
                 else:
                     # If offload_to_cpu is True, check if we should keep DiT on GPU
                     if not self.offload_dit_to_cpu:
                         logger.info(f"[initialize_service] Keeping main model on {device} (persistent)")
-                        self._recursive_to_device(self.model, device, self.dtype)
+                        self.model = self._recursive_to_device(self.model, device, self.dtype)
                     else:
-                        self._recursive_to_device(self.model, "cpu", self.dtype)
+                        self.model = self._recursive_to_device(self.model, "cpu", self.dtype)
                 self.model.eval()
                 
                 if compile_model:
@@ -592,11 +592,11 @@ class AceStepHandler:
                     # Keep VAE in GPU precision when resident on accelerator.
                     # Use _recursive_to_device to handle pre-quantized checkpoints
                     vae_dtype = self._get_vae_dtype(device)
-                    self._recursive_to_device(self.vae, device, vae_dtype)
+                    self.vae = self._recursive_to_device(self.vae, device, vae_dtype)
                 else:
                     # Use CPU-appropriate dtype when VAE is offloaded.
                     vae_dtype = self._get_vae_dtype("cpu")
-                    self._recursive_to_device(self.vae, "cpu", vae_dtype)
+                    self.vae = self._recursive_to_device(self.vae, "cpu", vae_dtype)
                 self.vae.eval()
             else:
                 raise FileNotFoundError(f"VAE checkpoint not found at {vae_checkpoint_path}")
@@ -619,9 +619,9 @@ class AceStepHandler:
                 self.text_encoder = AutoModel.from_pretrained(text_encoder_path)
                 # Use _recursive_to_device to handle pre-quantized checkpoints
                 if not self.offload_to_cpu:
-                    self._recursive_to_device(self.text_encoder, device, self.dtype)
+                    self.text_encoder = self._recursive_to_device(self.text_encoder, device, self.dtype)
                 else:
-                    self._recursive_to_device(self.text_encoder, "cpu", self.dtype)
+                    self.text_encoder = self._recursive_to_device(self.text_encoder, "cpu", self.dtype)
                 self.text_encoder.eval()
             else:
                 raise FileNotFoundError(f"Text encoder not found at {text_encoder_path}")
@@ -815,6 +815,9 @@ class AceStepHandler:
         Recursively move all parameters and buffers of a model to the specified device.
         When the model contains torchao AffineQuantizedTensor parameters, avoids calling
         Module.to(device) (which can raise NotImplementedError via _has_compatible_shallow_copy_type).
+        
+        Returns:
+            The model (for API compatibility with Module.to())
         """
         target_device = torch.device(device) if isinstance(device, str) else device
         skip_quantized = self._has_quantized_params(model)
@@ -865,6 +868,8 @@ class AceStepHandler:
                     still_wrong.append(f"{name} on {param.device}")
             if still_wrong:
                 logger.error(f"[_recursive_to_device] CRITICAL: {len(still_wrong)} parameters still on wrong device: {still_wrong[:10]}")
+        
+        return model
     
     @contextmanager
     def _load_model_context(self, model_name: str):
