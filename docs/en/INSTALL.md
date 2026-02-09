@@ -1,6 +1,6 @@
 # ACE-Step 1.5 Installation Guide
 
-**Language / 语言:** [English](INSTALL.md) | [中文](../zh/INSTALL.md)
+**Language / 语言 / 言語:** [English](INSTALL.md) | [中文](../zh/INSTALL.md) | [日本語](../ja/INSTALL.md)
 
 ---
 

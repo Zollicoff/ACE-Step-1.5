@@ -21,7 +21,7 @@
 - [📖 Tutorial](#-tutorial)
 - [🏗️ Architecture](#️-architecture)
 - [🦁 Model Zoo](#-model-zoo)
-- [🔬 Benchmark & Profiling](#-benchmark--profiling)
+- [🔬 Benchmark](#-benchmark)
 
 ## 📝 Abstract
 🚀 We present ACE-Step v1.5, a highly efficient open-source music foundation model that brings commercial-grade generation to consumer hardware. On commonly used evaluation metrics, ACE-Step v1.5 achieves quality beyond most commercial music models while remaining extremely fast—under 2 seconds per full song on an A100 and under 10 seconds on an RTX 3090. The model runs locally with less than 4GB of VRAM, and supports lightweight personalization: users can train a LoRA from just a few songs to capture their own style.
@@ -95,7 +95,7 @@ Open http://localhost:7860 (Gradio) or http://localhost:8001 (API).
 
 > 📦 **Windows users:** A [portable package](https://files.acemusic.ai/acemusic/win/ACE-Step-1.5.7z) with pre-installed dependencies is available. See [Installation Guide](./docs/en/INSTALL.md#-windows-portable-package).
 
-> 📖 **Full installation guide** (AMD/ROCm, Intel GPU, CPU, environment variables, command-line options): [English](./docs/en/INSTALL.md) | [中文](./docs/zh/INSTALL.md)
+> 📖 **Full installation guide** (AMD/ROCm, Intel GPU, CPU, environment variables, command-line options): [English](./docs/en/INSTALL.md) | [中文](./docs/zh/INSTALL.md) | [日本語](./docs/ja/INSTALL.md)
 
 ### 💡 Which Model Should I Choose?
 
@@ -124,7 +124,7 @@ Open http://localhost:7860 (Gradio) or http://localhost:8001 (API).
 
 | Topic | Documentation |
 |-------|---------------|
-| 📦 Installation (all platforms) | [English](./docs/en/INSTALL.md) \| [中文](./docs/zh/INSTALL.md) |
+| 📦 Installation (all platforms) | [English](./docs/en/INSTALL.md) \| [中文](./docs/zh/INSTALL.md) \| [日本語](./docs/ja/INSTALL.md) |
 | 🎮 GPU Compatibility | [English](./docs/en/GPU_COMPATIBILITY.md) \| [中文](./docs/zh/GPU_COMPATIBILITY.md) \| [日本語](./docs/ja/GPU_COMPATIBILITY.md) |
 | 🔧 GPU Troubleshooting | [English](./docs/en/GPU_TROUBLESHOOTING.md) |
 | 🔬 Benchmark & Profiling | [English](./docs/en/BENCHMARK.md) \| [中文](./docs/zh/BENCHMARK.md) |
@@ -135,7 +135,7 @@ Open http://localhost:7860 (Gradio) or http://localhost:8001 (API).
 |----------|-----|--------|-----------|----------|---------|-----------|
 | 🇺🇸 English | [Link](./docs/en/API.md) | [Link](./docs/en/GRADIO_GUIDE.md) | [Link](./docs/en/INFERENCE.md) | [Link](./docs/en/Tutorial.md) | [Link](./docs/en/INSTALL.md) | [Link](./docs/en/BENCHMARK.md) |
 | 🇨🇳 中文 | [Link](./docs/zh/API.md) | [Link](./docs/zh/GRADIO_GUIDE.md) | [Link](./docs/zh/INFERENCE.md) | [Link](./docs/zh/Tutorial.md) | [Link](./docs/zh/INSTALL.md) | [Link](./docs/zh/BENCHMARK.md) |
-| 🇯🇵 日本語 | [Link](./docs/ja/API.md) | [Link](./docs/ja/GRADIO_GUIDE.md) | [Link](./docs/ja/INFERENCE.md) | [Link](./docs/ja/Tutorial.md) | — | — |
+| 🇯🇵 日本語 | [Link](./docs/ja/API.md) | [Link](./docs/ja/GRADIO_GUIDE.md) | [Link](./docs/ja/INFERENCE.md) | [Link](./docs/ja/Tutorial.md) | [Link](./docs/ja/INSTALL.md) | — |
 | 🇰🇷 한국어 | [Link](./docs/ko/API.md) | [Link](./docs/ko/GRADIO_GUIDE.md) | [Link](./docs/ko/INFERENCE.md) | [Link](./docs/ko/Tutorial.md) | — | — |
 
 ## 📖 Tutorial
@@ -183,33 +183,16 @@ See the **LoRA Training** tab in Gradio UI for one-click training, or check [Gra
 | `acestep-5Hz-lm-1.7B` | Qwen3-1.7B | ✅ | ✅ | ✅ | ✅ | ✅ | Medium | Medium | Medium | ✅ |
 | `acestep-5Hz-lm-4B` | Qwen3-4B | ✅ | ✅ | ✅ | ✅ | ✅ | Strong | Strong | Strong | ✅ |
 
-## 🔬 Benchmark & Profiling
+## 🔬 Benchmark
 
-ACE-Step 1.5 includes a comprehensive profiling tool (`profile_inference.py`) for measuring inference performance across devices, backends, and configurations.
+ACE-Step 1.5 includes `profile_inference.py`, a profiling & benchmarking tool that measures LLM, DiT, and VAE timing across devices and configurations.
 
 ```bash
-# Quick profile (single generation)
-python profile_inference.py
-
-# Full benchmark matrix (duration × batch × thinking × steps)
-python profile_inference.py --mode benchmark
-
-# Benchmark on Apple Silicon
-python profile_inference.py --device mps --lm-backend mlx --mode benchmark
-
-# Save results to JSON
-python profile_inference.py --mode benchmark --benchmark-output results.json
+python profile_inference.py                        # Single-run profile
+python profile_inference.py --mode benchmark       # Configuration matrix
 ```
 
-| Mode | Description |
-|------|-------------|
-| `profile` | Single generation with detailed timing breakdown (LLM, DiT, VAE) |
-| `benchmark` | Matrix of configurations with summary table |
-| `understand` | Profile audio understanding API |
-| `create_sample` | Profile inspiration/simple mode API |
-| `format_sample` | Profile metadata formatting API |
-
-> 📖 **Full benchmark guide** with all CLI options, examples, and output interpretation: [English](./docs/en/BENCHMARK.md) | [中文](./docs/zh/BENCHMARK.md)
+> 📖 **Full guide** (all modes, CLI options, output interpretation): [English](./docs/en/BENCHMARK.md) | [中文](./docs/zh/BENCHMARK.md)
 
 ## 📜 License & Disclaimer
 
