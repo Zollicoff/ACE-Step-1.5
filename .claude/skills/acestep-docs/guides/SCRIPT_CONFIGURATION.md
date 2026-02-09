@@ -27,6 +27,7 @@ All configurable options are variables at the top of each script. Open the scrip
 | Windows (NVIDIA) | `start_gradio_ui.bat` | Gradio Web UI |
 | Windows (NVIDIA) | `start_api_server.bat` | REST API Server |
 | Windows (AMD ROCm) | `start_gradio_ui_rocm.bat` | Gradio Web UI for AMD GPUs |
+| Windows (AMD ROCm) | `start_api_server_rocm.bat` | REST API Server for AMD GPUs |
 | Linux (CUDA) | `start_gradio_ui.sh` | Gradio Web UI |
 | Linux (CUDA) | `start_api_server.sh` | REST API Server |
 | macOS (Apple Silicon) | `start_gradio_ui_macos.sh` | Gradio Web UI (MLX backend) |
@@ -464,7 +465,7 @@ OFFLOAD_TO_CPU=""
 
 ## ROCm Configuration
 
-The `start_gradio_ui_rocm.bat` script includes additional settings specific to AMD GPUs running ROCm on Windows.
+The `start_gradio_ui_rocm.bat` and `start_api_server_rocm.bat` scripts include additional settings specific to AMD GPUs running ROCm on Windows.
 
 ### ROCm-Specific Variables
 

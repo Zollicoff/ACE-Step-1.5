@@ -23,6 +23,9 @@ start_api_server.bat
 
 # Launch Gradio Web UI (AMD ROCm)
 start_gradio_ui_rocm.bat
+
+# Launch REST API Server (AMD ROCm)
+start_api_server_rocm.bat
 ```
 
 ### Launch Scripts (All Platforms)
@@ -34,6 +37,7 @@ Ready-to-use launch scripts with auto environment detection, update checking, an
 start_gradio_ui.bat          # Gradio Web UI (CUDA)
 start_api_server.bat         # REST API Server (CUDA)
 start_gradio_ui_rocm.bat     # Gradio Web UI (AMD ROCm)
+start_api_server_rocm.bat    # REST API Server (AMD ROCm)
 ```
 
 **Linux (.sh):**
