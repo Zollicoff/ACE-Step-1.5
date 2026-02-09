@@ -114,7 +114,9 @@ if [[ -z "$REMOTE_COMMIT" ]]; then
             exit 1
         fi
     else
-        CURRENT_BRANCH="$FALLBACK_BRANCH"
+        echo
+        echo "  Staying on branch '$CURRENT_BRANCH'. No update performed."
+        exit 0
     fi
 fi
 
@@ -226,6 +228,51 @@ if "$GIT_PATH" merge-base --is-ancestor HEAD "origin/$CURRENT_BRANCH" 2>/dev/nul
         fi
     fi
 
+    # Check for untracked files that could be overwritten
+    UNTRACKED_FILES="$("$GIT_PATH" ls-files --others --exclude-standard 2>/dev/null || echo "")"
+    STASHED_UNTRACKED=0
+
+    if [[ -n "$UNTRACKED_FILES" ]]; then
+        # Check if any untracked files conflict with incoming changes
+        REMOTE_ALL_FILES="$("$GIT_PATH" diff --name-only --diff-filter=A "HEAD..origin/$CURRENT_BRANCH" 2>/dev/null || echo "")"
+        CONFLICTING_UNTRACKED=""
+
+        while IFS= read -r ufile; do
+            [[ -z "$ufile" ]] && continue
+            if echo "$REMOTE_ALL_FILES" | grep -qxF "$ufile"; then
+                CONFLICTING_UNTRACKED="${CONFLICTING_UNTRACKED}${ufile}"$'\n'
+            fi
+        done <<< "$UNTRACKED_FILES"
+
+        if [[ -n "$CONFLICTING_UNTRACKED" ]]; then
+            echo
+            echo "========================================"
+            echo "[Warning] Untracked files conflict with update!"
+            echo "========================================"
+            echo
+            echo "The following untracked files would be overwritten:"
+            echo "$CONFLICTING_UNTRACKED" | sed '/^$/d; s/^/  /'
+            echo
+
+            read -rp "Stash untracked files before updating? (Y/N): " STASH_UNTRACKED_CHOICE
+            if [[ "${STASH_UNTRACKED_CHOICE^^}" != "Y" ]]; then
+                echo
+                echo "Update cancelled. Please move or remove the conflicting files manually."
+                exit 1
+            fi
+
+            echo "Stashing all changes including untracked files..."
+            if "$GIT_PATH" stash push --include-untracked -m "pre-update-$(date +%s)"; then
+                STASHED_UNTRACKED=1
+                echo "[Stash] Changes stashed successfully."
+            else
+                echo "[Error] Failed to stash changes. Update aborted."
+                exit 1
+            fi
+            echo
+        fi
+    fi
+
     # Pull changes
     echo "Pulling latest changes..."
     if "$GIT_PATH" reset --hard "origin/$CURRENT_BRANCH" &>/dev/null; then
@@ -245,11 +292,29 @@ if "$GIT_PATH" merge-base --is-ancestor HEAD "origin/$CURRENT_BRANCH" 2>/dev/nul
             echo
         fi
 
+        if [[ $STASHED_UNTRACKED -eq 1 ]]; then
+            echo "[Stash] Untracked files were stashed before the update."
+            echo "  To restore them:  git stash pop"
+            echo "  To discard them:  git stash drop"
+            echo
+            echo "  Note: 'git stash pop' may produce merge conflicts if"
+            echo "  the update modified the same files. Resolve manually."
+            echo
+        fi
+
         echo "Please restart the application to use the new version."
         exit 0
     else
         echo
         echo "[Error] Update failed."
+        if [[ $STASHED_UNTRACKED -eq 1 ]]; then
+            echo "[Stash] Restoring stashed changes..."
+            if "$GIT_PATH" stash pop &>/dev/null; then
+                echo "[Stash] Changes restored successfully."
+            else
+                echo "[Stash] Could not auto-restore. Run 'git stash pop' manually."
+            fi
+        fi
         if [[ -d "${BACKUP_DIR:-}" ]]; then
             echo "Your backup is still available at: $BACKUP_DIR"
         fi

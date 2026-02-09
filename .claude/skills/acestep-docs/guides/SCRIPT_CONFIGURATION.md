@@ -254,10 +254,14 @@ LM_MODEL_PATH=""
 
 **Available DiT Models**:
 
-| Model | Size | Performance | VRAM |
-|-------|------|-------------|------|
-| `acestep-v15-turbo` | Standard | Balanced | ~4GB |
-| `acestep-v15-quality` | Large | High quality | ~8GB |
+| Model | Description |
+|-------|-------------|
+| `acestep-v15-turbo` | Default turbo model (8 steps, no CFG) |
+| `acestep-v15-base` | Base model (50 steps, with CFG, high diversity) |
+| `acestep-v15-sft` | SFT model (50 steps, with CFG, high quality) |
+| `acestep-v15-turbo-shift1` | Turbo with shift1 |
+| `acestep-v15-turbo-shift3` | Turbo with shift3 |
+| `acestep-v15-turbo-continuous` | Turbo with continuous shift (1-5) |
 
 **Available Language Models**:
 

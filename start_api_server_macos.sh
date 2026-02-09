@@ -20,23 +20,23 @@ HOST="127.0.0.1"
 # HOST="0.0.0.0"
 PORT=8001
 
-# API key for authentication (optional)
+# API key for authentication (optional, value only)
 API_KEY=""
-# API_KEY="--api-key sk-your-secret-key"
+# API_KEY="sk-your-secret-key"
 
-# Download source settings
+# Download source settings (value only: "huggingface" or "modelscope")
 DOWNLOAD_SOURCE=""
-# DOWNLOAD_SOURCE="--download-source huggingface"
-# DOWNLOAD_SOURCE="--download-source modelscope"
+# DOWNLOAD_SOURCE="huggingface"
+# DOWNLOAD_SOURCE="modelscope"
 
 # LLM initialization settings
 # export ACESTEP_INIT_LLM=auto
 # export ACESTEP_INIT_LLM=true
 # export ACESTEP_INIT_LLM=false
 
-# LM model path
+# LM model path (value only)
 LM_MODEL_PATH=""
-# LM_MODEL_PATH="--lm-model-path acestep-5Hz-lm-0.6B"
+# LM_MODEL_PATH="acestep-5Hz-lm-0.6B"
 
 # Update check on startup (set to "false" to disable)
 CHECK_UPDATE="true"
@@ -198,9 +198,9 @@ echo "Starting ACE-Step API Server (MLX backend)..."
 echo
 
 # Build command with optional parameters
-CMD="uv run acestep-api --host $HOST --port $PORT"
-[[ -n "$API_KEY" ]] && CMD="$CMD $API_KEY"
-[[ -n "$DOWNLOAD_SOURCE" ]] && CMD="$CMD $DOWNLOAD_SOURCE"
-[[ -n "$LM_MODEL_PATH" ]] && CMD="$CMD $LM_MODEL_PATH"
+CMD=(uv run acestep-api --host "$HOST" --port "$PORT")
+[[ -n "$API_KEY" ]] && CMD+=(--api-key "$API_KEY")
+[[ -n "$DOWNLOAD_SOURCE" ]] && CMD+=(--download-source "$DOWNLOAD_SOURCE")
+[[ -n "$LM_MODEL_PATH" ]] && CMD+=(--lm-model-path "$LM_MODEL_PATH")
 
-cd "$SCRIPT_DIR" && $CMD
+cd "$SCRIPT_DIR" && exec "${CMD[@]}"

@@ -19,7 +19,7 @@ Each launch script contains a lightweight inline update check that runs before t
 
 **Flow:**
 
-```
+```text
 Startup
   |
   v
@@ -86,7 +86,7 @@ The inline update check requires git to be available. How you obtain git depends
 - **Option A -- PortableGit** (no installation required): Download from <https://git-scm.com/download/win>, choose the portable version, and extract to a `PortableGit\` folder in the project root. The launch scripts look for `PortableGit\bin\git.exe` first.
 - **Option B -- System git**: Install git through any standard method (Git for Windows installer, winget, scoop, etc.). The launch scripts fall back to system git if PortableGit is not found.
 
-```
+```text
 Project Root/
 ├── PortableGit/          <-- Optional, checked first on Windows
 │   └── bin/
@@ -129,7 +129,7 @@ brew install git
 
 **Already up to date:**
 
-```
+```text
 [Update] Checking for updates...
 [Update] Already up to date (abc1234).
 
@@ -138,7 +138,7 @@ Starting ACE-Step Gradio Web UI...
 
 **Update available:**
 
-```
+```text
 [Update] Checking for updates...
 
 ========================================
@@ -157,7 +157,7 @@ If you choose **Y**, the script delegates to `check_update.bat` (Windows) or `ch
 
 **Network unreachable (auto-skip):**
 
-```
+```text
 [Update] Checking for updates...
 [Update] Network unreachable, skipping.
 
@@ -205,7 +205,7 @@ When you choose to update and you have locally modified files that also changed 
 
 ### Backup Process
 
-```
+```text
 1. Update detects locally modified files
    that also changed on the remote
    |
@@ -240,7 +240,7 @@ When you choose to update and you have locally modified files that also changed 
 
 **Backup created:**
 
-```
+```text
 .update_backup_20260205_143022/
 ├── start_gradio_ui.bat          (your version)
 ├── config.yaml                  (your version)
@@ -250,7 +250,7 @@ When you choose to update and you have locally modified files that also changed 
 
 **Working tree after update:**
 
-```
+```text
 start_gradio_ui.bat              (new version from GitHub)
 config.yaml                      (new version from GitHub)
 acestep/
@@ -298,7 +298,7 @@ sudo pacman -S colordiff
 
 Both `merge_config.bat` and `merge_config.sh` present the same interactive menu:
 
-```
+```text
 ========================================
 ACE-Step Backup Merge Helper
 ========================================
@@ -376,7 +376,7 @@ test_git_update.bat
 
 ### Example Test Output
 
-```
+```text
 ========================================
 Test Git Update Check
 ========================================
@@ -432,7 +432,7 @@ brew install coreutils
 
 Create a `proxy_config.txt` file in the project root:
 
-```
+```text
 PROXY_ENABLED=1
 PROXY_URL=http://127.0.0.1:7890
 ```

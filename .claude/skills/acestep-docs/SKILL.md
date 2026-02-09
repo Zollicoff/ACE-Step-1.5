@@ -50,7 +50,7 @@ Documentation skill for ACE-Step music generation system.
 
 - **Installation problems**: See getting-started/README.md
 - **VRAM insufficient**: See guides/GPU_COMPATIBILITY.md
-- **Model download failed**: See getting-started/README.md or guides/BAT_CONFIGURATION.md
+- **Model download failed**: See getting-started/README.md or guides/SCRIPT_CONFIGURATION.md
 - **uv not found**: See guides/ENVIRONMENT_SETUP.md
 - **Environment detection issues**: See guides/ENVIRONMENT_SETUP.md
 - **BAT/SH script configuration**: See guides/SCRIPT_CONFIGURATION.md

@@ -106,7 +106,6 @@ start_gradio_ui.bat
 start_api_server.bat
 
 # 启动 Gradio 网页界面（AMD ROCm）
-# 启动 Gradio 网页界面（AMD ROCm）
 start_gradio_ui_rocm.bat
 
 # 启动 REST API 服务器（AMD ROCm）
