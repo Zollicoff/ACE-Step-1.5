@@ -131,7 +131,7 @@ chmod +x start_gradio_ui.sh && ./start_gradio_ui.sh
 chmod +x start_gradio_ui_macos.sh && ./start_gradio_ui_macos.sh
 ```
 
-> 📖 **Script configuration & customization:** [English](./docs/en/INSTALL.md#-launch-scripts) | [中文](./docs/zh/INSTALL.md) | [日本語](./docs/ja/INSTALL.md)
+> 📖 **Script configuration & customization:** [English](./docs/en/INSTALL.md#launch-scripts) | [中文](./docs/zh/INSTALL.md) | [日本語](./docs/ja/INSTALL.md)
 
 ## 📚 Documentation
 
