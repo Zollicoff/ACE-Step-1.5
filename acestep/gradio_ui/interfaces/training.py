@@ -153,13 +153,7 @@ def create_training_section(dit_handler, llm_handler, init_params=None) -> dict:
                 
                 with gr.Row():
                     with gr.Column(scale=3):
-                        gr.Markdown(f"""
-                        {t('training.step2_instruction')}
-                        - {t('training.step2_caption_desc')}
-                        - {t('training.step2_bpm_desc')}
-                        - {t('training.step2_key_desc')}
-                        - {t('training.step2_timesig_desc')}
-                        """)
+                        gr.Markdown(t('training.step2_instruction'))
                         skip_metas = gr.Checkbox(
                             label=t("training.skip_metas"),
                             value=False,
@@ -304,13 +298,7 @@ def create_training_section(dit_handler, llm_handler, init_params=None) -> dict:
                 
                 gr.HTML(f"<hr><h3>⚡ {t('training.step5_title')}</h3>")
                 
-                gr.Markdown(f"""
-                {t('training.step5_intro_header')}
-                
-                {t('training.step5_intro_options')}
-                {t('training.step5_intro_option1')}
-                {t('training.step5_intro_option2')}
-                """)
+                gr.Markdown(t('training.step5_intro'))
                 
                 with gr.Row():
                     with gr.Column(scale=3):
@@ -331,15 +319,7 @@ def create_training_section(dit_handler, llm_handler, init_params=None) -> dict:
                     interactive=False,
                 )
                 
-                gr.Markdown(f"""
-                {t('training.step5_details_header')}
-                {t('training.step5_details_line1')}
-                {t('training.step5_details_line2')}
-                {t('training.step5_details_line3')}
-                {t('training.step5_details_line4')}
-                
-                {t('training.step5_details_warning')}
-                """)
+                gr.Markdown(t('training.step5_details'))
                 
                 with gr.Row():
                     with gr.Column(scale=3):
@@ -368,10 +348,7 @@ def create_training_section(dit_handler, llm_handler, init_params=None) -> dict:
                     with gr.Column(scale=2):
                         gr.HTML(f"<h3>📊 {t('training.train_section_tensors')}</h3>")
                         
-                        gr.Markdown(f"""
-                        {t('training.train_tensor_selection_desc1')}
-                        {t('training.train_tensor_selection_desc2')}
-                        """)
+                        gr.Markdown(t('training.train_tensor_selection_desc'))
                         
                         training_tensor_dir = gr.Textbox(
                             label=t("training.preprocessed_tensors_dir"),
