@@ -150,6 +150,7 @@
     "lm_negative_prompt_label": "LM Negative Prompt",
     "lm_negative_prompt_placeholder": "Enter negative prompt for CFG (default: NO USER INPUT)",
     "lm_negative_prompt_info": "Negative prompt (use when LM CFG Scale > 1.0)",
+    "advanced_dit_params": "Advanced DiT Parameters",
     "cot_metas_label": "CoT Metas",
     "cot_metas_info": "Use LM to generate CoT metadata (uncheck to skip LM CoT generation)",
     "cot_language_label": "CoT Language",
