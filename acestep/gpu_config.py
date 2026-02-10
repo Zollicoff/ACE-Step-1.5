@@ -192,9 +192,10 @@ GPU_TIER_CONFIGS = {
     },
     "tier5": {  # 12-16GB
         # DiT + 1.7B LM (4.46+3.45+0.44=8.35GB) fits comfortably.
+        # VAE decode is batch-sequential so batch size doesn't affect VAE VRAM.
         "max_duration_with_lm": 480,  # 8 minutes
         "max_duration_without_lm": 600,  # 10 minutes (max supported)
-        "max_batch_size_with_lm": 2,
+        "max_batch_size_with_lm": 4,
         "max_batch_size_without_lm": 4,
         "init_lm_default": True,
         "available_lm_models": ["acestep-5Hz-lm-0.6B", "acestep-5Hz-lm-1.7B"],
@@ -228,10 +229,10 @@ GPU_TIER_CONFIGS = {
     },
     "tier6b": {  # 20-24GB (e.g., RTX 3090, RTX 4090)
         # 20-24GB: no offload, no quantization. DiT(bf16, ~4.7GB) + LM 1.7B(~3.4GB) = ~8.1GB
-        # Remaining ~12-16GB easily fits batch=4 with LM, batch=8 without LM.
+        # Remaining ~12-16GB easily fits batch=8. VAE decode is batch-sequential.
         "max_duration_with_lm": 480,  # 8 minutes
         "max_duration_without_lm": 480,  # 8 minutes
-        "max_batch_size_with_lm": 4,
+        "max_batch_size_with_lm": 8,
         "max_batch_size_without_lm": 8,
         "init_lm_default": True,
         "available_lm_models": ["acestep-5Hz-lm-0.6B", "acestep-5Hz-lm-1.7B", "acestep-5Hz-lm-4B"],

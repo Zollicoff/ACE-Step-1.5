@@ -10,9 +10,9 @@ ACE-Step 1.5 は GPU の VRAM に自動的に適応し、生成時間の制限�
 | 4-6GB | Tier 2 | なし | — | pt | 8分 / 10分 | 1 / 1 | CPU + DiT | INT8 |
 | 6-8GB | Tier 3 | 0.6B | 0.6B | pt | 8分 / 10分 | 2 / 2 | CPU + DiT | INT8 |
 | 8-12GB | Tier 4 | 0.6B | 0.6B | vllm | 8分 / 10分 | 2 / 4 | CPU + DiT | INT8 |
-| 12-16GB | Tier 5 | 0.6B, 1.7B | 1.7B | vllm | 8分 / 10分 | 2 / 4 | CPU | INT8 |
+| 12-16GB | Tier 5 | 0.6B, 1.7B | 1.7B | vllm | 8分 / 10分 | 4 / 4 | CPU | INT8 |
 | 16-20GB | Tier 6a | 0.6B, 1.7B | 1.7B | vllm | 8分 / 10分 | 4 / 8 | CPU | INT8 |
-| 20-24GB | Tier 6b | 0.6B, 1.7B, 4B | 1.7B | vllm | 8分 / 8分 | 4 / 8 | なし | なし |
+| 20-24GB | Tier 6b | 0.6B, 1.7B, 4B | 1.7B | vllm | 8分 / 8分 | 8 / 8 | なし | なし |
 | ≥24GB | 無制限 | 全モデル (0.6B, 1.7B, 4B) | 4B | vllm | 10分 / 10分 | 8 / 8 | なし | なし |
 
 ### 列の説明
