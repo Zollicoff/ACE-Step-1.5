@@ -1592,6 +1592,12 @@ class AceStepHandler:
           - VAE decode: handled separately via tiled_decode
         
         We leave a 1.5 GB safety margin for CUDA allocator fragmentation.
+        
+        IMPORTANT: When offload_to_cpu is True, the LM model (especially vllm
+        backend) may still be on GPU when this guard runs, but it will be
+        offloaded or its memory reclaimed before DiT actually needs the VRAM.
+        In that case we trust the static GPU tier config limits (which have been
+        empirically validated) and skip the dynamic VRAM check.
         """
         if batch_size <= 1:
             return batch_size
@@ -1599,6 +1605,28 @@ class AceStepHandler:
         device = self.device
         if device == "cpu" or device == "mps":
             return batch_size  # No CUDA VRAM to guard
+
+        # When CPU offload is enabled, the current free VRAM is misleading because
+        # the LM (vllm KV cache + weights) may still be on GPU at this point but
+        # will be released/reclaimed before DiT actually uses the VRAM.  The static
+        # GPU tier configs already encode safe batch limits that were empirically
+        # validated with offload enabled, so trust them.
+        #
+        # Use the more conservative max_batch_size_with_lm as the threshold since
+        # the handler doesn't know if LM was used upstream.  This is safe because
+        # max_batch_size_with_lm <= max_batch_size_without_lm for all tiers.
+        if self.offload_to_cpu:
+            gpu_config = get_global_gpu_config()
+            if gpu_config is not None:
+                tier_max = gpu_config.max_batch_size_with_lm
+                if batch_size <= tier_max:
+                    logger.debug(
+                        f"[VRAM guard] offload_to_cpu=True, batch_size={batch_size} <= "
+                        f"tier limit {tier_max} — skipping dynamic VRAM check "
+                        f"(LM will be offloaded before DiT runs)"
+                    )
+                    return batch_size
+                # batch_size exceeds tier limit — fall through to dynamic check
 
         try:
             free_gb = get_effective_free_vram_gb()
