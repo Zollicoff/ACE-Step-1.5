@@ -2113,8 +2113,9 @@ def create_app() -> FastAPI:
                 else:
                     lm_offload = offload_to_cpu
 
+                lm_model_name = _get_model_name(lm_model_path)
                 try:
-                    _ensure_model_downloaded(lm_model_path, checkpoint_dir)
+                    _ensure_model_downloaded(lm_model_name, checkpoint_dir)
                 except Exception as e:
                     print(f"[API Server] Warning: Failed to download LLM model: {e}")
 
