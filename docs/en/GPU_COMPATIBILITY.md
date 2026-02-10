@@ -8,7 +8,7 @@ ACE-Step 1.5 automatically adapts to your GPU's available VRAM, adjusting genera
 |------|------|-----------|-----------------|---------|----------------------------|-------------------------|---------|--------------|
 | ≤4GB | Tier 1 | None | — | pt | 4 min / 6 min | 1 / 1 | CPU + DiT | INT8 |
 | 4-6GB | Tier 2 | None | — | pt | 8 min / 10 min | 1 / 1 | CPU + DiT | INT8 |
-| 6-8GB | Tier 3 | 0.6B | 0.6B | pt | 8 min / 10 min | 1 / 2 | CPU + DiT | INT8 |
+| 6-8GB | Tier 3 | 0.6B | 0.6B | pt | 8 min / 10 min | 2 / 2 | CPU + DiT | INT8 |
 | 8-12GB | Tier 4 | 0.6B | 0.6B | vllm | 8 min / 10 min | 2 / 4 | CPU + DiT | INT8 |
 | 12-16GB | Tier 5 | 0.6B, 1.7B | 1.7B | vllm | 8 min / 10 min | 2 / 4 | CPU | INT8 |
 | 16-20GB | Tier 6a | 0.6B, 1.7B | 1.7B | vllm | 8 min / 10 min | 4 / 8 | CPU | INT8 |

@@ -155,11 +155,11 @@ GPU_TIER_CONFIGS = {
     },
     "tier3": {  # 6-8GB
         # Offload mode.  DiT(4.46) + context(0.5) ≈ 5.0GB.
-        # ~1.5-3GB headroom allows LM 0.6B (1.2+0.6=1.8GB) or batch=2.
+        # ~1.5-3GB headroom allows LM 0.6B (1.2+0.6=1.8GB) and batch=2.
         # vllm KV cache is tight; pt backend is safer for 0.6B on this tier.
         "max_duration_with_lm": 480,  # 8 minutes
         "max_duration_without_lm": 600,  # 10 minutes (max supported)
-        "max_batch_size_with_lm": 1,
+        "max_batch_size_with_lm": 2,
         "max_batch_size_without_lm": 2,
         "init_lm_default": True,
         "available_lm_models": ["acestep-5Hz-lm-0.6B"],
