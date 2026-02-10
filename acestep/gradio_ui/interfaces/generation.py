@@ -61,7 +61,7 @@ def create_generation_section(dit_handler, llm_handler, init_params=None, langua
     with gr.Group():
         # Service Configuration - collapse if pre-initialized, hide if in service mode
         accordion_open = not service_pre_initialized
-        accordion_visible = not service_pre_initialized  # Hide when running in service mode
+        accordion_visible = not service_mode  # Hide when running in service mode
         with gr.Accordion(t("service.title"), open=accordion_open, visible=accordion_visible) as service_config_accordion:
             # Language selector at the top
             with gr.Row():
@@ -297,20 +297,10 @@ def create_generation_section(dit_handler, llm_handler, init_params=None, langua
                                     interactive=True,
                                 )
                         
-                    # Audio Codes for text2music - single input for transcription or cover task
-                # Audio Normalization Settings
-                with gr.Row():
-                    enable_normalization = gr.Checkbox(label=t("gen.enable_normalization"), value=True, info=t("gen.enable_normalization_info"))
-                    normalization_db = gr.Slider(label=t("gen.normalization_db"), minimum=-10.0, maximum=0.0, step=0.1, value=-1.0, info=t("gen.normalization_db_info"))
-
-                # Advanced DiT Parameters
-                with gr.Accordion(t("generation.advanced_dit_params"), open=False):
-                    with gr.Accordion(t("generation.lm_codes_hints"), open=False, visible=True) as text2music_audio_codes_group:
-                        with gr.Row(equal_height=True):
+                        with gr.Group(visible=True) as text2music_audio_codes_group:
                             text2music_audio_code_string = gr.Textbox(
                                 label=t("generation.lm_codes_label"),
                                 placeholder=t("generation.lm_codes_placeholder"),
-                                lines=6,
                                 info=t("generation.lm_codes_info"),
                                 scale=9,
                             )
@@ -319,6 +309,27 @@ def create_generation_section(dit_handler, llm_handler, init_params=None, langua
                                 variant="secondary",
                                 size="sm",
                                 scale=1,
+                            )
+                    
+                    # Audio Normalization Settings
+                    with gr.Accordion(t("generation.advanced_dit_params"), open=False):
+                         with gr.Row():
+                            # Honor pre-initialized params for normalization
+                            enable_norm_val = init_params.get("enable_normalization", True) if service_pre_initialized else True
+                            norm_db_val = init_params.get("normalization_db", -1.0) if service_pre_initialized else -1.0
+                            
+                            enable_normalization = gr.Checkbox(
+                                label=t("gen.enable_normalization"), 
+                                value=enable_norm_val, 
+                                info=t("gen.enable_normalization_info")
+                            )
+                            normalization_db = gr.Slider(
+                                label=t("gen.normalization_db"), 
+                                minimum=-10.0, 
+                                maximum=0.0, 
+                                step=0.1, 
+                                value=norm_db_val, 
+                                info=t("gen.normalization_db_info")
                             )
                     
                     # Repainting controls
