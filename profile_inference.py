@@ -1094,7 +1094,13 @@ def run_tier_test_mode(args):
 
             # ---- Test 3: No quantization AND no offload ----
             # Skip if the tier already has both disabled
-            if gpu_config.quantization_default or gpu_config.offload_to_cpu_default:
+            # Also skip if simulated VRAM is too small — the unquantized DiT model
+            # alone needs ~6GB; without offload there is no room left for VAE decode,
+            # which causes a fallback to CPU VAE with tiny chunk_size and 20+ hour runs.
+            MIN_VRAM_FOR_NO_OFFLOAD = 8  # GB — DiT (~6GB) + VAE headroom (~2GB)
+            if sim_gb < MIN_VRAM_FOR_NO_OFFLOAD:
+                print(f"\n  --- Variant: no-offload — SKIPPED (simulated {sim_gb}GB < {MIN_VRAM_FOR_NO_OFFLOAD}GB minimum for no-offload) ---")
+            elif gpu_config.quantization_default or gpu_config.offload_to_cpu_default:
                 print(f"\n  --- Variant: no-offload (quant=None, offload=False) ---")
                 result_no_offload = _run_single_tier_test(
                     sim_gb, gpu_config, args, example_data,
