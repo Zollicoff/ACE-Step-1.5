@@ -211,11 +211,16 @@ class LoraManagerMixin:
         self._lora_scale_state = {}
 
         adapter_names = self._collect_adapter_names()
-        if not adapter_names:
-            adapter_names = ["default"]
         adapter_names = [a for a in adapter_names if isinstance(a, str) and a]
         if not adapter_names:
-            adapter_names = ["default"]
+            logger.warning("No adapter names discovered from decoder; LoRA registry will be empty.")
+            debug_log(
+                "No adapter names discovered; skipping adapter target registration.",
+                mode=DEBUG_MODEL_LOADING,
+                prefix="lora",
+            )
+            self._lora_active_adapter = None
+            return 0, []
 
         for adapter in adapter_names:
             self._lora_adapter_registry[adapter] = {
@@ -247,7 +252,6 @@ class LoraManagerMixin:
                             "adapter": adapter,
                             "module_name": module_name,
                             "base_factor": base_factor,
-                            "anchored": isinstance(base_factor, (int, float)),
                         }
                     )
                 continue
@@ -350,8 +354,7 @@ class LoraManagerMixin:
                     modified_by_kind[kind] = modified_by_kind.get(kind, 0) + 1
                 elif kind == "set_scale_factor":
                     base_factor = target.get("base_factor", None)
-                    anchored = bool(target.get("anchored", False))
-                    if anchored and isinstance(base_factor, (int, float)):
+                    if isinstance(base_factor, (int, float)):
                         factor = base_factor * scale
                         module.set_scale(adapter_name, factor)
                         modified += 1
@@ -612,6 +615,13 @@ class LoraManagerMixin:
                     return f"✅ LoRA scale: {self.lora_scale:.2f} (skipped {skipped_total} targets)"
                 return f"✅ LoRA scale: {self.lora_scale:.2f}"
             else:
+                skipped_total = sum(report.get("skipped_by_kind", {}).values())
+                if skipped_total > 0:
+                    logger.warning(
+                        f"No LoRA targets were modified for active adapter "
+                        f"(adapter={active_adapter}, skipped={report.get('skipped_by_kind', {})})"
+                    )
+                    return f"⚠️ LoRA scale unchanged: {self.lora_scale:.2f} (skipped {skipped_total} targets)"
                 logger.warning(
                     f"No registered LoRA scaling targets found for active adapter "
                     f"(skipped={report.get('skipped_by_kind', {})})"
