@@ -380,6 +380,27 @@ def create_generation_section(dit_handler, llm_handler, init_params=None, langua
                                 scale=1,
                             )
                     
+                    # Audio Normalization Settings
+                    with gr.Accordion(t("generation.advanced_dit_params"), open=False):
+                         with gr.Row():
+                            # Honor pre-initialized params for normalization
+                            enable_norm_val = init_params.get("enable_normalization", True) if service_pre_initialized else True
+                            norm_db_val = init_params.get("normalization_db", -1.0) if service_pre_initialized else -1.0
+                            
+                            enable_normalization = gr.Checkbox(
+                                label=t("gen.enable_normalization"), 
+                                value=enable_norm_val, 
+                                info=t("gen.enable_normalization_info")
+                            )
+                            normalization_db = gr.Slider(
+                                label=t("gen.normalization_db"), 
+                                minimum=-10.0, 
+                                maximum=0.0, 
+                                step=0.1, 
+                                value=norm_db_val, 
+                                info=t("gen.normalization_db_info")
+                            )
+                    
                     # Repainting controls
                     with gr.Group(visible=False) as repainting_group:
                         gr.HTML(f"<h5>{t('generation.repainting_controls')}</h5>")
@@ -588,7 +609,7 @@ def create_generation_section(dit_handler, llm_handler, init_params=None, langua
                         info=t("generation.random_seed_info")
                     )
                 audio_format = gr.Dropdown(
-                    choices=["flac", "mp3"],
+                    choices=[("FLAC", "flac"), ("MP3", "mp3"), ("WAV (16-bit)", "wav"), ("WAV (32-bit Float)", "wav32")],
                     value="flac",
                     label=t("generation.audio_format_label"),
                     info=t("generation.audio_format_info"),
@@ -891,4 +912,7 @@ def create_generation_section(dit_handler, llm_handler, init_params=None, langua
         # GPU info and tier override
         "gpu_info_display": gpu_info_display,
         "tier_dropdown": tier_dropdown,
+        # Normalization Controls (New)
+        "enable_normalization": enable_normalization,
+        "normalization_db": normalization_db,
     }

@@ -156,8 +156,8 @@
     "lm_negative_prompt_label": "LM 负面提示",
     "lm_negative_prompt_placeholder": "输入CFG的负面提示(默认: NO USER INPUT)",
     "lm_negative_prompt_info": "负面提示(当LM CFG比例 > 1.0时使用)",
-    "cot_metas_label": "CoT 元数据",
-    "cot_metas_info": "使用LM生成CoT元数据(取消勾选以跳过LM CoT生成)",
+    "cot_metas_label": "CoT メタデータ",
+    "cot_metas_info": "LMを使用してCoTメタデータを生成(チェックを外すとLM CoT生成をスキップ)",
     "cot_language_label": "CoT 语言",
     "cot_language_info": "在CoT中生成语言(思维链)",
     "constrained_debug_label": "约束解码调试",
@@ -180,7 +180,8 @@
     "parallel_thinking_label": "并行思考",
     "generate_btn": "🎵 生成音乐",
     "autogen_label": "自动生成",
-    "caption_rewrite_label": "描述重写"
+    "caption_rewrite_label": "描述重写",
+    "advanced_dit_params": "DiT 高级参数"
   },
   "results": {
     "title": "🎵 结果",
@@ -356,5 +357,11 @@
     "export_path": "导出路径",
     "export_lora_btn": "📦 导出 LoRA",
     "export_status": "导出状态"
+  },
+  "gen": {
+    "enable_normalization": "启用归一化",
+    "enable_normalization_info": "将音频音量归一化到目标峰值电平，以防止削波或确保一致的响度。",
+    "normalization_db": "目标峰值 (dB)",
+    "normalization_db_info": "分贝单位的目标峰值电平。-1.0 dB 是标准安全峰值。-0.1 dB 是最大值。"
   }
 }
