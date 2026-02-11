@@ -893,7 +893,7 @@ def generate_with_progress(
     for idx in range(8):
         path = audio_outputs[idx]
         if path:
-            audio_playback_updates.append(gr.update(value=path, label=f"Sample {idx+1} (Ready)", interactive=True))
+            audio_playback_updates.append(gr.update(value=path, label=f"Sample {idx+1} (Ready)", interactive=False))
             logger.info(f"[generate_with_progress] Audio {idx+1} path: {path}")
         else:
             audio_playback_updates.append(gr.update(value=None, label="None", interactive=False))
