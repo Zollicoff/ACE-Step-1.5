@@ -86,6 +86,23 @@ class LoraHandlerIntegrationTests(unittest.TestCase):
         self.assertIn("synthetic_default_mode", status)
         self.assertTrue(status["synthetic_default_mode"])
 
+    def test_set_lora_scale_rejects_non_numeric_input(self):
+        decoder = FakeDecoder(modules=[], adapter_names=["main"])
+        handler = MinimalHandler(decoder)
+
+        message = handler.set_lora_scale("abc")
+
+        self.assertIn("Invalid LoRA scale", message)
+
+    def test_set_use_lora_handles_missing_model_decoder(self):
+        decoder = FakeDecoder(modules=[], adapter_names=["main"])
+        handler = MinimalHandler(decoder)
+        handler.model = None
+
+        message = handler.set_use_lora(False)
+
+        self.assertEqual(message, "✅ LoRA disabled")
+
 
 if __name__ == "__main__":
     unittest.main()

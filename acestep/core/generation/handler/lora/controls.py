@@ -1,5 +1,6 @@
 """Runtime controls for LoRA enablement, scaling, and adapter selection."""
 
+import math
 from typing import Any
 
 from loguru import logger
@@ -14,20 +15,25 @@ def set_use_lora(self, use_lora: bool) -> str:
         return "❌ No LoRA adapter loaded. Please load a LoRA first."
 
     self.use_lora = use_lora
-    if self.lora_loaded and hasattr(self.model.decoder, "disable_adapter_layers"):
+    model = getattr(self, "model", None)
+    decoder = getattr(model, "decoder", None) if model is not None else None
+    if self.lora_loaded and decoder is None:
+        logger.warning("LoRA is marked as loaded, but model/decoder is unavailable during toggle.")
+
+    if self.lora_loaded and decoder is not None and hasattr(decoder, "disable_adapter_layers"):
         try:
             if use_lora:
-                if self._lora_active_adapter and hasattr(self.model.decoder, "set_adapter"):
+                if self._lora_active_adapter and hasattr(decoder, "set_adapter"):
                     try:
-                        self.model.decoder.set_adapter(self._lora_active_adapter)
+                        decoder.set_adapter(self._lora_active_adapter)
                     except Exception:
                         pass
-                self.model.decoder.enable_adapter_layers()
+                decoder.enable_adapter_layers()
                 logger.info("LoRA adapter enabled")
                 if self.lora_scale != 1.0:
                     self.set_lora_scale(self.lora_scale)
             else:
-                self.model.decoder.disable_adapter_layers()
+                decoder.disable_adapter_layers()
                 logger.info("LoRA adapter disabled")
         except Exception as e:
             logger.warning(f"Could not toggle adapter layers: {e}")
@@ -41,7 +47,14 @@ def set_lora_scale(self, scale: float) -> str:
     if not self.lora_loaded:
         return "⚠️ No LoRA loaded"
 
-    self.lora_scale = max(0.0, min(1.0, scale))
+    try:
+        scale_value = float(scale)
+    except (TypeError, ValueError):
+        return "❌ Invalid LoRA scale: please provide a numeric value between 0 and 1."
+    if not math.isfinite(scale_value):
+        return "❌ Invalid LoRA scale: please provide a finite numeric value between 0 and 1."
+
+    self.lora_scale = max(0.0, min(1.0, scale_value))
     if not self.use_lora:
         logger.info(f"LoRA scale set to {self.lora_scale:.2f} (will apply when LoRA is enabled)")
         return f"✅ LoRA scale: {self.lora_scale:.2f} (LoRA disabled)"
