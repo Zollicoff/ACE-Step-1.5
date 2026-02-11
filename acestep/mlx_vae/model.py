@@ -37,6 +37,18 @@ class MLXSnake1d(nn.Module):
 
     def __call__(self, x: mx.array) -> mx.array:
         # x: [B, L, C]  (NLC)
+        # NOTE: Upcast to float32 for exp/sin/power to prevent overflow with float16
+        # weights (exp overflows float16 at alpha > ~11).  This is only a problem
+        # if the weights are in float16.  The surrounding
+        # Conv1d layers still run in the caller's dtype (float16) for speed.
+
+        # This is the original code that works with float16 weights, if we end up needing to
+        # use float16 weights. please keep this commented out.
+        # alpha = mx.exp(self.alpha.astype(mx.float32)) if self.logscale else self.alpha
+        # beta = mx.exp(self.beta.astype(mx.float32)) if self.logscale else self.beta
+        # x_f32 = x.astype(mx.float32)
+        # result = x_f32 + mx.reciprocal(beta + 1e-9) * mx.power(mx.sin(alpha * x_f32), 2)
+        # return result.astype(x.dtype)
         alpha = mx.exp(self.alpha) if self.logscale else self.alpha
         beta = mx.exp(self.beta) if self.logscale else self.beta
         # All ops broadcast [C] over [B, L, C]
