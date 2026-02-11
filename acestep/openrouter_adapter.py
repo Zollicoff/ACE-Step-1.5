@@ -436,18 +436,21 @@ def _build_openrouter_response(
 
     text_content = _format_lm_content(result)
 
-    # Encode audio
+    # Encode all audio files
     audio_obj = None
     raw_audio_paths = result.get("raw_audio_paths", [])
     if raw_audio_paths:
-        audio_path = raw_audio_paths[0]
-        if audio_path and os.path.exists(audio_path):
-            b64_url = _audio_to_base64_url(audio_path, audio_format)
-            if b64_url:
-                audio_obj = [{
-                    "type": "audio_url",
-                    "audio_url": {"url": b64_url},
-                }]
+        audio_list = []
+        for audio_path in raw_audio_paths:
+            if audio_path and os.path.exists(audio_path):
+                b64_url = _audio_to_base64_url(audio_path, audio_format)
+                if b64_url:
+                    audio_list.append({
+                        "type": "audio_url",
+                        "audio_url": {"url": b64_url},
+                    })
+        if audio_list:
+            audio_obj = audio_list
 
     response_data = {
         "id": completion_id,
@@ -546,19 +549,21 @@ async def _openrouter_stream_generator(
             yield _make_chunk(content=f"\n\n{lm_content}")
             await asyncio.sleep(0)
 
-            # Send audio
+            # Send all audio files
             raw_audio_paths = result.get("raw_audio_paths", [])
             if raw_audio_paths:
-                audio_path = raw_audio_paths[0]
-                if audio_path and os.path.exists(audio_path):
-                    b64_url = _audio_to_base64_url(audio_path, audio_format)
-                    if b64_url:
-                        audio_list = [{
-                            "type": "audio_url",
-                            "audio_url": {"url": b64_url},
-                        }]
-                        yield _make_chunk(audio=audio_list)
-                        await asyncio.sleep(0)
+                audio_list = []
+                for audio_path in raw_audio_paths:
+                    if audio_path and os.path.exists(audio_path):
+                        b64_url = _audio_to_base64_url(audio_path, audio_format)
+                        if b64_url:
+                            audio_list.append({
+                                "type": "audio_url",
+                                "audio_url": {"url": b64_url},
+                            })
+                if audio_list:
+                    yield _make_chunk(audio=audio_list)
+                    await asyncio.sleep(0)
 
     # Finish
     yield _make_chunk(finish_reason="stop")

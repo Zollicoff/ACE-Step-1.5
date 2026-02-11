@@ -123,6 +123,29 @@ cd {skill_directory}/scripts/
 ./acestep.sh config --set api_key "your-key"
 ```
 
+### API Mode
+
+The skill supports two API modes. Switch via `api_mode` in `scripts/config.json`:
+
+| Mode | Endpoint | Description |
+|------|----------|-------------|
+| `native`  | `/release_task` + `/query_result` | Async polling mode, supports all parameters |
+| `completion`(default) | `/v1/chat/completions` | OpenRouter-compatible, sync request, audio returned as base64 |
+
+**Switch mode:**
+```bash
+cd {skill_directory}/scripts/
+./acestep.sh config --set api_mode completion
+./acestep.sh config --set api_mode native
+```
+
+**Completion mode notes:**
+- No polling needed — single request returns result directly
+- Audio is base64-encoded inline in the response (auto-decoded and saved)
+- `inference_steps`, `infer_method`, `shift` are not configurable (server defaults)
+- `--no-wait` and `status` commands are not applicable in completion mode
+- Requires `model` field — auto-detected from `/v1/models` if not specified
+
 ### Using acestep-docs Skill for Setup Help
 
 **IMPORTANT**: For installation and startup, always use the acestep-docs skill to get complete and accurate guidance.
@@ -239,6 +262,7 @@ cd {project_root}/{.claude or .codex}/skills/acestep/
 {
   "api_url": "http://127.0.0.1:8001",
   "api_key": "",
+  "api_mode": "completion",
   "generation": {
     "thinking": true,
     "use_format": false,
@@ -255,11 +279,14 @@ cd {project_root}/{.claude or .codex}/skills/acestep/
 |--------|---------|-------------|
 | `api_url` | `http://127.0.0.1:8001` | API server address |
 | `api_key` | `""` | API authentication key (optional) |
+| `api_mode` | `native` | API mode: `native` (polling) or `completion` (OpenRouter) |
 | `generation.thinking` | `true` | Enable 5Hz LM (higher quality, slower) |
 | `generation.audio_format` | `mp3` | Output format (mp3/wav/flac) |
 | `generation.vocal_language` | `en` | Vocal language |
 
 ## API Reference
+
+### Native Mode Endpoints
 
 All responses wrapped: `{"data": <payload>, "code": 200, "error": null, "timestamp": ...}`
 
@@ -270,6 +297,13 @@ All responses wrapped: `{"data": <payload>, "code": 200, "error": null, "timesta
 | `/query_result` | POST | Query task status, body: `{"task_id_list": ["id"]}` |
 | `/v1/models` | GET | List available models |
 | `/v1/audio?path={path}` | GET | Download audio file |
+
+### Completion Mode Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/v1/chat/completions` | POST | Generate music (OpenRouter-compatible) |
+| `/v1/models` | GET | List available models (OpenRouter format) |
 
 ### Query Result Response
 
@@ -284,6 +318,49 @@ All responses wrapped: `{"data": <payload>, "code": 200, "error": null, "timesta
 ```
 
 Status codes: `0` = processing, `1` = success, `2` = failed
+
+### Completion Mode Request (`/v1/chat/completions`)
+
+**Caption mode** — prompt and lyrics wrapped in XML tags inside message content:
+```json
+{
+  "model": "acestep/ACE-Step-v1.5",
+  "messages": [{"role": "user", "content": "<prompt>Jazz with saxophone</prompt><lyrics>[Verse] Hello...</lyrics>"}],
+  "stream": false,
+  "thinking": true,
+  "use_format": false,
+  "audio_config": {"duration": 90, "bpm": 110, "format": "mp3", "vocal_language": "en"}
+}
+```
+
+**Simple mode** — plain text message, set `sample_mode: true`:
+```json
+{
+  "model": "acestep/ACE-Step-v1.5",
+  "messages": [{"role": "user", "content": "A cheerful pop song about spring"}],
+  "stream": false,
+  "sample_mode": true,
+  "thinking": true
+}
+```
+
+### Completion Mode Response
+
+```json
+{
+  "id": "chatcmpl-abc123",
+  "choices": [{
+    "message": {
+      "role": "assistant",
+      "content": "## Metadata\n**Caption:** ...\n**BPM:** 128\n\n## Lyrics\n...",
+      "audio": [{"type": "audio_url", "audio_url": {"url": "data:audio/mpeg;base64,..."}}]
+    },
+    "finish_reason": "stop"
+  }]
+}
+```
+
+Audio is base64-encoded inline — the script auto-decodes and saves to `acestep_output/`.
 
 ## Request Parameters (`/release_task`)
 
