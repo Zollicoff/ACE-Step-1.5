@@ -344,6 +344,16 @@ class AceStepHandler(LoraManagerMixin, ProgressMixin):
             self.device = device
             self.offload_to_cpu = offload_to_cpu
             self.offload_dit_to_cpu = offload_dit_to_cpu
+            
+            # MPS safety: torch.compile and torchao quantization are not supported on MPS
+            if device == "mps":
+                if compile_model:
+                    logger.warning("[initialize_service] torch.compile is not supported on MPS — disabling.")
+                    compile_model = False
+                if quantization is not None:
+                    logger.warning("[initialize_service] Quantization (torchao) is not supported on MPS — disabling.")
+                    quantization = None
+            
             self.compiled = compile_model
             # Set dtype based on device: bf16 for CUDA/XPU, fp32 for MPS/CPU
             # MPS does not support bfloat16 natively, and converting bfloat16-trained
@@ -3633,12 +3643,18 @@ class AceStepHandler(LoraManagerMixin, ProgressMixin):
                     import os as _os
                     _vae_cpu = _os.environ.get("ACESTEP_VAE_ON_CPU", "0").lower() in ("1", "true", "yes")
                     if not _vae_cpu:
-                        _effective_free = get_effective_free_vram_gb()
-                        logger.info(f"[generate_music] Effective free VRAM before VAE decode: {_effective_free:.2f} GB")
-                        # If less than 0.5 GB free, VAE decode on GPU will almost certainly OOM
-                        if _effective_free < 0.5:
-                            logger.warning(f"[generate_music] Only {_effective_free:.2f} GB free VRAM — auto-enabling CPU VAE decode")
-                            _vae_cpu = True
+                        # MPS (Apple Silicon) uses unified memory — get_effective_free_vram_gb()
+                        # relies on CUDA and always returns 0 on Mac, which would incorrectly
+                        # force VAE decode onto the CPU.  Skip the auto-CPU logic for MPS.
+                        if self.device == "mps":
+                            logger.info("[generate_music] MPS device: skipping VRAM check (unified memory), keeping VAE on MPS")
+                        else:
+                            _effective_free = get_effective_free_vram_gb()
+                            logger.info(f"[generate_music] Effective free VRAM before VAE decode: {_effective_free:.2f} GB")
+                            # If less than 0.5 GB free, VAE decode on GPU will almost certainly OOM
+                            if _effective_free < 0.5:
+                                logger.warning(f"[generate_music] Only {_effective_free:.2f} GB free VRAM — auto-enabling CPU VAE decode")
+                                _vae_cpu = True
                     if _vae_cpu:
                         logger.info("[generate_music] Moving VAE to CPU for decode (ACESTEP_VAE_ON_CPU=1)...")
                         _vae_device = next(self.vae.parameters()).device

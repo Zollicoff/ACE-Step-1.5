@@ -63,9 +63,11 @@ def create_generation_section(dit_handler, llm_handler, init_params=None, langua
     # Tier-aware LM defaults
     default_quantization = gpu_config.quantization_default
     default_compile = gpu_config.compile_model_default
-    # macOS override: disable quantization on macOS due to torchao incompatibilities
+    # macOS override: disable quantization and compile on macOS
+    # (gpu_config already handles this centrally, but keep as safety net)
     if sys.platform == "darwin":
         default_quantization = False
+        default_compile = False
     
     # Backend choices based on tier restriction
     if gpu_config.lm_backend_restriction == "pt_mlx_only":
