@@ -43,7 +43,7 @@ class MLXSnake1d(nn.Module):
         # Conv1d layers still run in the caller's dtype (float16) for speed.
 
         # This is the original code that works with float16 weights, if we end up needing to
-        # use float16 weights. please keep this commented out.
+        # use float16 weights. please use this code instead
         # alpha = mx.exp(self.alpha.astype(mx.float32)) if self.logscale else self.alpha
         # beta = mx.exp(self.beta.astype(mx.float32)) if self.logscale else self.beta
         # x_f32 = x.astype(mx.float32)
