@@ -218,6 +218,16 @@ def create_generation_section(dit_handler, llm_handler, init_params=None, langua
                     value=quantization_value,
                     info=t("service.quantization_info") + (" (recommended for this tier)" if default_quantization else " (optional for this tier)")
                 )
+                # MLX DiT acceleration (macOS Apple Silicon only)
+                from acestep.mlx_dit import mlx_available as _mlx_avail
+                _mlx_ok = _mlx_avail()
+                mlx_dit_value = init_params.get('mlx_dit', _mlx_ok) if service_pre_initialized else _mlx_ok
+                mlx_dit_checkbox = gr.Checkbox(
+                    label=t("service.mlx_dit_label"),
+                    value=mlx_dit_value,
+                    interactive=_mlx_ok,
+                    info=t("service.mlx_dit_info_enabled") if _mlx_ok else t("service.mlx_dit_info_disabled")
+                )
             
             init_btn = gr.Button(t("service.init_btn"), variant="primary", size="lg")
             # Set init_status value from init_params if pre-initialized
@@ -775,6 +785,7 @@ def create_generation_section(dit_handler, llm_handler, init_params=None, langua
         "offload_dit_to_cpu_checkbox": offload_dit_to_cpu_checkbox,
         "compile_model_checkbox": compile_model_checkbox,
         "quantization_checkbox": quantization_checkbox,
+        "mlx_dit_checkbox": mlx_dit_checkbox,
         # LoRA components
         "lora_path": lora_path,
         "load_lora_btn": load_lora_btn,
