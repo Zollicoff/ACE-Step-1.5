@@ -7,6 +7,10 @@ import torch
 
 
 class InitServiceMixin:
+    def _device_type(self) -> str:
+        """Normalize the host device value to a backend type string."""
+        return self.device if isinstance(self.device, str) else self.device.type
+
     def get_available_checkpoints(self) -> List[str]:
         """Return available checkpoint directory paths under the project root.
 
@@ -46,10 +50,9 @@ class InitServiceMixin:
         if target_device == "auto":
             if not torch.cuda.is_available():
                 return False
-        elif target_device != "cuda":
-            return False
-        if not torch.cuda.is_available():
-            return False
+        else:
+            if target_device != "cuda" or not torch.cuda.is_available():
+                return False
         try:
             import flash_attn
             return True
@@ -64,7 +67,7 @@ class InitServiceMixin:
 
     def _empty_cache(self):
         """Clear accelerator memory cache (CUDA, XPU, or MPS)."""
-        device_type = self.device if isinstance(self.device, str) else self.device.type
+        device_type = self._device_type()
         if device_type == "cuda" and torch.cuda.is_available():
             torch.cuda.empty_cache()
         elif device_type == "xpu" and hasattr(torch, "xpu") and torch.xpu.is_available():
@@ -74,7 +77,7 @@ class InitServiceMixin:
 
     def _synchronize(self):
         """Synchronize accelerator operations (CUDA, XPU, or MPS)."""
-        device_type = self.device if isinstance(self.device, str) else self.device.type
+        device_type = self._device_type()
         if device_type == "cuda" and torch.cuda.is_available():
             torch.cuda.synchronize()
         elif device_type == "xpu" and hasattr(torch, "xpu") and torch.xpu.is_available():
@@ -84,7 +87,7 @@ class InitServiceMixin:
 
     def _memory_allocated(self):
         """Get current accelerator memory usage in bytes, or 0 for unsupported backends."""
-        device_type = self.device if isinstance(self.device, str) else self.device.type
+        device_type = self._device_type()
         if device_type == "cuda" and torch.cuda.is_available():
             return torch.cuda.memory_allocated()
         # MPS and XPU don't expose per-tensor memory tracking
@@ -92,7 +95,7 @@ class InitServiceMixin:
 
     def _max_memory_allocated(self):
         """Get peak accelerator memory usage in bytes, or 0 for unsupported backends."""
-        device_type = self.device if isinstance(self.device, str) else self.device.type
+        device_type = self._device_type()
         if device_type == "cuda" and torch.cuda.is_available():
             return torch.cuda.max_memory_allocated()
         return 0

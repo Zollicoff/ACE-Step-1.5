@@ -1,5 +1,5 @@
 import os
-import sys
+import builtins
 import types
 import unittest
 from unittest.mock import Mock, patch
@@ -62,10 +62,15 @@ class InitServiceMixinTests(unittest.TestCase):
 
     def test_is_flash_attention_available_false_when_module_missing(self):
         host = _Host(project_root="K:/fake_root", device="cuda")
+        real_import = builtins.__import__
+
+        def fake_import(name, globals=None, locals=None, fromlist=(), level=0):
+            if name == "flash_attn":
+                raise ImportError("flash_attn missing")
+            return real_import(name, globals, locals, fromlist, level)
+
         with patch("torch.cuda.is_available", return_value=True):
-            with patch.dict("sys.modules", {}, clear=False):
-                if "flash_attn" in sys.modules:
-                    del sys.modules["flash_attn"]
+            with patch("builtins.__import__", side_effect=fake_import):
                 self.assertFalse(host.is_flash_attention_available())
 
     def test_empty_cache_routes_to_cuda(self):
@@ -82,9 +87,29 @@ class InitServiceMixinTests(unittest.TestCase):
             host._empty_cache()
         empty_cache.assert_called_once()
 
+    def test_empty_cache_routes_to_mps(self):
+        host = _Host(project_root="K:/fake_root", device="mps")
+        with patch("torch.backends.mps.is_available", return_value=True), patch("torch.mps.empty_cache") as empty_cache:
+            host._empty_cache()
+            empty_cache.assert_called_once()
+
     def test_synchronize_routes_to_cuda(self):
         host = _Host(project_root="K:/fake_root", device="cuda")
         with patch("torch.cuda.is_available", return_value=True), patch("torch.cuda.synchronize") as sync:
+            host._synchronize()
+            sync.assert_called_once()
+
+    def test_synchronize_routes_to_xpu(self):
+        host = _Host(project_root="K:/fake_root", device="xpu")
+        sync = Mock()
+        xpu_stub = types.SimpleNamespace(is_available=lambda: True, synchronize=sync)
+        with patch("torch.xpu", new=xpu_stub, create=True):
+            host._synchronize()
+        sync.assert_called_once()
+
+    def test_synchronize_routes_to_mps(self):
+        host = _Host(project_root="K:/fake_root", device="mps")
+        with patch("torch.backends.mps.is_available", return_value=True), patch("torch.mps.synchronize") as sync:
             host._synchronize()
             sync.assert_called_once()
 
