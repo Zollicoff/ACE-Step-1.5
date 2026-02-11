@@ -35,6 +35,13 @@ class InitServiceMixinTests(unittest.TestCase):
         t = types.SimpleNamespace(device=types.SimpleNamespace(type="cuda"))
         self.assertFalse(host._is_on_target_device(t, "mps:0"))
 
+    def test_is_on_target_device_malformed_target_logs_and_returns_false(self):
+        host = _Host(project_root="K:/fake_root", device="cpu")
+        t = types.SimpleNamespace(device=types.SimpleNamespace(type="cuda"))
+        with patch("acestep.core.generation.handler.init_service.logger.warning") as warning:
+            self.assertFalse(host._is_on_target_device(t, ":0"))
+        warning.assert_called_once()
+
     def test_move_module_recursive_preserves_parameter_type(self):
         host = _Host(project_root="K:/fake_root", device="cpu")
         module = torch.nn.Linear(2, 2)
@@ -42,6 +49,13 @@ class InitServiceMixinTests(unittest.TestCase):
             host._move_module_recursive(module, "cpu")
         self.assertIsInstance(module.weight, torch.nn.Parameter)
         self.assertIsInstance(module.bias, torch.nn.Parameter)
+
+    def test_move_quantized_param_fallback_wraps_parameter(self):
+        host = _Host(project_root="K:/fake_root", device="cpu")
+        param = torch.nn.Parameter(torch.randn(2), requires_grad=True)
+        moved = host._move_quantized_param(param, "cpu")
+        self.assertIsInstance(moved, torch.nn.Parameter)
+        self.assertTrue(moved.requires_grad)
 
     def test_get_available_checkpoints_returns_expected_list(self):
         host = _Host(project_root="K:/fake_root")

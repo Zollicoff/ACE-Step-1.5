@@ -115,6 +115,12 @@ class InitServiceMixin:
         except Exception:
             # Keep fallback conservative: derive backend token instead of assuming CUDA.
             target_type = str(target_device).strip().lower().split(":", 1)[0]
+            if not target_type:
+                logger.warning(
+                    "[_is_on_target_device] Malformed target device value: {!r}",
+                    target_device,
+                )
+                return False
         return tensor.device.type == target_type
 
     @staticmethod
@@ -228,8 +234,9 @@ class InitServiceMixin:
                 param._apply_fn_to_data(lambda x: x.to(target_device)),
                 requires_grad=param.requires_grad,
             )
-        # Last resort: try direct .to() (may raise)
-        return param.to(target_device)
+        # Last resort: try direct .to() (may raise), but preserve Parameter registration.
+        moved = param.to(target_device)
+        return torch.nn.Parameter(moved, requires_grad=param.requires_grad)
 
     def _recursive_to_device(self, model, device, dtype=None):
         """
