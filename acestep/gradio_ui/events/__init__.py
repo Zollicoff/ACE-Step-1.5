@@ -57,6 +57,7 @@ def setup_event_handlers(demo, dit_handler, llm_handler, dataset_handler, datase
             generation_section["offload_dit_to_cpu_checkbox"],
             generation_section["compile_model_checkbox"],
             generation_section["quantization_checkbox"],
+            generation_section["mlx_dit_checkbox"],
         ],
         outputs=[
             generation_section["init_status"], 
@@ -70,6 +71,9 @@ def setup_event_handlers(demo, dit_handler, llm_handler, dataset_handler, datase
             generation_section["cfg_interval_start"],
             generation_section["cfg_interval_end"],
             generation_section["task_type"],
+            # GPU-config-aware limits (updated after initialization)
+            generation_section["audio_duration"],
+            generation_section["batch_size_input"],
         ]
     )
     
