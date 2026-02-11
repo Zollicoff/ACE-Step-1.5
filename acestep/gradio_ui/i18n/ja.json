@@ -180,7 +180,8 @@
     "parallel_thinking_label": "並列思考",
     "generate_btn": "🎵 音楽を生成",
     "autogen_label": "自動生成",
-    "caption_rewrite_label": "キャプション書き換え"
+    "caption_rewrite_label": "キャプション書き換え",
+    "advanced_dit_params": "DiT 詳細パラメータ"
   },
   "results": {
     "title": "🎵 結果",
@@ -360,5 +361,12 @@
     "export_path": "エクスポートパス",
     "export_lora_btn": "📦 LoRA をエクスポート",
     "export_status": "エクスポート状態"
+  },
+  "gen": {
+    "enable_normalization": "ノーマライズを有効にする",
+    "enable_normalization_info": "クリッピングを防ぎ、ラウドネスを一定にするために、オーディオ音量をターゲットピークレベルに正規化します。",
+    "normalization_db": "ターゲットピーク (dB)",
+    "normalization_db_info": "デシベル単位のターゲットピークレベル。-1.0 dBが標準的な安全ピークです。-0.1 dBが最大です。",
+    "advanced_dit_params": "DiT 詳細パラメータ"
   }
 }
