@@ -588,8 +588,8 @@ def create_generation_section(dit_handler, llm_handler, init_params=None, langua
                         info=t("generation.random_seed_info")
                     )
                 audio_format = gr.Dropdown(
-                    choices=["mp3", "flac"],
-                    value="mp3",
+                    choices=["flac", "mp3"],
+                    value="flac",
                     label=t("generation.audio_format_label"),
                     info=t("generation.audio_format_info"),
                     interactive=not service_mode  # Fixed in service mode

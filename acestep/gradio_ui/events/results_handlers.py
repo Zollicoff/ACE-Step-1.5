@@ -1785,7 +1785,7 @@ def generate_next_batch_background(
         params.setdefault("shift", 1.0)
         params.setdefault("infer_method", "ode")
         params.setdefault("custom_timesteps", "")
-        params.setdefault("audio_format", "mp3")
+        params.setdefault("audio_format", "flac")
         params.setdefault("lm_temperature", 0.85)
         params.setdefault("think_checkbox", True)
         params.setdefault("lm_cfg_scale", 2.0)

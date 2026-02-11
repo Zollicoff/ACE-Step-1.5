@@ -380,12 +380,13 @@ def generate_music(
             """Best-effort duration inference for common audio formats."""
             if not audio_path:
                 return None
-            # Try torchaudio (supports more formats when ffmpeg backend is available)
+            # Try torchcodec (ships with torchaudio >=2.9, supports all ffmpeg formats)
             try:
-                import torchaudio
-                info = torchaudio.info(audio_path)
-                if info and info.num_frames and info.sample_rate:
-                    return float(info.num_frames) / float(info.sample_rate)
+                from torchcodec.decoders import AudioDecoder
+                decoder = AudioDecoder(audio_path)
+                dur = decoder.metadata.duration_seconds
+                if dur and dur > 0:
+                    return float(dur)
             except Exception:
                 pass
             # Try soundfile (fast for wav/flac)
