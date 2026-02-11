@@ -439,6 +439,8 @@ def generate_with_progress(
     lm_batch_chunk_size,
     enable_normalization,
     normalization_db,
+    latent_shift,
+    latent_rescale,
     progress=gr.Progress(track_tqdm=True),
 ):
 
@@ -524,6 +526,8 @@ def generate_with_progress(
         use_constrained_decoding=True,
         enable_normalization=enable_normalization,
         normalization_db=normalization_db,
+        latent_shift=latent_shift,
+        latent_rescale=latent_rescale,
     )
 
     # seed string to list
@@ -1385,7 +1389,8 @@ def capture_current_params(
     constrained_decoding_debug, allow_lm_batch, auto_score, auto_lrc, score_scale, lm_batch_chunk_size,
 
     track_name, complete_track_classes,
-    enable_normalization, normalization_db
+    enable_normalization, normalization_db,
+    latent_shift, latent_rescale
 ):
 
     """Capture current UI parameters for next batch generation
@@ -1442,6 +1447,8 @@ def capture_current_params(
 
         "enable_normalization": enable_normalization,
         "normalization_db": normalization_db,
+        "latent_shift": latent_shift,
+        "latent_rescale": latent_rescale,
     }
 
 
@@ -1467,6 +1474,8 @@ def generate_with_batch_management(
 
     enable_normalization,
     normalization_db,
+    latent_shift,
+    latent_rescale,
     autogen_checkbox,
 
     current_batch_index,
@@ -1498,6 +1507,8 @@ def generate_with_batch_management(
 
         enable_normalization,
         normalization_db,
+        latent_shift,
+        latent_rescale,
         progress
     )
 
@@ -1595,6 +1606,8 @@ def generate_with_batch_management(
 
         "enable_normalization": enable_normalization,
         "normalization_db": normalization_db,
+        "latent_shift": latent_shift,
+        "latent_rescale": latent_rescale,
     }
 
     

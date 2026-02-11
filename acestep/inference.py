@@ -597,6 +597,8 @@ def generate_music(
             shift=params.shift,
             infer_method=params.infer_method,
             timesteps=params.timesteps,
+            latent_shift=params.latent_shift,
+            latent_rescale=params.latent_rescale,
             progress=progress,
         )
 
