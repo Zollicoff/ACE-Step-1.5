@@ -2,7 +2,7 @@ import os
 import sys
 import types
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from acestep.core.generation.handler.init_service import InitServiceMixin
 
@@ -73,6 +73,14 @@ class InitServiceMixinTests(unittest.TestCase):
         with patch("torch.cuda.is_available", return_value=True), patch("torch.cuda.empty_cache") as empty_cache:
             host._empty_cache()
             empty_cache.assert_called_once()
+
+    def test_empty_cache_routes_to_xpu(self):
+        host = _Host(project_root="K:/fake_root", device="xpu")
+        empty_cache = Mock()
+        xpu_stub = types.SimpleNamespace(is_available=lambda: True, empty_cache=empty_cache)
+        with patch("torch.xpu", new=xpu_stub, create=True):
+            host._empty_cache()
+        empty_cache.assert_called_once()
 
     def test_synchronize_routes_to_cuda(self):
         host = _Host(project_root="K:/fake_root", device="cuda")

@@ -8,7 +8,11 @@ import torch
 
 class InitServiceMixin:
     def get_available_checkpoints(self) -> List[str]:
-        """Return project root directory path"""
+        """Return available checkpoint directory paths under the project root.
+
+        Uses ``self._get_project_root()`` to resolve the checkpoints directory and
+        returns a single-item list when present, otherwise an empty list.
+        """
         # Get project root (handler.py is in acestep/, so go up two levels to project root)
         project_root = self._get_project_root()
         # default checkpoints
@@ -63,6 +67,8 @@ class InitServiceMixin:
         device_type = self.device if isinstance(self.device, str) else self.device.type
         if device_type == "cuda" and torch.cuda.is_available():
             torch.cuda.empty_cache()
+        elif device_type == "xpu" and hasattr(torch, "xpu") and torch.xpu.is_available():
+            torch.xpu.empty_cache()
         elif device_type == "mps" and hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
             torch.mps.empty_cache()
 
