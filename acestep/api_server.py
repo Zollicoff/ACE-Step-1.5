@@ -41,6 +41,7 @@ except ImportError:  # Optional dependency
     load_dotenv = None  # type: ignore
 
 from fastapi import FastAPI, HTTPException, Request, Depends, Header
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from starlette.datastructures import UploadFile as StarletteUploadFile
 
@@ -2154,6 +2155,16 @@ def create_app() -> FastAPI:
             executor.shutdown(wait=False, cancel_futures=True)
 
     app = FastAPI(title="ACE-Step API", version="1.0", lifespan=lifespan)
+
+    # Enable CORS for browser-based frontends (e.g. studio.html opened via file://)
+    # Restricted to localhost origins and the "null" origin (file:// protocol)
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["null", "http://localhost", "http://127.0.0.1"],
+        allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$",
+        allow_methods=["GET", "POST", "OPTIONS"],
+        allow_headers=["Content-Type", "Authorization"],
+    )
 
     # Mount OpenRouter-compatible endpoints (/v1/chat/completions, /v1/models)
     from acestep.openrouter_adapter import create_openrouter_router
