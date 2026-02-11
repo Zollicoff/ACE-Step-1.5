@@ -87,7 +87,10 @@ class TrainingConfig:
     
     # Logging
     log_every_n_steps: int = 10
-    
+
+    # Validation (for loss curve and best-checkpoint tracking)
+    val_split: float = 0.0
+
     def to_dict(self):
         """Convert to dictionary."""
         return {
@@ -110,4 +113,5 @@ class TrainingConfig:
             "persistent_workers": self.persistent_workers,
             "pin_memory_device": self.pin_memory_device,
             "log_every_n_steps": self.log_every_n_steps,
+            "val_split": self.val_split,
         }
