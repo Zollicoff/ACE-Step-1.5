@@ -53,6 +53,9 @@
     "compile_model_info": "Use torch.compile to optimize model (required for quantization)",
     "quantization_label": "INT8 Quantization",
     "quantization_info": "Enable INT8 weight-only quantization to reduce VRAM usage (requires Compile Model)",
+    "mlx_dit_label": "MLX DiT (Apple Silicon)",
+    "mlx_dit_info_enabled": "Use native MLX for DiT diffusion on Apple Silicon (faster than MPS)",
+    "mlx_dit_info_disabled": "MLX not available (requires macOS + Apple Silicon + mlx package)",
     "init_btn": "Initialize Service",
     "status_label": "Status",
     "language_label": "UI Language",
@@ -104,6 +107,12 @@
     "instrumental_label": "Instrumental",
     "format_btn": "Format",
     "optional_params": "⚙️ Optional Parameters",
+    "optional_music_props": "🎵 Music Properties",
+    "optional_gen_settings": "📐 Generation Settings",
+    "advanced_dit_section": "🎛️ DiT Diffusion",
+    "advanced_lm_section": "🤖 LM Generation",
+    "advanced_output_section": "🔊 Audio Output & Post-processing",
+    "advanced_automation_section": "⚡ Automation & Batch",
     "vocal_language_label": "Vocal Language (optional)",
     "vocal_language_info": "use `unknown` for inst",
     "bpm_label": "BPM (optional)",
@@ -245,22 +254,17 @@
     "timesteps_out_of_range": "⚠️ Timesteps must be in range [0, 1]. Using default schedule.",
     "timesteps_count_mismatch": "⚠️ Timesteps count ({actual}) differs from inference_steps ({expected}). Using timesteps count."
   },
-  "gen": {
-    "enable_normalization": "Enable Normalization",
-    "enable_normalization_info": "Normalize audio volume to target peak level to prevent clipping or ensure consistent loudness.",
-    "normalization_db": "Target Peak (dB)",
-    "normalization_db_info": "Target peak level in decibels. -1.0 dB is standard safe peak. -0.1 dB is max."
-  },
   "training": {
     "tab_title": "🎓 LoRA Training",
     "tab_dataset_builder": "📁 Dataset Builder",
     "tab_train_lora": "🚀 Train LoRA",
     "quick_start_title": "🚀 Quick Start",
     "load_dataset_label": "Dataset JSON Path",
+    "load_dataset_info": "Load a previously saved dataset",
     "load_btn": "📂 Load",
     "load_status": "Load Status",
     "scan_label": "Audio Directory Path",
-    "scan_info": "Scan audio files (wav, mp3, flac, ogg, opus)",
+    "scan_info": "Scan for audio files (wav, mp3, flac, ogg, opus)",
     "scan_btn": "🔍 Scan",
     "scan_status": "Scan Status",
     "found_audio_files": "Found Audio Files",
@@ -355,5 +359,15 @@
     "export_path": "Export Path",
     "export_lora_btn": "📦 Export LoRA",
     "export_status": "Export Status"
+  },
+  "gen": {
+    "enable_normalization": "Enable Normalization",
+    "enable_normalization_info": "Normalize audio volume to target peak level to prevent clipping or ensure consistent loudness.",
+    "normalization_db": "Target Peak (dB)",
+    "normalization_db_info": "Target peak level in decibels. -1.0 dB is standard safe peak. -0.1 dB is max.",
+    "latent_shift": "Latent Shift",
+    "latent_shift_info": "Shift applied to DiT latents before VAE decode. Default 0 (no shift). Negative values (e.g. -0.04) can reduce clipping.",
+    "latent_rescale": "Latent Rescale",
+    "latent_rescale_info": "Rescale factor for DiT latents before VAE decode. Default 1.0 (no rescale). Values < 1.0 (e.g. 0.91) can reduce clipping."
   }
 }
