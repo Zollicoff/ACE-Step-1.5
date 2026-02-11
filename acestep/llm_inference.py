@@ -3831,12 +3831,18 @@ class LLMHandler:
                 load_time = time.time() - start_time
                 logger.info(f"HuggingFace model loaded in {load_time:.2f}s")
                 
-                # Move to same device as vllm model
-                device = next(model_runner.model.parameters()).device
-                self._hf_model_for_scoring = self._hf_model_for_scoring.to(device)
-                self._hf_model_for_scoring.eval()
-                
-                logger.info(f"HuggingFace model for scoring ready on {device}")
+                # When offload_to_cpu is enabled, keep the model on CPU to save
+                # VRAM.  The caller (_load_scoring_model_context in
+                # test_time_scaling.py) will move it to the accelerator only for
+                # the duration of the forward pass.
+                if self.offload_to_cpu:
+                    self._hf_model_for_scoring.eval()
+                    logger.info("HuggingFace model for scoring kept on CPU (offload_to_cpu=True)")
+                else:
+                    device = next(model_runner.model.parameters()).device
+                    self._hf_model_for_scoring = self._hf_model_for_scoring.to(device)
+                    self._hf_model_for_scoring.eval()
+                    logger.info(f"HuggingFace model for scoring ready on {device}")
             
             return self._hf_model_for_scoring
         
@@ -3860,12 +3866,16 @@ class LLMHandler:
                 load_time = time.time() - start_time
                 logger.info(f"HuggingFace model loaded in {load_time:.2f}s")
                 
-                # Keep on CPU for MPS (scoring is not perf-critical)
-                device = "mps" if hasattr(torch.backends, "mps") and torch.backends.mps.is_available() else "cpu"
-                self._hf_model_for_scoring = self._hf_model_for_scoring.to(device)
-                self._hf_model_for_scoring.eval()
-                
-                logger.info(f"HuggingFace model for scoring ready on {device}")
+                # When offload_to_cpu is enabled, keep on CPU; the scoring
+                # context manager will move it to the accelerator as needed.
+                if self.offload_to_cpu:
+                    self._hf_model_for_scoring.eval()
+                    logger.info("HuggingFace model for scoring kept on CPU (offload_to_cpu=True)")
+                else:
+                    device = "mps" if hasattr(torch.backends, "mps") and torch.backends.mps.is_available() else "cpu"
+                    self._hf_model_for_scoring = self._hf_model_for_scoring.to(device)
+                    self._hf_model_for_scoring.eval()
+                    logger.info(f"HuggingFace model for scoring ready on {device}")
             
             return self._hf_model_for_scoring
         
