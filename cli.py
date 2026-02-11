@@ -66,7 +66,7 @@ from acestep.handler import AceStepHandler
 from acestep.llm_inference import LLMHandler
 from acestep.inference import GenerationParams, GenerationConfig, generate_music, create_sample, format_sample
 from acestep.constants import DEFAULT_DIT_INSTRUCTION, TASK_INSTRUCTIONS
-from acestep.gpu_config import get_gpu_config, set_global_gpu_config
+from acestep.gpu_config import get_gpu_config, set_global_gpu_config, is_mps_platform
 import torch
 
 
@@ -993,8 +993,9 @@ def main():
 
     gpu_config = get_gpu_config()
     set_global_gpu_config(gpu_config)
-    auto_offload = gpu_config.gpu_memory_gb > 0 and gpu_config.gpu_memory_gb < 16
-    mps_available = hasattr(torch.backends, "mps") and torch.backends.mps.is_available()
+    mps_available = is_mps_platform()
+    # Mac (Apple Silicon) uses unified memory — offloading provides no benefit
+    auto_offload = (not mps_available) and gpu_config.gpu_memory_gb > 0 and gpu_config.gpu_memory_gb < 16
     print(f"\n{'='*60}")
     print("GPU Configuration Detected:")
     print(f"{'='*60}")

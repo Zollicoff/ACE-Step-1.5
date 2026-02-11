@@ -3,6 +3,7 @@ Generation Input Handlers Module
 Contains event handlers and helper functions related to generation inputs
 """
 import os
+import sys
 import json
 import random
 import glob
@@ -448,6 +449,16 @@ def init_service_wrapper(dit_handler, llm_handler, checkpoint, config_path, devi
     
     # --- Tier-aware validation before initialization ---
     gpu_config = get_global_gpu_config()
+    
+    # macOS safety: force-disable compile and quantization even if user checked them
+    if sys.platform == "darwin":
+        if compile_model:
+            logger.info("macOS detected: disabling torch.compile (not supported on MPS)")
+            compile_model = False
+        if quantization:
+            logger.info("macOS detected: disabling INT8 quantization (torchao incompatible with MPS)")
+            quantization = False
+            quant_value = None
     
     # Validate LM request against GPU tier
     if init_llm and not gpu_config.available_lm_models:

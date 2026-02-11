@@ -37,6 +37,22 @@ PYTORCH_CUDA_INSTALL_URL = "https://download.pytorch.org/whl/cu121"
 PYTORCH_ROCM_INSTALL_URL = "https://download.pytorch.org/whl/rocm6.0"
 
 
+def is_mps_platform() -> bool:
+    """Check if running on macOS with MPS (Apple Silicon) available.
+    
+    This is the canonical check used across the codebase to apply
+    Mac-specific configuration overrides (no compile, no quantization,
+    mlx backend, no offload, etc.).
+    """
+    if sys.platform != "darwin":
+        return False
+    try:
+        import torch
+        return hasattr(torch.backends, "mps") and torch.backends.mps.is_available()
+    except Exception:
+        return False
+
+
 # ===========================================================================
 # Empirical VRAM measurements (GB) -- model weights only, bf16 precision
 # These values should be calibrated using scripts/profile_vram.py
@@ -511,6 +527,20 @@ def get_gpu_config(gpu_memory_gb: Optional[float] = None) -> GPUConfig:
     """
     Get GPU configuration based on detected or provided GPU memory.
     
+    On macOS with MPS (Apple Silicon), several overrides are applied
+    automatically regardless of the tier selected by memory size:
+    
+    - ``compile_model_default = False`` — ``torch.compile`` is not supported
+      on MPS and would error or silently fall back to eager mode.
+    - ``quantization_default = False`` — torchao INT8 quantization is
+      incompatible with MPS / macOS.
+    - ``recommended_backend = "mlx"`` — MLX provides native Apple Silicon
+      acceleration for the 5Hz LM; vllm requires CUDA.
+    - ``lm_backend_restriction = "pt_mlx_only"`` — vllm cannot run on MPS.
+    - ``offload_to_cpu_default = False`` — Apple Silicon uses unified memory;
+      offloading to CPU provides no benefit and adds overhead.
+    - ``offload_dit_to_cpu_default = False`` — same reason.
+    
     Args:
         gpu_memory_gb: GPU memory in GB. If None, will be auto-detected.
         
@@ -523,6 +553,15 @@ def get_gpu_config(gpu_memory_gb: Optional[float] = None) -> GPUConfig:
     tier = get_gpu_tier(gpu_memory_gb)
     config = GPU_TIER_CONFIGS[tier]
     
+    # --- MPS (Apple Silicon) overrides ---
+    _mps = is_mps_platform()
+    if _mps:
+        logger.info(
+            f"macOS MPS detected ({gpu_memory_gb:.1f} GB unified memory, tier={tier}). "
+            "Applying Apple Silicon optimizations: no compile, no quantization, "
+            "mlx backend, no CPU offload."
+        )
+    
     return GPUConfig(
         tier=tier,
         gpu_memory_gb=gpu_memory_gb,
@@ -533,12 +572,15 @@ def get_gpu_config(gpu_memory_gb: Optional[float] = None) -> GPUConfig:
         init_lm_default=config["init_lm_default"],
         available_lm_models=config["available_lm_models"],
         recommended_lm_model=config.get("recommended_lm_model", ""),
-        lm_backend_restriction=config.get("lm_backend_restriction", "all"),
-        recommended_backend=config.get("recommended_backend", "vllm"),
-        offload_to_cpu_default=config.get("offload_to_cpu_default", True),
-        offload_dit_to_cpu_default=config.get("offload_dit_to_cpu_default", True),
-        quantization_default=config.get("quantization_default", True),
-        compile_model_default=config.get("compile_model_default", True),
+        # MPS: vllm requires CUDA, restrict to pt/mlx; prefer mlx for native acceleration
+        lm_backend_restriction="pt_mlx_only" if _mps else config.get("lm_backend_restriction", "all"),
+        recommended_backend="mlx" if _mps else config.get("recommended_backend", "vllm"),
+        # MPS: unified memory — offloading to CPU is pointless overhead
+        offload_to_cpu_default=False if _mps else config.get("offload_to_cpu_default", True),
+        offload_dit_to_cpu_default=False if _mps else config.get("offload_dit_to_cpu_default", True),
+        # MPS: torch.compile and torchao quantization are not supported
+        quantization_default=False if _mps else config.get("quantization_default", True),
+        compile_model_default=False if _mps else config.get("compile_model_default", True),
         lm_memory_gb=config["lm_memory_gb"],
     )
 
