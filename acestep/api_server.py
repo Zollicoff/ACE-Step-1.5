@@ -1518,17 +1518,22 @@ def create_app() -> FastAPI:
                 instruction_to_use = req.instruction
                 if instruction_to_use == DEFAULT_DIT_INSTRUCTION and req.task_type in TASK_INSTRUCTIONS:
                     raw_instruction = TASK_INSTRUCTIONS[req.task_type]
-                    if "{TRACK_NAME}" in raw_instruction and req.track_name:
-                        instruction_to_use = raw_instruction.format(TRACK_NAME=req.track_name.upper())
-                    elif "{TRACK_CLASSES}" in raw_instruction:
-                         # FIX FOR COMPLETE TASK
+                    
+                    if req.task_type == "complete":
+                         #  Use track_classes joined by pipes
                          if req.track_classes:
                              # Join list items: ["Drums", "Bass"] -> "DRUMS | BASS"
                              classes_str = " | ".join([str(t).upper() for t in req.track_classes])
+                             # Use the raw instruction template from constants
+                             # Format: "Complete the track with {TRACK_CLASSES}:"
                              instruction_to_use = raw_instruction.format(TRACK_CLASSES=classes_str)
                          else:
-                             # Fallback to a default instruction if no classes provided
+                             # Fallback if no classes provided
                              instruction_to_use = TASK_INSTRUCTIONS.get("complete_default", raw_instruction)
+
+                    elif "{TRACK_NAME}" in raw_instruction and req.track_name:
+                        # Logic for extract/lego
+                        instruction_to_use = raw_instruction.format(TRACK_NAME=req.track_name.upper())
                     else:
                         instruction_to_use = raw_instruction
 
