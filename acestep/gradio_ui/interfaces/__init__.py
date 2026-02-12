@@ -1,11 +1,32 @@
 """
 Gradio UI Components Module
 Contains all Gradio interface component definitions and layouts
+
+Layout:
+  ┌──────────────────────────────────────┐
+  │  Header                              │
+  ├──────────────────────────────────────┤
+  │  Dataset Explorer (hidden accordion) │
+  ├──────────────────────────────────────┤
+  │  Service Configuration (accordion)   │
+  ├──────────────────────────────────────┤
+  │  Advanced Settings (accordion, ▼)    │
+  ├──────────────────────────────────────┤
+  │  ┌─ Generation ─┬─ Training ──────┐  │
+  │  │  Mode Radio   │  Dataset/LoRA  │  │
+  │  │  Inputs       │                │  │
+  │  │  Results      │                │  │
+  │  └───────────────┴────────────────┘  │
+  └──────────────────────────────────────┘
 """
 import gradio as gr
 from acestep.gradio_ui.i18n import get_i18n, t
 from acestep.gradio_ui.interfaces.dataset import create_dataset_section
-from acestep.gradio_ui.interfaces.generation import create_generation_section
+from acestep.gradio_ui.interfaces.generation import (
+    create_service_config_section,
+    create_advanced_settings_section,
+    create_generation_tab_section,
+)
 from acestep.gradio_ui.interfaces.result import create_results_section
 from acestep.gradio_ui.interfaces.training import create_training_section
 from acestep.gradio_ui.events import setup_event_handlers, setup_training_event_handlers
@@ -28,6 +49,9 @@ def create_gradio_interface(dit_handler, llm_handler, dataset_handler, init_para
     """
     # Initialize i18n with selected language
     i18n = get_i18n(language)
+    
+    # Check if running in service mode (hide training tab)
+    service_mode = init_params is not None and init_params.get('service_mode', False)
     
     with gr.Blocks(
         title=t("app.title"),
@@ -72,21 +96,57 @@ def create_gradio_interface(dit_handler, llm_handler, dataset_handler, init_para
         </div>
         """)
         
-        # Dataset Explorer Section
+        # Dataset Explorer Section (hidden)
         dataset_section = create_dataset_section(dataset_handler)
         
-        # Generation Section (pass init_params and language to support pre-initialization)
-        generation_section = create_generation_section(dit_handler, llm_handler, init_params=init_params, language=language)
+        # ═══════════════════════════════════════════
+        # Top-level: Service Configuration (global)
+        # ═══════════════════════════════════════════
+        service_section = create_service_config_section(
+            dit_handler, llm_handler, init_params=init_params, language=language
+        )
         
-        # Results Section
-        results_section = create_results_section(dit_handler)
+        # ═══════════════════════════════════════════
+        # Top-level: Advanced Settings (global, collapsed)
+        # ═══════════════════════════════════════════
+        advanced_section = create_advanced_settings_section(
+            dit_handler, llm_handler, init_params=init_params, language=language
+        )
         
-        # Training Section (LoRA training and dataset builder)
-        # Pass init_params to support hiding in service mode
-        training_section = create_training_section(dit_handler, llm_handler, init_params=init_params)
+        # ═══════════════════════════════════════════
+        # Tabs: Generation | Training
+        # ═══════════════════════════════════════════
+        with gr.Tabs():
+            # --- Generation Tab ---
+            with gr.Tab(t("generation.tab_title")):
+                gen_section = create_generation_tab_section(
+                    dit_handler, llm_handler, init_params=init_params, language=language
+                )
+                
+                # Results Section (inside the Generation tab)
+                results_section = create_results_section(dit_handler)
+            
+            # --- Training Tab ---
+            with gr.Tab(t("training.tab_title"), visible=not service_mode):
+                training_section = create_training_section(
+                    dit_handler, llm_handler, init_params=init_params
+                )
+        
+        # ═══════════════════════════════════════════
+        # Merge all generation-related component dicts for event wiring
+        # ═══════════════════════════════════════════
+        # The event handlers expect a single "generation_section" dict with all
+        # components from service config, advanced settings, and generation tab.
+        generation_section = {}
+        generation_section.update(service_section)
+        generation_section.update(advanced_section)
+        generation_section.update(gen_section)
         
         # Connect event handlers
-        setup_event_handlers(demo, dit_handler, llm_handler, dataset_handler, dataset_section, generation_section, results_section)
+        setup_event_handlers(
+            demo, dit_handler, llm_handler, dataset_handler,
+            dataset_section, generation_section, results_section
+        )
         
         # Connect training event handlers
         setup_training_event_handlers(demo, dit_handler, llm_handler, training_section)

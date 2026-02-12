@@ -65,6 +65,7 @@
     "tier_info": "GPUティアを手動で選択して最適化のデフォルト（オフロード、量子化、バックエンドなど）を調整します"
   },
   "generation": {
+    "tab_title": "🎵 生成",
     "required_inputs": "📝 必須入力",
     "task_type_label": "タスクタイプ",
     "task_type_info": "生成のタスクタイプを選択",

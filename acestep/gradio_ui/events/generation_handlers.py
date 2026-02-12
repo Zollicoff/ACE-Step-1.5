@@ -13,6 +13,9 @@ from loguru import logger
 from acestep.constants import (
     TASK_TYPES_TURBO,
     TASK_TYPES_BASE,
+    GENERATION_MODES_TURBO,
+    GENERATION_MODES_BASE,
+    MODE_TO_TASK_TYPE,
 )
 from acestep.gradio_ui.i18n import t
 from acestep.inference import understand_music, create_sample, format_sample
@@ -660,6 +663,7 @@ def get_ui_control_config(is_turbo: bool) -> dict:
             "cfg_interval_start_visible": False,
             "cfg_interval_end_visible": False,
             "task_type_choices": TASK_TYPES_TURBO,
+            "generation_mode_choices": GENERATION_MODES_TURBO,
         }
     else:
         return {
@@ -673,11 +677,23 @@ def get_ui_control_config(is_turbo: bool) -> dict:
             "cfg_interval_start_visible": True,
             "cfg_interval_end_visible": True,
             "task_type_choices": TASK_TYPES_BASE,
+            "generation_mode_choices": GENERATION_MODES_BASE,
         }
 
 
 def get_model_type_ui_settings(is_turbo: bool):
-    """Get gr.update() tuple for model-type controls (used by init button / config_path change)."""
+    """Get gr.update() tuple for model-type controls (used by init button / config_path change).
+    
+    Returns tuple of updates for:
+    - inference_steps
+    - guidance_scale
+    - use_adg
+    - shift
+    - cfg_interval_start
+    - cfg_interval_end
+    - task_type (hidden, keep value)
+    - generation_mode (update choices)
+    """
     cfg = get_ui_control_config(is_turbo)
     return (
         gr.update(
@@ -690,7 +706,8 @@ def get_model_type_ui_settings(is_turbo: bool):
         gr.update(value=cfg["shift_value"], visible=cfg["shift_visible"]),
         gr.update(visible=cfg["cfg_interval_start_visible"]),
         gr.update(visible=cfg["cfg_interval_end_visible"]),
-        gr.update(choices=cfg["task_type_choices"]),
+        gr.update(),  # task_type - no change (hidden, managed by mode)
+        gr.update(choices=cfg["generation_mode_choices"]),  # generation_mode choices
     )
 
 
@@ -937,23 +954,19 @@ def update_audio_components_visibility(batch_size):
 
 def handle_generation_mode_change(mode: str):
     """
-    Handle generation mode change between Simple and Custom modes.
+    Handle unified generation mode change.
     
-    In Simple mode:
-    - Show simple mode group (query input, instrumental checkbox, create button)
-    - Collapse caption and lyrics accordions
-    - Hide optional parameters accordion
-    - Disable generate button until sample is created
+    The mode parameter is one of: "Simple", "Custom", "Cover", "Repaint",
+    "Extract", "Lego", "Complete".
     
-    In Custom mode:
-    - Hide simple mode group
-    - Expand caption and lyrics accordions
-    - Show optional parameters accordion
-    - Enable generate button
+    Each mode maps to a task_type and controls visibility of UI elements:
     
-    Args:
-        mode: "simple" or "custom"
-        
+    - Simple: Show simple query input, collapse caption/lyrics, disable generate until sample created
+    - Custom: Full caption + lyrics + optional params, no source audio required
+    - Cover: Reference audio + source audio prominent, cover strength slider
+    - Repaint: Source audio + repainting start/end controls
+    - Extract/Lego/Complete: Track name selector, source audio, specialized controls
+    
     Returns:
         Tuple of updates for:
         - simple_mode_group (visibility)
@@ -961,18 +974,80 @@ def handle_generation_mode_change(mode: str):
         - lyrics_accordion (open state)
         - generate_btn (interactive state)
         - simple_sample_created (reset state)
-        - optional_params_accordion (visibility)
+        - optional_params_accordion (open state)
+        - task_type (value)
+        - audio_uploads_accordion (open state)
+        - repainting_group (visibility)
+        - text2music_audio_codes_group (visibility)
+        - track_name (visibility)
+        - complete_track_classes (visibility)
     """
-    is_simple = mode == "simple"
+    # Map mode to task_type
+    task_type = MODE_TO_TASK_TYPE.get(mode, "text2music")
+    
+    is_simple = (mode == "Simple")
+    is_custom = (mode == "Custom")
+    is_cover = (mode == "Cover")
+    is_repaint = (mode == "Repaint")
+    is_extract = (mode == "Extract")
+    is_lego = (mode == "Lego")
+    is_complete = (mode == "Complete")
+    
+    # Simple mode: show simple group, collapse others
+    # Custom mode: full control
+    # Cover/Repaint/Extract/Lego/Complete: show relevant controls
+    
+    show_simple = is_simple
+    show_caption = not is_simple  # Always show caption for non-simple modes
+    show_lyrics = not is_simple
+    show_optional = is_custom or is_cover  # Optional params most useful for custom/cover
+    generate_interactive = not is_simple  # Disabled in simple until sample created
+    
+    # Audio uploads: open for cover/repaint/extract/lego/complete
+    audio_uploads_open = is_cover or is_repaint or is_extract or is_lego or is_complete
+    
+    # Repainting controls: only for repaint and lego
+    show_repainting = is_repaint or is_lego
+    
+    # Audio codes: show for custom and cover (LM codes)
+    show_audio_codes = is_custom or is_cover
+    
+    # Track name: for lego and extract
+    show_track_name = is_lego or is_extract
+    
+    # Complete track classes: only for complete
+    show_complete_classes = is_complete
     
     return (
-        gr.update(visible=is_simple),  # simple_mode_group
-        gr.Accordion(open=not is_simple),  # caption_accordion - collapsed in simple, open in custom
-        gr.Accordion(open=not is_simple),  # lyrics_accordion - collapsed in simple, open in custom
-        gr.update(interactive=not is_simple),  # generate_btn - disabled in simple until sample created
-        False,  # simple_sample_created - reset to False on mode change
-        gr.Accordion(open=not is_simple),  # optional_params_accordion - hidden in simple mode
+        gr.update(visible=show_simple),  # simple_mode_group
+        gr.Accordion(open=show_caption),  # caption_accordion
+        gr.Accordion(open=show_lyrics),  # lyrics_accordion
+        gr.update(interactive=generate_interactive),  # generate_btn
+        False,  # simple_sample_created - reset
+        gr.Accordion(open=show_optional),  # optional_params_accordion
+        gr.update(value=task_type),  # task_type (hidden)
+        gr.Accordion(open=audio_uploads_open),  # audio_uploads_accordion
+        gr.update(visible=show_repainting),  # repainting_group
+        gr.update(visible=show_audio_codes),  # text2music_audio_codes_group
+        gr.update(visible=show_track_name),  # track_name
+        gr.update(visible=show_complete_classes),  # complete_track_classes
     )
+
+
+def get_generation_mode_choices(is_turbo: bool, is_sft: bool = False) -> list:
+    """Get the list of generation mode choices based on model type.
+    
+    Args:
+        is_turbo: Whether the model is a turbo model
+        is_sft: Whether the model is an SFT model (base-SFT gets turbo modes)
+    
+    Returns:
+        List of mode choice strings
+    """
+    if is_turbo or is_sft:
+        return GENERATION_MODES_TURBO
+    else:
+        return GENERATION_MODES_BASE
 
 
 def handle_create_sample(
@@ -1021,6 +1096,7 @@ def handle_create_sample(
         - think_checkbox (True)
         - is_format_caption_state (True)
         - status_output
+        - generation_mode (switch to "Custom" on success)
     """
     # Check if LLM is initialized
     if not llm_handler.llm_initialized:
@@ -1042,6 +1118,7 @@ def handle_create_sample(
             gr.update(),  # think_checkbox - no change
             gr.update(),  # is_format_caption_state - no change
             t("messages.lm_not_initialized"),  # status_output
+            gr.update(),  # generation_mode - no change (stay in Simple)
         )
     
     # Convert LM parameters
@@ -1082,6 +1159,7 @@ def handle_create_sample(
             gr.update(),  # think_checkbox - no change
             gr.update(),  # is_format_caption_state - no change
             result.status_message or t("messages.sample_creation_failed"),  # status_output
+            gr.update(),  # generation_mode - no change (stay in Simple)
         )
     
     # Success - populate fields
@@ -1108,6 +1186,7 @@ def handle_create_sample(
         True,  # think_checkbox - enable thinking
         True,  # is_format_caption_state - True (LM-generated)
         result.status_message,  # status_output
+        gr.update(value="Custom"),  # generation_mode - auto-switch to Custom
     )
 
 

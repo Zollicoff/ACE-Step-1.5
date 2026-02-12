@@ -65,6 +65,7 @@
     "tier_info": "בחר שכבת GPU באופן ידני כדי להתאים ברירות מחדל של אופטימיזציה (העברה, קוונטיזציה, מנוע וכו')"
   },
   "generation": {
+    "tab_title": "🎵 יצירה",
     "required_inputs": "📝 קלטים נדרשים",
     "task_type_label": "סוג משימה",
     "task_type_info": "בחר את סוג המשימה ליצירה",

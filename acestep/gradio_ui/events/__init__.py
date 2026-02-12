@@ -40,6 +40,7 @@ def setup_event_handlers(demo, dit_handler, llm_handler, dataset_handler, datase
             generation_section["cfg_interval_start"],
             generation_section["cfg_interval_end"],
             generation_section["task_type"],
+            generation_section["generation_mode"],
         ]
     )
     
@@ -89,6 +90,7 @@ def setup_event_handlers(demo, dit_handler, llm_handler, dataset_handler, datase
             generation_section["cfg_interval_start"],
             generation_section["cfg_interval_end"],
             generation_section["task_type"],
+            generation_section["generation_mode"],
             # GPU-config-aware limits (updated after initialization)
             generation_section["audio_duration"],
             generation_section["batch_size_input"],
@@ -298,7 +300,7 @@ def setup_event_handlers(demo, dit_handler, llm_handler, dataset_handler, datase
         ]
     )
     
-    # ========== Simple/Custom Mode Toggle ==========
+    # ========== Generation Mode Change ==========
     generation_section["generation_mode"].change(
         fn=gen_h.handle_generation_mode_change,
         inputs=[generation_section["generation_mode"]],
@@ -309,6 +311,12 @@ def setup_event_handlers(demo, dit_handler, llm_handler, dataset_handler, datase
             generation_section["generate_btn"],
             generation_section["simple_sample_created"],
             generation_section["optional_params_accordion"],
+            generation_section["task_type"],
+            generation_section["audio_uploads_accordion"],
+            generation_section["repainting_group"],
+            generation_section["text2music_audio_codes_group"],
+            generation_section["track_name"],
+            generation_section["complete_track_classes"],
         ]
     )
     
@@ -363,6 +371,7 @@ def setup_event_handlers(demo, dit_handler, llm_handler, dataset_handler, datase
             generation_section["think_checkbox"],
             results_section["is_format_caption_state"],
             results_section["status_output"],
+            generation_section["generation_mode"],
         ]
     )
     

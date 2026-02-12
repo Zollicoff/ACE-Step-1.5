@@ -62,6 +62,7 @@
     "language_info": "Select interface language"
   },
   "generation": {
+    "tab_title": "🎵 Generation",
     "required_inputs": "📝 Required Inputs",
     "task_type_label": "Task Type",
     "task_type_info": "Select the task type for generation",
