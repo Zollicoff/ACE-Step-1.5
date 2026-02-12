@@ -458,7 +458,7 @@ def update_model_type_settings(config_path):
     return get_model_type_ui_settings(is_turbo)
 
 
-def init_service_wrapper(dit_handler, llm_handler, checkpoint, config_path, device, init_llm, lm_model_path, backend, use_flash_attention, offload_to_cpu, offload_dit_to_cpu, compile_model, quantization, mlx_dit=True):
+def init_service_wrapper(dit_handler, llm_handler, checkpoint, config_path, device, init_llm, lm_model_path, backend, use_flash_attention, offload_to_cpu, offload_dit_to_cpu, compile_model, quantization, mlx_dit=True, float32_matmul_precision="highest"):
     """Wrapper for service initialization, returns status, button state, accordion state, model type settings, and GPU-config-aware UI limits."""
     # Convert quantization checkbox to value (int8_weight_only if checked, None if not)
     quant_value = "int8_weight_only" if quantization else None
@@ -501,6 +501,7 @@ def init_service_wrapper(dit_handler, llm_handler, checkpoint, config_path, devi
         use_flash_attention=use_flash_attention, compile_model=compile_model, 
         offload_to_cpu=offload_to_cpu, offload_dit_to_cpu=offload_dit_to_cpu,
         quantization=quant_value, use_mlx_dit=mlx_dit,
+        float32_matmul_precision=float32_matmul_precision,
     )
     
     # Initialize LM handler if requested

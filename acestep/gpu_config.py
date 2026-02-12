@@ -23,6 +23,9 @@ from loguru import logger
 DEBUG_MAX_CUDA_VRAM_ENV = "MAX_CUDA_VRAM"
 DEBUG_MAX_MPS_VRAM_ENV = "MAX_MPS_VRAM"
 
+# Environment variable for float32 matmul precision override
+FLOAT32_MATMUL_PRECISION_ENV = "ACE_STEP_FLOAT32_MATMUL_PRECISION"
+
 # Tolerance for 16GB detection: reported VRAM like 15.5GB is effectively 16GB hardware
 # Real-world 16GB GPUs often report 15.7-15.9GB due to system/driver reservations
 VRAM_16GB_TOLERANCE_GB = 0.5
@@ -122,6 +125,11 @@ class GPUConfig:
     # Quantization / compile defaults
     quantization_default: bool  # Whether INT8 quantization should be enabled by default
     compile_model_default: bool  # Whether torch.compile should be enabled by default
+    
+    # PyTorch float32 matmul precision
+    # Controls TF32 speed/accuracy trade-off on Ampere+ GPUs
+    # Options: "highest" (default, current behavior), "high" (TF32), "medium" (TF32+)
+    float32_matmul_precision: str  # "highest", "high", or "medium"
     
     # LM memory allocation (GB) for each model size
     lm_memory_gb: Dict[str, float]  # e.g., {"0.6B": 3, "1.7B": 8, "4B": 12}
@@ -562,6 +570,17 @@ def get_gpu_config(gpu_memory_gb: Optional[float] = None) -> GPUConfig:
             "mlx backend, no CPU offload."
         )
     
+    # --- float32 matmul precision ---
+    # Default to "highest" to preserve current behavior (full IEEE FP32 precision)
+    # Can be overridden via environment variable or UI setting
+    float32_matmul_precision = os.environ.get(FLOAT32_MATMUL_PRECISION_ENV, "highest").lower()
+    if float32_matmul_precision not in ["highest", "high", "medium"]:
+        logger.warning(
+            f"Invalid float32_matmul_precision '{float32_matmul_precision}'. "
+            f"Using default 'highest'. Valid options: highest, high, medium"
+        )
+        float32_matmul_precision = "highest"
+    
     return GPUConfig(
         tier=tier,
         gpu_memory_gb=gpu_memory_gb,
@@ -581,6 +600,7 @@ def get_gpu_config(gpu_memory_gb: Optional[float] = None) -> GPUConfig:
         # MPS: torch.compile and torchao quantization are not supported
         quantization_default=False if _mps else config.get("quantization_default", True),
         compile_model_default=False if _mps else config.get("compile_model_default", True),
+        float32_matmul_precision=float32_matmul_precision,
         lm_memory_gb=config["lm_memory_gb"],
     )
 
@@ -1151,6 +1171,15 @@ def get_gpu_config_for_tier(tier: str) -> GPUConfig:
     if _mps:
         logger.info(f"Manual tier override to {tier} on macOS MPS — applying Apple Silicon overrides")
     
+    # Get float32 matmul precision from environment or default to "highest"
+    float32_matmul_precision = os.environ.get(FLOAT32_MATMUL_PRECISION_ENV, "highest").lower()
+    if float32_matmul_precision not in ["highest", "high", "medium"]:
+        logger.warning(
+            f"Invalid float32_matmul_precision '{float32_matmul_precision}'. "
+            f"Using default 'highest'. Valid options: highest, high, medium"
+        )
+        float32_matmul_precision = "highest"
+    
     return GPUConfig(
         tier=tier,
         gpu_memory_gb=real_gpu_memory,
@@ -1167,6 +1196,7 @@ def get_gpu_config_for_tier(tier: str) -> GPUConfig:
         offload_dit_to_cpu_default=False if _mps else config.get("offload_dit_to_cpu_default", True),
         quantization_default=False if _mps else config.get("quantization_default", True),
         compile_model_default=False if _mps else config.get("compile_model_default", True),
+        float32_matmul_precision=float32_matmul_precision,
         lm_memory_gb=config["lm_memory_gb"],
     )
 

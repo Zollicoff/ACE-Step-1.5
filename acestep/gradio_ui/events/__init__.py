@@ -77,6 +77,7 @@ def setup_event_handlers(demo, dit_handler, llm_handler, dataset_handler, datase
             generation_section["compile_model_checkbox"],
             generation_section["quantization_checkbox"],
             generation_section["mlx_dit_checkbox"],
+            generation_section["float32_matmul_precision_dropdown"],
         ],
         outputs=[
             generation_section["init_status"], 

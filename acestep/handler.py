@@ -552,6 +552,7 @@ class AceStepHandler(InitServiceMixin, LoraManagerMixin, ProgressMixin):
         quantization: Optional[str] = None,
         prefer_source: Optional[str] = None,
         use_mlx_dit: bool = True,
+        float32_matmul_precision: str = "highest",
     ) -> Tuple[str, bool]:
         """
         Initialize DiT model service
@@ -565,6 +566,7 @@ class AceStepHandler(InitServiceMixin, LoraManagerMixin, ProgressMixin):
             offload_to_cpu: Whether to offload models to CPU when not in use
             offload_dit_to_cpu: Whether to offload DiT model to CPU when not in use (only effective if offload_to_cpu is True)
             prefer_source: Preferred download source ("huggingface", "modelscope", or None for auto-detect)
+            float32_matmul_precision: PyTorch float32 matmul precision ("highest", "high", or "medium")
 
         Returns:
             (status_message, enable_generate_button)
@@ -575,6 +577,21 @@ class AceStepHandler(InitServiceMixin, LoraManagerMixin, ProgressMixin):
                 logger.warning(
                     "[initialize_service] config_path not set; defaulting to 'acestep-v15-turbo'."
                 )
+            
+            # Apply PyTorch float32 matmul precision early (before model loading)
+            # This controls TF32 speed/accuracy trade-off on Ampere+ GPUs
+            if float32_matmul_precision in ["highest", "high", "medium"]:
+                try:
+                    torch.set_float32_matmul_precision(float32_matmul_precision)
+                    logger.info(f"[initialize_service] Set PyTorch float32 matmul precision to '{float32_matmul_precision}'")
+                except Exception as e:
+                    logger.warning(f"[initialize_service] Failed to set float32_matmul_precision: {e}")
+            else:
+                logger.warning(
+                    f"[initialize_service] Invalid float32_matmul_precision '{float32_matmul_precision}'. "
+                    f"Valid options: highest, high, medium. Using PyTorch default."
+                )
+            
             if device == "auto":
                 if torch.cuda.is_available():
                     device = "cuda"

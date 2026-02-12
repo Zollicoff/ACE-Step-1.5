@@ -56,6 +56,8 @@
     "mlx_dit_label": "MLX DiT (Apple Silicon)",
     "mlx_dit_info_enabled": "Apple SiliconでMLXネイティブDiT拡散を使用（MPSより高速）",
     "mlx_dit_info_disabled": "MLXは利用不可（macOS + Apple Silicon + mlxパッケージが必要）",
+    "float32_matmul_precision_label": "Float32行列乗算精度",
+    "float32_matmul_precision_info": "Ampere+ GPUでのTF32速度/精度のトレードオフを制御(highest=完全FP32, high=TF32, medium=TF32+)",
     "init_btn": "サービスを初期化",
     "status_label": "ステータス",
     "language_label": "UI言語",

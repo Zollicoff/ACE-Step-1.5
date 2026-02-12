@@ -237,6 +237,17 @@ def _create_service_config_content(dit_handler, llm_handler, defaults, init_para
                 info=t("service.mlx_dit_info_enabled") if _mlx_ok else t("service.mlx_dit_info_disabled"),
             )
 
+        # Float32 matmul precision dropdown (separate row for clarity)
+        with gr.Row():
+            float32_matmul_precision_value = init_params.get('float32_matmul_precision', gpu_config.float32_matmul_precision) if service_pre_initialized else gpu_config.float32_matmul_precision
+            float32_matmul_precision_dropdown = gr.Dropdown(
+                choices=["highest", "high", "medium"],
+                value=float32_matmul_precision_value,
+                label=t("service.float32_matmul_precision_label"),
+                info=t("service.float32_matmul_precision_info"),
+                scale=1,
+            )
+
         init_btn = gr.Button(t("service.init_btn"), variant="primary", size="lg")
         init_status_value = init_params.get('init_status', '') if service_pre_initialized else ''
         init_status = gr.Textbox(label=t("service.status_label"), interactive=False, lines=3, value=init_status_value)
@@ -259,6 +270,7 @@ def _create_service_config_content(dit_handler, llm_handler, defaults, init_para
         "compile_model_checkbox": compile_model_checkbox,
         "quantization_checkbox": quantization_checkbox,
         "mlx_dit_checkbox": mlx_dit_checkbox,
+        "float32_matmul_precision_dropdown": float32_matmul_precision_dropdown,
         "gpu_info_display": gpu_info_display,
         "tier_dropdown": tier_dropdown,
         "gpu_config": gpu_config,

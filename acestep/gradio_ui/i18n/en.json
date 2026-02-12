@@ -56,6 +56,8 @@
     "mlx_dit_label": "MLX DiT (Apple Silicon)",
     "mlx_dit_info_enabled": "Use native MLX for DiT diffusion on Apple Silicon (faster than MPS)",
     "mlx_dit_info_disabled": "MLX not available (requires macOS + Apple Silicon + mlx package)",
+    "float32_matmul_precision_label": "Float32 Matmul Precision",
+    "float32_matmul_precision_info": "Control TF32 speed/accuracy trade-off on Ampere+ GPUs (highest=full FP32, high=TF32, medium=TF32+)",
     "init_btn": "Initialize Service",
     "status_label": "Status",
     "language_label": "UI Language",
