@@ -376,6 +376,7 @@ PARAM_ALIASES = {
     "is_format_caption": ["is_format_caption", "isFormatCaption"],
     "allow_lm_batch": ["allow_lm_batch", "allowLmBatch", "parallel_thinking"],
     "track_name": ["track_name", "trackName"],
+    "track_classes": ["track_classes", "trackClasses", "instruments"],
 }
 
 
@@ -522,6 +523,7 @@ class GenerateMusicRequest(BaseModel):
     is_format_caption: bool = False
     allow_lm_batch: bool = True
     track_name: Optional[str] = None
+    track_classes: Optional[List[str]] = None
 
     lm_temperature: float = 0.85
     lm_cfg_scale: float = 2.5
@@ -1519,8 +1521,14 @@ def create_app() -> FastAPI:
                     if "{TRACK_NAME}" in raw_instruction and req.track_name:
                         instruction_to_use = raw_instruction.format(TRACK_NAME=req.track_name.upper())
                     elif "{TRACK_CLASSES}" in raw_instruction:
-                         # Handle 'complete' task if you use it later
-                         pass 
+                         # FIX FOR COMPLETE TASK
+                         if req.track_classes:
+                             # Join list items: ["Drums", "Bass"] -> "DRUMS | BASS"
+                             classes_str = " | ".join([str(t).upper() for t in req.track_classes])
+                             instruction_to_use = raw_instruction.format(TRACK_CLASSES=classes_str)
+                         else:
+                             # Fallback to a default instruction if no classes provided
+                             instruction_to_use = TASK_INSTRUCTIONS.get("complete_default", raw_instruction)
                     else:
                         instruction_to_use = raw_instruction
 
@@ -2273,7 +2281,8 @@ def create_app() -> FastAPI:
                 use_cot_language=p.bool("use_cot_language", True),
                 is_format_caption=p.bool("is_format_caption"),
                 allow_lm_batch=p.bool("allow_lm_batch", True),
-                 track_name=p.str("track_name"),
+                track_name=p.str("track_name"),
+                track_classes=p.get("track_classes"),
                 **kwargs,
             )
 
