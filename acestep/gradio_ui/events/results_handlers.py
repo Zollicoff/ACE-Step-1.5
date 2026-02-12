@@ -617,7 +617,7 @@ def generate_with_progress(
     # Clear lrc_display with empty string - this triggers .change() to clear subtitles
     clear_lrcs = [gr.update(value="", visible=True) for _ in range(8)]
     clear_accordions = [gr.skip() for _ in range(8)]  # Don't change accordion visibility
-    dump_audio = [gr.update(value=None, subtitles=None) for _ in range(8)]
+    dump_audio = [gr.update(value=None, subtitles=None, playback_position=0) for _ in range(8)]
     yield (
         # Audio outputs - just skip, value will be updated in loop
         # Subtitles will be cleared via lrc_display.change()
