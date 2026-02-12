@@ -420,6 +420,23 @@ def send_audio_to_src_with_metadata(audio_file, lm_metadata):
     )
 
 
+def _extract_metadata_for_editing(lm_metadata):
+    """Extract lyrics and caption from lm_metadata for repaint/remix operations.
+    
+    Args:
+        lm_metadata: Metadata dictionary from LM generation (or None)
+    
+    Returns:
+        Tuple of (lyrics, caption) as strings (empty strings if not found)
+    """
+    lyrics = ""
+    caption = ""
+    if lm_metadata and isinstance(lm_metadata, dict):
+        lyrics = lm_metadata.get("lyrics", "")
+        caption = lm_metadata.get("caption", "")
+    return lyrics, caption
+
+
 def send_audio_to_remix(audio_file, lm_metadata):
     """Send generated audio to src_audio and switch mode to Remix.
     Also populate lyrics and caption fields from the generated audio.
@@ -430,12 +447,7 @@ def send_audio_to_remix(audio_file, lm_metadata):
     if audio_file is None:
         return (gr.skip(),) * 4
     
-    # Extract lyrics and caption from lm_metadata if available
-    lyrics = ""
-    caption = ""
-    if lm_metadata and isinstance(lm_metadata, dict):
-        lyrics = lm_metadata.get("lyrics", "")
-        caption = lm_metadata.get("caption", "")
+    lyrics, caption = _extract_metadata_for_editing(lm_metadata)
     
     return (
         audio_file,                       # src_audio
@@ -455,12 +467,7 @@ def send_audio_to_repaint(audio_file, lm_metadata):
     if audio_file is None:
         return (gr.skip(),) * 4
     
-    # Extract lyrics and caption from lm_metadata if available
-    lyrics = ""
-    caption = ""
-    if lm_metadata and isinstance(lm_metadata, dict):
-        lyrics = lm_metadata.get("lyrics", "")
-        caption = lm_metadata.get("caption", "")
+    lyrics, caption = _extract_metadata_for_editing(lm_metadata)
     
     return (
         audio_file,                       # src_audio
