@@ -3,6 +3,7 @@
 from typing import Any, Dict
 
 import torch
+from acestep.mlx_dit.generate import mlx_generate_diffusion
 
 
 class DiffusionMixin:
@@ -29,13 +30,38 @@ class DiffusionMixin:
         encoder_attention_mask_non_cover=None,
         context_latents_non_cover=None,
     ) -> Dict[str, Any]:
-        """Run the diffusion loop using the MLX decoder.
+        """Run the MLX diffusion loop and return generated latents.
 
-        Accepts PyTorch tensors, converts to numpy for MLX, runs the loop,
-        and converts results back to PyTorch tensors.
+        This method accepts the same signature as the handler diffusion path for
+        API compatibility. Attention-mask parameters are intentionally accepted
+        but unused because the MLX generator consumes hidden states/latents only.
+
+        Args:
+            encoder_hidden_states: Prompt conditioning tensor.
+            encoder_attention_mask: Unused; accepted for API compatibility.
+            context_latents: Context/reference latent tensor.
+            src_latents: Source latent tensor used for shape and initialization.
+            seed: Random seed used by MLX diffusion.
+            infer_method: Diffusion method, one of ``"ode"`` or ``"sde"``.
+            shift: Timestep shift value.
+            timesteps: Optional iterable or tensor-like custom timesteps.
+            audio_cover_strength: Blend factor for cover conditioning.
+            encoder_hidden_states_non_cover: Optional non-cover conditioning tensor.
+            encoder_attention_mask_non_cover: Unused; accepted for API compatibility.
+            context_latents_non_cover: Optional non-cover context latent tensor.
+
+        Returns:
+            Dict[str, Any]: ``{"target_latents": torch.Tensor, "time_costs": dict}``.
+
+        Raises:
+            AttributeError: If required host attributes are missing.
+            ValueError: If infer method is unsupported or batch dimensions mismatch.
+            TypeError: If ``timesteps`` is neither iterable nor tensor-like.
         """
         import numpy as np
-        from acestep.mlx_dit.generate import mlx_generate_diffusion
+
+        # Kept for API compatibility with non-MLX diffusion path.
+        _ = encoder_attention_mask, encoder_attention_mask_non_cover
 
         for required_attr in ("mlx_decoder", "device", "dtype"):
             if not hasattr(self, required_attr):

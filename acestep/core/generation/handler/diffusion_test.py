@@ -48,7 +48,7 @@ class DiffusionMixinTests(unittest.TestCase):
             self.assertEqual(kwargs["context_latents_non_cover_np"].dtype, np.float32)
             return {"target_latents": fake_target, "time_costs": {"diffusion_time_cost": 1.2}}
 
-        with patch("acestep.mlx_dit.generate.mlx_generate_diffusion", side_effect=_fake_generate):
+        with patch("acestep.core.generation.handler.diffusion.mlx_generate_diffusion", side_effect=_fake_generate):
             result = host._mlx_run_diffusion(
                 encoder_hidden_states=encoder_hidden_states,
                 encoder_attention_mask=encoder_attention_mask,
@@ -85,7 +85,7 @@ class DiffusionMixinTests(unittest.TestCase):
             self.assertIsNone(kwargs["context_latents_non_cover_np"])
             return {"target_latents": np.zeros((1, 2, 3), dtype=np.float32), "time_costs": {}}
 
-        with patch("acestep.mlx_dit.generate.mlx_generate_diffusion", side_effect=_fake_generate):
+        with patch("acestep.core.generation.handler.diffusion.mlx_generate_diffusion", side_effect=_fake_generate):
             result = host._mlx_run_diffusion(
                 encoder_hidden_states=encoder_hidden_states,
                 encoder_attention_mask=encoder_attention_mask,
