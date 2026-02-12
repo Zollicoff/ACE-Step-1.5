@@ -47,9 +47,13 @@ def load_lora(self, lora_path: str) -> str:
             logger.info("Restored base decoder before loading new LoRA")
 
         logger.info(f"Loading LoRA adapter from {lora_path}")
+        # autocast_adapter_dtype=False ensures adapter uses same dtype as base model
+        # This prevents PEFT from casting adapters to float32, which would cause
+        # severe performance degradation when base model uses bfloat16/float16
         self.model.decoder = PeftModel.from_pretrained(
             self.model.decoder, lora_path, is_trainable=False, autocast_adapter_dtype=False
         )
+        # Move to device and dtype (consistent with base model which was loaded with torch_dtype=self.dtype)
         self.model.decoder = self.model.decoder.to(self.device).to(self.dtype)
         self.model.decoder.eval()
 
