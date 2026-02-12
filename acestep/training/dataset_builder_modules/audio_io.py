@@ -53,7 +53,7 @@ def get_audio_duration(audio_path: str) -> int:
         decoder = AudioDecoder(audio_path)
         return int(decoder.metadata.duration_seconds)
     except ImportError:
-        logger.debug(f"torchcodec not available (expected on ROCM/Intel platforms), using soundfile fallback")
+        logger.debug("torchcodec not available (expected on ROCM/Intel platforms), using soundfile fallback")
     except Exception as e:
         logger.debug(f"torchcodec failed for {audio_path}: {e}, trying soundfile")
     # Fallback: soundfile (fast for wav/flac/ogg, works on all platforms)
