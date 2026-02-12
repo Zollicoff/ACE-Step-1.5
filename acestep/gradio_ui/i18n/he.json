@@ -193,6 +193,8 @@
     "cover_strength_info": "שליטה בכמות צעדי הניקוי מרעש המשתמשים במצב כיסוי",
     "remix_strength_label": "חוזק רמיקס",
     "remix_strength_info": "שליטה בכמה הרמיקס סוטה מהאודיו המקורי (נמוך = קרוב יותר למקור)",
+    "cover_noise_strength_label": "חוזק כיסוי",
+    "cover_noise_strength_info": "אתחול רעש מאודיו מקור (0 = רעש טהור/ללא כיסוי, 1 = הכי קרוב לאודיו המקורי)",
     "score_sensitivity_label": "רגישות ציון איכות",
     "score_sensitivity_info": "נמוך יותר = רגיש יותר (ברירת מחדל: 1.0)",
     "think_label": "חשיבה (Think)",

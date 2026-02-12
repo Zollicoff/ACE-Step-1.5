@@ -174,6 +174,7 @@ def load_metadata(file_obj, llm_handler=None):
         use_cot_caption = metadata.get('use_cot_caption', True)
         use_cot_language = metadata.get('use_cot_language', True)
         audio_cover_strength = metadata.get('audio_cover_strength', 1.0)
+        cover_noise_strength = metadata.get('cover_noise_strength', 0.0)
         think = metadata.get('thinking', True)  # Fixed: read 'thinking' not 'think'
         # If LM not initialized, force think to False and warn
         lm_ok = llm_handler.llm_initialized if llm_handler else False
@@ -201,7 +202,7 @@ def load_metadata(file_obj, llm_handler=None):
             custom_timesteps,  # Added: custom_timesteps (between infer_method and audio_format)
             audio_format, lm_temperature, lm_cfg_scale, lm_top_k, lm_top_p, lm_negative_prompt,
             use_cot_metas, use_cot_caption, use_cot_language, audio_cover_strength,
-            think, audio_codes, repainting_start, repainting_end,
+            cover_noise_strength, think, audio_codes, repainting_start, repainting_end,
             track_name, complete_track_classes, instrumental,
             True  # Set is_format_caption to True when loading from file
         )
@@ -1068,6 +1069,9 @@ def handle_generation_mode_change(mode: str, llm_handler=None):
         strength_info = t("generation.cover_strength_info")
     strength_update = gr.update(visible=show_strength, label=strength_label, info=strength_info)
 
+    # Cover noise strength: only visible in Remix mode
+    cover_noise_update = gr.update(visible=is_cover)
+
     # Think checkbox: requires LLM initialization AND not in Remix/Repaint mode
     lm_initialized = llm_handler.llm_initialized if llm_handler else False
     think_interactive = lm_initialized and not (is_cover or is_repaint)
@@ -1113,6 +1117,7 @@ def handle_generation_mode_change(mode: str, llm_handler=None):
         gr.update(visible=not_simple),            # load_file_col (Column)
         gr.update(visible=not_simple),            # load_file (UploadButton)
         strength_update,                          # audio_cover_strength
+        cover_noise_update,                       # cover_noise_strength
     )
 
 

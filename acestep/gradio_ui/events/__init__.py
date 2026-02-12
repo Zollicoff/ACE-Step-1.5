@@ -351,6 +351,7 @@ def setup_event_handlers(demo, dit_handler, llm_handler, dataset_handler, datase
             generation_section["load_file_col"],
             generation_section["load_file"],
             generation_section["audio_cover_strength"],
+            generation_section["cover_noise_strength"],
         ]
     )
     
@@ -441,6 +442,7 @@ def setup_event_handlers(demo, dit_handler, llm_handler, dataset_handler, datase
             generation_section["use_cot_caption"],
             generation_section["use_cot_language"],
             generation_section["audio_cover_strength"],
+            generation_section["cover_noise_strength"],
             generation_section["think_checkbox"],
             generation_section["text2music_audio_code_string"],
             generation_section["repainting_start"],
@@ -659,6 +661,7 @@ def setup_event_handlers(demo, dit_handler, llm_handler, dataset_handler, datase
             generation_section["repainting_end"],
             generation_section["instruction_display_gen"],
             generation_section["audio_cover_strength"],
+            generation_section["cover_noise_strength"],
             generation_section["task_type"],
             generation_section["use_adg"],
             generation_section["cfg_interval_start"],
@@ -851,6 +854,7 @@ def setup_event_handlers(demo, dit_handler, llm_handler, dataset_handler, datase
             generation_section["repainting_end"],
             generation_section["instruction_display_gen"],
             generation_section["audio_cover_strength"],
+            generation_section["cover_noise_strength"],
             generation_section["task_type"],
             generation_section["use_adg"],
             generation_section["cfg_interval_start"],

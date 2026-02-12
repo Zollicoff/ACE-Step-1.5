@@ -641,6 +641,14 @@ def create_generation_tab_section(dit_handler, llm_handler, init_params=None, la
             visible=True,
         )
 
+        # --- Cover Strength slider (only visible in Remix mode) ---
+        cover_noise_strength = gr.Slider(
+            minimum=0.0, maximum=1.0, value=0.0, step=0.01,
+            label=t("generation.cover_noise_strength_label"),
+            info=t("generation.cover_noise_strength_info"),
+            visible=False,
+        )
+
         # --- Custom Mode: Reference Audio | (Caption + Enhance) | (Lyrics + Instrumental + Enhance) | 🎲 ---
         with gr.Group(visible=True) as custom_mode_group:
             with gr.Row(equal_height=True):
@@ -763,6 +771,7 @@ def create_generation_tab_section(dit_handler, llm_handler, init_params=None, la
         "transcribe_btn": transcribe_btn,
         "text2music_audio_codes_group": text2music_audio_codes_group,
         "audio_cover_strength": audio_cover_strength,
+        "cover_noise_strength": cover_noise_strength,
         "track_name": track_name,
         "complete_track_classes": complete_track_classes,
         "repainting_group": repainting_group,

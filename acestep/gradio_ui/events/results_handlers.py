@@ -454,7 +454,7 @@ def generate_with_progress(
     inference_steps, guidance_scale, random_seed_checkbox, seed,
     reference_audio, audio_duration, batch_size_input, src_audio,
     text2music_audio_code_string, repainting_start, repainting_end,
-    instruction_display_gen, audio_cover_strength, task_type,
+    instruction_display_gen, audio_cover_strength, cover_noise_strength, task_type,
     use_adg, cfg_interval_start, cfg_interval_end, shift, infer_method, custom_timesteps, audio_format, lm_temperature,
     think_checkbox, lm_cfg_scale, lm_top_k, lm_top_p, lm_negative_prompt,
     use_cot_metas, use_cot_caption, use_cot_language, is_format_caption,
@@ -542,6 +542,7 @@ def generate_with_progress(
         repainting_start=repainting_start,
         repainting_end=repainting_end,
         audio_cover_strength=audio_cover_strength,
+        cover_noise_strength=cover_noise_strength,
         thinking=think_checkbox,
         lm_temperature=lm_temperature,
         lm_cfg_scale=lm_cfg_scale,
@@ -1410,7 +1411,7 @@ def capture_current_params(
     inference_steps, guidance_scale, random_seed_checkbox, seed,
     reference_audio, audio_duration, batch_size_input, src_audio,
     text2music_audio_code_string, repainting_start, repainting_end,
-    instruction_display_gen, audio_cover_strength, task_type,
+    instruction_display_gen, audio_cover_strength, cover_noise_strength, task_type,
     use_adg, cfg_interval_start, cfg_interval_end, shift, infer_method, custom_timesteps, audio_format, lm_temperature,
     think_checkbox, lm_cfg_scale, lm_top_k, lm_top_p, lm_negative_prompt,
     use_cot_metas, use_cot_caption, use_cot_language,
@@ -1447,6 +1448,7 @@ def capture_current_params(
         "repainting_end": repainting_end,
         "instruction_display_gen": instruction_display_gen,
         "audio_cover_strength": audio_cover_strength,
+        "cover_noise_strength": cover_noise_strength,
         "task_type": task_type,
         "use_adg": use_adg,
         "cfg_interval_start": cfg_interval_start,
@@ -1487,7 +1489,7 @@ def generate_with_batch_management(
     inference_steps, guidance_scale, random_seed_checkbox, seed,
     reference_audio, audio_duration, batch_size_input, src_audio,
     text2music_audio_code_string, repainting_start, repainting_end,
-    instruction_display_gen, audio_cover_strength, task_type,
+    instruction_display_gen, audio_cover_strength, cover_noise_strength, task_type,
     use_adg, cfg_interval_start, cfg_interval_end, shift, infer_method, custom_timesteps, audio_format, lm_temperature,
     think_checkbox, lm_cfg_scale, lm_top_k, lm_top_p, lm_negative_prompt,
     use_cot_metas, use_cot_caption, use_cot_language, is_format_caption,
@@ -1522,7 +1524,7 @@ def generate_with_batch_management(
         inference_steps, guidance_scale, random_seed_checkbox, seed,
         reference_audio, audio_duration, batch_size_input, src_audio,
         text2music_audio_code_string, repainting_start, repainting_end,
-        instruction_display_gen, audio_cover_strength, task_type,
+        instruction_display_gen, audio_cover_strength, cover_noise_strength, task_type,
         use_adg, cfg_interval_start, cfg_interval_end, shift, infer_method, custom_timesteps, audio_format, lm_temperature,
         think_checkbox, lm_cfg_scale, lm_top_k, lm_top_p, lm_negative_prompt,
         use_cot_metas, use_cot_caption, use_cot_language, is_format_caption,
@@ -1607,6 +1609,7 @@ def generate_with_batch_management(
         "repainting_end": repainting_end,
         "instruction_display_gen": instruction_display_gen,
         "audio_cover_strength": audio_cover_strength,
+        "cover_noise_strength": cover_noise_strength,
         "task_type": task_type,
         "use_adg": use_adg,
         "cfg_interval_start": cfg_interval_start,
@@ -1793,6 +1796,7 @@ def generate_next_batch_background(
         params.setdefault("repainting_end", -1)
         params.setdefault("instruction_display_gen", "")
         params.setdefault("audio_cover_strength", 1.0)
+        params.setdefault("cover_noise_strength", 0.0)
         params.setdefault("task_type", "text2music")
         params.setdefault("use_adg", False)
         params.setdefault("cfg_interval_start", 0.0)
@@ -1849,6 +1853,7 @@ def generate_next_batch_background(
             repainting_end=params.get("repainting_end"),
             instruction_display_gen=params.get("instruction_display_gen"),
             audio_cover_strength=params.get("audio_cover_strength"),
+            cover_noise_strength=params.get("cover_noise_strength", 0.0),
             task_type=params.get("task_type"),
             use_adg=params.get("use_adg"),
             cfg_interval_start=params.get("cfg_interval_start"),
