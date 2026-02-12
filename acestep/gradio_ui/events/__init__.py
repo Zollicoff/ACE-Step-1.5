@@ -1272,11 +1272,12 @@ def setup_training_event_handlers(demo, dit_handler, llm_handler, training_secti
     
     # Preprocess dataset to tensor files
     training_section["preprocess_btn"].click(
-        fn=lambda output_dir, state: train_h.preprocess_dataset(
-            output_dir, dit_handler, state
+        fn=lambda output_dir, mode, state: train_h.preprocess_dataset(
+            output_dir, mode, dit_handler, state
         ),
         inputs=[
             training_section["preprocess_output_dir"],
+            training_section["preprocess_mode"],
             training_section["dataset_builder_state"],
         ],
         outputs=[training_section["preprocess_progress"]]
@@ -1349,4 +1350,93 @@ def setup_training_event_handlers(demo, dit_handler, llm_handler, training_secti
             training_section["lora_output_dir"],
         ],
         outputs=[training_section["export_status"]]
+    )
+    
+    # ========== LoKr Training Tab Handlers ==========
+    
+    # Load preprocessed tensor dataset for LoKr
+    training_section["lokr_load_dataset_btn"].click(
+        fn=train_h.load_training_dataset,
+        inputs=[training_section["lokr_training_tensor_dir"]],
+        outputs=[training_section["lokr_training_dataset_info"]]
+    )
+    
+    # Start LoKr training from preprocessed tensors
+    def lokr_training_wrapper(
+        tensor_dir, ldim, lalpha, factor, decompose_both, use_tucker,
+        use_scalar, weight_decompose, lr, ep, bs, ga, se, sh, sd, od, ts,
+    ):
+        from loguru import logger
+        if not isinstance(ts, dict):
+            ts = {"is_training": False, "should_stop": False}
+        try:
+            for progress, log_msg, plot, state in train_h.start_lokr_training(
+                tensor_dir, dit_handler,
+                ldim, lalpha, factor, decompose_both, use_tucker,
+                use_scalar, weight_decompose,
+                lr, ep, bs, ga, se, sh, sd, od, ts,
+            ):
+                yield progress, log_msg, plot, state
+        except Exception as e:
+            logger.exception("LoKr training wrapper error")
+            yield f"❌ Error: {str(e)}", str(e), None, ts
+    
+    training_section["start_lokr_training_btn"].click(
+        fn=lokr_training_wrapper,
+        inputs=[
+            training_section["lokr_training_tensor_dir"],
+            training_section["lokr_linear_dim"],
+            training_section["lokr_linear_alpha"],
+            training_section["lokr_factor"],
+            training_section["lokr_decompose_both"],
+            training_section["lokr_use_tucker"],
+            training_section["lokr_use_scalar"],
+            training_section["lokr_weight_decompose"],
+            training_section["lokr_learning_rate"],
+            training_section["lokr_train_epochs"],
+            training_section["lokr_train_batch_size"],
+            training_section["lokr_gradient_accumulation"],
+            training_section["lokr_save_every_n_epochs"],
+            training_section["lokr_training_shift"],
+            training_section["lokr_training_seed"],
+            training_section["lokr_output_dir"],
+            training_section["training_state"],
+        ],
+        outputs=[
+            training_section["lokr_training_progress"],
+            training_section["lokr_training_log"],
+            training_section["lokr_training_loss_plot"],
+            training_section["training_state"],
+        ]
+    )
+    
+    # Stop LoKr training (reuses same stop mechanism)
+    training_section["stop_lokr_training_btn"].click(
+        fn=train_h.stop_training,
+        inputs=[training_section["training_state"]],
+        outputs=[
+            training_section["lokr_training_progress"],
+            training_section["training_state"],
+        ]
+    )
+    
+    # Refresh LoKr export epochs
+    training_section["refresh_lokr_export_epochs_btn"].click(
+        fn=train_h.list_lokr_export_epochs,
+        inputs=[training_section["lokr_output_dir"]],
+        outputs=[
+            training_section["lokr_export_epoch"],
+            training_section["lokr_export_status"],
+        ]
+    )
+    
+    # Export LoKr
+    training_section["export_lokr_btn"].click(
+        fn=train_h.export_lokr,
+        inputs=[
+            training_section["lokr_export_path"],
+            training_section["lokr_output_dir"],
+            training_section["lokr_export_epoch"],
+        ],
+        outputs=[training_section["lokr_export_status"]]
     )
