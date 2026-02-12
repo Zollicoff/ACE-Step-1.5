@@ -2357,7 +2357,7 @@ def create_app() -> FastAPI:
                 src_audio_path = _validate_audio_path(str(form.get("ctx_audio_path") or form.get("src_audio_path") or "").strip() or None)
 
             req = _build_request(
-                RequestParser(dict(form)),
+                RequestParser(dict(form_dict)),
                 reference_audio_path=reference_audio_path,
                 src_audio_path=src_audio_path,
             )
