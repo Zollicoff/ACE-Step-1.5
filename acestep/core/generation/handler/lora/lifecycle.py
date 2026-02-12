@@ -47,7 +47,9 @@ def load_lora(self, lora_path: str) -> str:
             logger.info("Restored base decoder before loading new LoRA")
 
         logger.info(f"Loading LoRA adapter from {lora_path}")
-        self.model.decoder = PeftModel.from_pretrained(self.model.decoder, lora_path, is_trainable=False)
+        self.model.decoder = PeftModel.from_pretrained(
+            self.model.decoder, lora_path, is_trainable=False, autocast_adapter_dtype=False
+        )
         self.model.decoder = self.model.decoder.to(self.device).to(self.dtype)
         self.model.decoder.eval()
 

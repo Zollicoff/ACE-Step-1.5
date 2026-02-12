@@ -267,7 +267,7 @@ def load_lora_weights(
         
         # Load PEFT adapter
         peft_config = PeftConfig.from_pretrained(lora_path)
-        model.decoder = PeftModel.from_pretrained(model.decoder, lora_path)
+        model.decoder = PeftModel.from_pretrained(model.decoder, lora_path, autocast_adapter_dtype=False)
         logger.info(f"LoRA adapter loaded from {lora_path}")
     
     elif lora_path.endswith('.pt'):
