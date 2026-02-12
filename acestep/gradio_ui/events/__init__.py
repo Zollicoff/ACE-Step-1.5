@@ -94,6 +94,8 @@ def setup_event_handlers(demo, dit_handler, llm_handler, dataset_handler, datase
             # GPU-config-aware limits (updated after initialization)
             generation_section["audio_duration"],
             generation_section["batch_size_input"],
+            # Think checkbox: enable if LLM initialized
+            generation_section["think_checkbox"],
         ]
     )
     
@@ -170,11 +172,32 @@ def setup_event_handlers(demo, dit_handler, llm_handler, dataset_handler, datase
         ]
     )
     
-    # ========== Audio Conversion ==========
+    # ========== Audio Conversion (LM Codes Hints accordion in Custom mode) ==========
     generation_section["convert_src_to_codes_btn"].click(
         fn=lambda src: gen_h.convert_src_audio_to_codes_wrapper(dit_handler, src),
-        inputs=[generation_section["src_audio"]],
+        inputs=[generation_section["lm_codes_audio_upload"]],
         outputs=[generation_section["text2music_audio_code_string"]]
+    )
+    
+    # ========== Analyze Source Audio (Remix/Repaint: convert to codes + transcribe) ==========
+    generation_section["analyze_btn"].click(
+        fn=lambda src, debug: gen_h.analyze_src_audio(dit_handler, llm_handler, src, debug),
+        inputs=[
+            generation_section["src_audio"],
+            generation_section["constrained_decoding_debug"],
+        ],
+        outputs=[
+            generation_section["text2music_audio_code_string"],
+            results_section["status_output"],
+            generation_section["captions"],
+            generation_section["lyrics"],
+            generation_section["bpm"],
+            generation_section["audio_duration"],
+            generation_section["key_scale"],
+            generation_section["vocal_language"],
+            generation_section["time_signature"],
+            results_section["is_format_caption_state"],
+        ]
     )
     
     # ========== Instruction UI Updates ==========
@@ -185,7 +208,6 @@ def setup_event_handlers(demo, dit_handler, llm_handler, dataset_handler, datase
                 generation_section["task_type"],
                 generation_section["track_name"],
                 generation_section["complete_track_classes"],
-                generation_section["text2music_audio_code_string"],
                 generation_section["init_llm_checkbox"],
                 generation_section["reference_audio"],
             ],
@@ -195,7 +217,6 @@ def setup_event_handlers(demo, dit_handler, llm_handler, dataset_handler, datase
                 generation_section["complete_track_classes"],
                 generation_section["audio_cover_strength"],
                 generation_section["repainting_group"],
-                generation_section["text2music_audio_codes_group"],
             ]
         )
     
@@ -254,25 +275,23 @@ def setup_event_handlers(demo, dit_handler, llm_handler, dataset_handler, datase
             outputs=[results_section["is_format_caption_state"]]
         )
     
-    # ========== Audio Uploads Accordion ==========
-    for trigger in [generation_section["reference_audio"], generation_section["src_audio"]]:
-        trigger.change(
-            fn=gen_h.update_audio_uploads_accordion,
-            inputs=[generation_section["reference_audio"], generation_section["src_audio"]],
-            outputs=[generation_section["audio_uploads_accordion"]]
-        )
-    
     # ========== Instrumental Checkbox ==========
     generation_section["instrumental_checkbox"].change(
         fn=gen_h.handle_instrumental_checkbox,
-        inputs=[generation_section["instrumental_checkbox"], generation_section["lyrics"]],
-        outputs=[generation_section["lyrics"]]
+        inputs=[
+            generation_section["instrumental_checkbox"],
+            generation_section["lyrics"],
+            generation_section["lyrics_before_instrumental"],
+        ],
+        outputs=[
+            generation_section["lyrics"],
+            generation_section["lyrics_before_instrumental"],
+        ]
     )
     
-    # ========== Format Button ==========
-    # Note: cfg_scale and negative_prompt are not supported in format mode
-    generation_section["format_btn"].click(
-        fn=lambda caption, lyrics, bpm, duration, key_scale, time_sig, temp, top_k, top_p, debug: gen_h.handle_format_sample(
+    # ========== Format Caption Button ==========
+    generation_section["format_caption_btn"].click(
+        fn=lambda caption, lyrics, bpm, duration, key_scale, time_sig, temp, top_k, top_p, debug: gen_h.handle_format_caption(
             llm_handler, caption, lyrics, bpm, duration, key_scale, time_sig, temp, top_k, top_p, debug
         ),
         inputs=[
@@ -289,6 +308,34 @@ def setup_event_handlers(demo, dit_handler, llm_handler, dataset_handler, datase
         ],
         outputs=[
             generation_section["captions"],
+            generation_section["bpm"],
+            generation_section["audio_duration"],
+            generation_section["key_scale"],
+            generation_section["vocal_language"],
+            generation_section["time_signature"],
+            results_section["is_format_caption_state"],
+            results_section["status_output"],
+        ]
+    )
+    
+    # ========== Format Lyrics Button ==========
+    generation_section["format_lyrics_btn"].click(
+        fn=lambda caption, lyrics, bpm, duration, key_scale, time_sig, temp, top_k, top_p, debug: gen_h.handle_format_lyrics(
+            llm_handler, caption, lyrics, bpm, duration, key_scale, time_sig, temp, top_k, top_p, debug
+        ),
+        inputs=[
+            generation_section["captions"],
+            generation_section["lyrics"],
+            generation_section["bpm"],
+            generation_section["audio_duration"],
+            generation_section["key_scale"],
+            generation_section["time_signature"],
+            generation_section["lm_temperature"],
+            generation_section["lm_top_k"],
+            generation_section["lm_top_p"],
+            generation_section["constrained_decoding_debug"],
+        ],
+        outputs=[
             generation_section["lyrics"],
             generation_section["bpm"],
             generation_section["audio_duration"],
@@ -302,21 +349,25 @@ def setup_event_handlers(demo, dit_handler, llm_handler, dataset_handler, datase
     
     # ========== Generation Mode Change ==========
     generation_section["generation_mode"].change(
-        fn=gen_h.handle_generation_mode_change,
+        fn=lambda mode: gen_h.handle_generation_mode_change(mode, llm_handler),
         inputs=[generation_section["generation_mode"]],
         outputs=[
             generation_section["simple_mode_group"],
-            generation_section["caption_accordion"],
-            generation_section["lyrics_accordion"],
+            generation_section["custom_mode_group"],
             generation_section["generate_btn"],
             generation_section["simple_sample_created"],
             generation_section["optional_params_accordion"],
             generation_section["task_type"],
-            generation_section["audio_uploads_accordion"],
+            generation_section["src_audio_row"],
             generation_section["repainting_group"],
             generation_section["text2music_audio_codes_group"],
             generation_section["track_name"],
             generation_section["complete_track_classes"],
+            generation_section["generate_btn_row"],
+            generation_section["generation_mode"],
+            generation_section["results_wrapper"],
+            generation_section["think_checkbox"],
+            generation_section["load_file_col"],
         ]
     )
     
@@ -364,8 +415,6 @@ def setup_event_handlers(demo, dit_handler, llm_handler, dataset_handler, datase
             generation_section["simple_vocal_language"],
             generation_section["time_signature"],
             generation_section["instrumental_checkbox"],
-            generation_section["caption_accordion"],
-            generation_section["lyrics_accordion"],
             generation_section["generate_btn"],
             generation_section["simple_sample_created"],
             generation_section["think_checkbox"],
@@ -498,25 +547,28 @@ def setup_event_handlers(demo, dit_handler, llm_handler, dataset_handler, datase
             ],
         js=download_existing_js  # Run the above JS
     )
-    # ========== Send to SRC Handlers ==========
+    # ========== Send to Remix / Repaint Handlers ==========
     for btn_idx in range(1, 9):
-        results_section[f"send_to_src_btn_{btn_idx}"].click(
-            fn=res_h.send_audio_to_src_with_metadata,
+        results_section[f"send_to_remix_btn_{btn_idx}"].click(
+            fn=res_h.send_audio_to_remix,
             inputs=[
                 results_section[f"generated_audio_{btn_idx}"],
                 results_section["lm_metadata_state"]
             ],
             outputs=[
                 generation_section["src_audio"],
-                generation_section["bpm"],
-                generation_section["captions"],
-                generation_section["lyrics"],
-                generation_section["audio_duration"],
-                generation_section["key_scale"],
-                generation_section["vocal_language"],
-                generation_section["time_signature"],
-                results_section["is_format_caption_state"],
-                generation_section["audio_uploads_accordion"]
+                generation_section["generation_mode"],
+            ]
+        )
+        results_section[f"send_to_repaint_btn_{btn_idx}"].click(
+            fn=res_h.send_audio_to_repaint,
+            inputs=[
+                results_section[f"generated_audio_{btn_idx}"],
+                results_section["lm_metadata_state"]
+            ],
+            outputs=[
+                generation_section["src_audio"],
+                generation_section["generation_mode"],
             ]
         )
     
@@ -565,6 +617,25 @@ def setup_event_handlers(demo, dit_handler, llm_handler, dataset_handler, datase
                 # Audio subtitles are now updated via lrc_display.change() event.
                 results_section["batch_queue"]
             ]
+        )
+    
+    # ========== Convert To Codes Handlers ==========
+    for btn_idx in range(1, 9):
+        results_section[f"convert_to_codes_btn_{btn_idx}"].click(
+            fn=lambda audio: res_h.convert_result_audio_to_codes(dit_handler, audio),
+            inputs=[results_section[f"generated_audio_{btn_idx}"]],
+            outputs=[
+                results_section[f"codes_display_{btn_idx}"],
+                results_section[f"details_accordion_{btn_idx}"],
+            ]
+        )
+    
+    # ========== Save LRC Handlers ==========
+    for btn_idx in range(1, 9):
+        results_section[f"save_lrc_btn_{btn_idx}"].click(
+            fn=res_h.save_lrc_to_file,
+            inputs=[results_section[f"lrc_display_{btn_idx}"]],
+            outputs=[results_section[f"lrc_download_file_{btn_idx}"]]
         )
     
     def generation_wrapper(*args):

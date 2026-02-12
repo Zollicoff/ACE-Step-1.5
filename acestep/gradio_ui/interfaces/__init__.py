@@ -8,9 +8,11 @@ Layout:
   ├──────────────────────────────────────┤
   │  Dataset Explorer (hidden accordion) │
   ├──────────────────────────────────────┤
-  │  Service Configuration (accordion)   │
-  ├──────────────────────────────────────┤
-  │  Advanced Settings (accordion, ▼)    │
+  │  Settings (accordion, collapsed)     │
+  │   ├─ Service Configuration           │
+  │   ├─ DiT Parameters                  │
+  │   ├─ LM Parameters                   │
+  │   └─ Output / Automation             │
   ├──────────────────────────────────────┤
   │  ┌─ Generation ─┬─ Training ──────┐  │
   │  │  Mode Radio   │  Dataset/LoRA  │  │
@@ -23,7 +25,6 @@ import gradio as gr
 from acestep.gradio_ui.i18n import get_i18n, t
 from acestep.gradio_ui.interfaces.dataset import create_dataset_section
 from acestep.gradio_ui.interfaces.generation import (
-    create_service_config_section,
     create_advanced_settings_section,
     create_generation_tab_section,
 )
@@ -86,6 +87,34 @@ def create_gradio_interface(dit_handler, llm_handler, dataset_handler, init_para
         .component-wrapper > .timestamps {
             transform: translateY(15px);
         }
+        /* Equal-height row for instrumental checkbox + enhance lyrics button */
+        .instrumental-row {
+            align-items: stretch !important;
+        }
+        .instrumental-row > div {
+            display: flex !important;
+            align-items: stretch !important;
+        }
+        .instrumental-row > div > div {
+            flex: 1;
+            display: flex;
+            align-items: center;
+        }
+        .instrumental-row button {
+            height: 100% !important;
+            min-height: 42px;
+        }
+        /* Ensure buttons in instrumental-row fill height */
+        .instrumental-row > div > button {
+            height: 100% !important;
+            min-height: 42px;
+        }
+        /* Two-line icon buttons: emoji on top, text below */
+        .icon-btn-wrap button, .icon-btn-wrap > button {
+            word-spacing: 100vw;
+            text-align: center;
+            line-height: 1.4;
+        }
         """,
     ) as demo:
         
@@ -100,16 +129,9 @@ def create_gradio_interface(dit_handler, llm_handler, dataset_handler, init_para
         dataset_section = create_dataset_section(dataset_handler)
         
         # ═══════════════════════════════════════════
-        # Top-level: Service Configuration (global)
+        # Top-level: Settings (contains Service Config + Advanced Settings)
         # ═══════════════════════════════════════════
-        service_section = create_service_config_section(
-            dit_handler, llm_handler, init_params=init_params, language=language
-        )
-        
-        # ═══════════════════════════════════════════
-        # Top-level: Advanced Settings (global, collapsed)
-        # ═══════════════════════════════════════════
-        advanced_section = create_advanced_settings_section(
+        settings_section = create_advanced_settings_section(
             dit_handler, llm_handler, init_params=init_params, language=language
         )
         
@@ -123,8 +145,11 @@ def create_gradio_interface(dit_handler, llm_handler, dataset_handler, init_para
                     dit_handler, llm_handler, init_params=init_params, language=language
                 )
                 
-                # Results Section (inside the Generation tab)
-                results_section = create_results_section(dit_handler)
+                # Results Section (inside the Generation tab, wrapped for visibility control)
+                with gr.Column(visible=True) as results_wrapper:
+                    results_section = create_results_section(dit_handler)
+                # Store the wrapper in gen_section so event handlers can toggle it
+                gen_section["results_wrapper"] = results_wrapper
             
             # --- Training Tab ---
             with gr.Tab(t("training.tab_title"), visible=not service_mode):
@@ -136,10 +161,9 @@ def create_gradio_interface(dit_handler, llm_handler, dataset_handler, init_para
         # Merge all generation-related component dicts for event wiring
         # ═══════════════════════════════════════════
         # The event handlers expect a single "generation_section" dict with all
-        # components from service config, advanced settings, and generation tab.
+        # components from settings (service config + advanced) and generation tab.
         generation_section = {}
-        generation_section.update(service_section)
-        generation_section.update(advanced_section)
+        generation_section.update(settings_section)
         generation_section.update(gen_section)
         
         # Connect event handlers

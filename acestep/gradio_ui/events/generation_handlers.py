@@ -554,6 +554,9 @@ def init_service_wrapper(dit_handler, llm_handler, checkpoint, config_path, devi
     else:
         status += ", LM not available for this GPU tier"
     
+    # Think checkbox: interactive only when LLM is initialized
+    think_interactive = lm_actually_initialized
+    
     return (
         status, 
         gr.update(interactive=enable), 
@@ -562,6 +565,8 @@ def init_service_wrapper(dit_handler, llm_handler, checkpoint, config_path, devi
         # GPU-config-aware UI updates
         duration_update,
         batch_update,
+        # Think checkbox
+        gr.update(interactive=think_interactive),
     )
 
 
@@ -754,12 +759,77 @@ def convert_src_audio_to_codes_wrapper(dit_handler, src_audio):
     return codes_string
 
 
+def analyze_src_audio(dit_handler, llm_handler, src_audio, constrained_decoding_debug=False):
+    """Analyze source audio: convert to codes, then transcribe to caption/lyrics/metas.
+
+    This is the combined "Analyze" action for Remix/Repaint modes.
+
+    Args:
+        dit_handler: DiT handler instance
+        llm_handler: LLM handler instance
+        src_audio: Path to source audio file
+        constrained_decoding_debug: Whether to enable debug logging
+
+    Returns:
+        Tuple of (audio_codes, status, caption, lyrics, bpm, duration, keyscale, language, timesignature, is_format_caption)
+    """
+    # 10-item error tuple: (codes, status, caption, lyrics, bpm, duration, key, lang, timesig, is_format)
+    _err = ("", "", "", "", None, None, "", "", "", False)
+
+    # Step 1: Convert audio to codes
+    if not src_audio:
+        gr.Warning("No audio file provided.")
+        return _err
+
+    try:
+        codes_string = dit_handler.convert_src_audio_to_codes(src_audio)
+    except Exception as e:
+        gr.Warning(f"Failed to convert audio to codes: {e}")
+        return _err
+
+    if not codes_string or not codes_string.strip():
+        gr.Warning("Audio conversion produced empty codes.")
+        return _err
+
+    # Step 2: Transcribe codes to caption/lyrics/metas via LLM
+    if not llm_handler.llm_initialized:
+        # Return codes but skip transcription
+        gr.Warning(t("messages.lm_not_initialized"))
+        return (codes_string, t("messages.lm_not_initialized"), "", "", None, None, "", "", "", False)
+
+    result = understand_music(
+        llm_handler=llm_handler,
+        audio_codes=codes_string,
+        use_constrained_decoding=True,
+        constrained_decoding_debug=constrained_decoding_debug,
+    )
+
+    if not result.success:
+        if result.error == "LLM not initialized":
+            return (codes_string, t("messages.lm_not_initialized"), "", "", None, None, "", "", "", False)
+        return (codes_string, result.status_message, "", "", None, None, "", "", "", False)
+
+    clamped_duration = clamp_duration_to_gpu_limit(result.duration, llm_handler)
+
+    return (
+        codes_string,           # text2music_audio_code_string
+        result.status_message,  # status_output
+        result.caption,         # captions
+        result.lyrics,          # lyrics
+        result.bpm,             # bpm
+        clamped_duration,       # audio_duration
+        result.keyscale,        # key_scale
+        result.language,        # vocal_language
+        result.timesignature,   # time_signature
+        True,                   # is_format_caption
+    )
+
+
 def update_instruction_ui(
     dit_handler,
     task_type_value: str, 
     track_name_value: Optional[str], 
     complete_track_classes_value: list, 
-    audio_codes_content: str = "",
     init_llm_checked: bool = False,
     reference_audio=None,
 ) -> tuple:
@@ -792,10 +862,6 @@ def update_instruction_ui(
         audio_cover_strength_info = t("generation.cover_strength_info")
     # Show repainting controls for repaint and lego
     repainting_visible = task_type_value in ["repaint", "lego"]
-    # Show text2music_audio_codes if task is text2music OR if it has content
-    # This allows it to stay visible even if user switches task type but has codes
-    has_audio_codes = audio_codes_content and str(audio_codes_content).strip()
-    text2music_audio_codes_visible = task_type_value == "text2music" or has_audio_codes
     
     return (
         instruction,  # instruction_display_gen
@@ -803,7 +869,6 @@ def update_instruction_ui(
         gr.update(visible=complete_visible),  # complete_track_classes
         gr.update(visible=audio_cover_strength_visible, label=audio_cover_strength_label, info=audio_cover_strength_info),  # audio_cover_strength
         gr.update(visible=repainting_visible),  # repainting_group
-        gr.update(visible=text2music_audio_codes_visible),  # text2music_audio_codes_group
     )
 
 
@@ -876,26 +941,22 @@ def update_audio_uploads_accordion(reference_audio, src_audio):
     return gr.Accordion(open=has_audio)
 
 
-def handle_instrumental_checkbox(instrumental_checked, current_lyrics):
+def handle_instrumental_checkbox(instrumental_checked, current_lyrics, saved_lyrics):
     """
     Handle instrumental checkbox changes.
-    When checked: if no lyrics, fill with [Instrumental]
-    When unchecked: if lyrics is [Instrumental], clear it
+    When checked: save current lyrics to state, replace with [Instrumental].
+    When unchecked: restore saved lyrics from state.
+
+    Returns:
+        Tuple of (lyrics, lyrics_before_instrumental_state)
     """
     if instrumental_checked:
-        # If checked and no lyrics, fill with [Instrumental]
-        if not current_lyrics or not current_lyrics.strip():
-            return "[Instrumental]"
-        else:
-            # Has lyrics, don't change
-            return current_lyrics
+        # Save current lyrics before replacing
+        return "[Instrumental]", current_lyrics
     else:
-        # If unchecked and lyrics is exactly [Instrumental], clear it
-        if current_lyrics and current_lyrics.strip() == "[Instrumental]":
-            return ""
-        else:
-            # Has other lyrics, don't change
-            return current_lyrics
+        # Restore saved lyrics (or empty if none saved)
+        restored = saved_lyrics if saved_lyrics else ""
+        return restored, ""
 
 
 def handle_simple_instrumental_change(is_instrumental: bool):
@@ -952,65 +1013,54 @@ def update_audio_components_visibility(batch_size):
     return updates_row1 + updates_row2
 
 
-def handle_generation_mode_change(mode: str):
+def handle_generation_mode_change(mode: str, llm_handler=None):
     """
     Handle unified generation mode change.
     
-    The mode parameter is one of: "Simple", "Custom", "Cover", "Repaint",
+    The mode parameter is one of: "Simple", "Custom", "Remix", "Repaint",
     "Extract", "Lego", "Complete".
     
-    Each mode maps to a task_type and controls visibility of UI elements:
-    
-    - Simple: Show simple query input, collapse caption/lyrics, disable generate until sample created
-    - Custom: Full caption + lyrics + optional params, no source audio required
-    - Cover: Reference audio + source audio prominent, cover strength slider
-    - Repaint: Source audio + repainting start/end controls
-    - Extract/Lego/Complete: Track name selector, source audio, specialized controls
+    Layout per mode:
+    - Simple: ONLY show simple_mode_group; hide everything else.
+    - Custom: Show custom_mode_group (3-col: ref audio | caption | lyrics),
+      optional params (collapsed), generate button row.
+    - Remix: Show custom_mode_group + src audio + audio codes.
+    - Repaint: Show custom_mode_group + src audio + repainting controls.
+    - Extract/Lego: Show custom_mode_group + audio uploads + track name + repainting (lego).
+    - Complete: Show custom_mode_group + audio uploads + complete track classes.
     
     Returns:
-        Tuple of updates for:
-        - simple_mode_group (visibility)
-        - caption_accordion (open state)
-        - lyrics_accordion (open state)
-        - generate_btn (interactive state)
-        - simple_sample_created (reset state)
-        - optional_params_accordion (open state)
-        - task_type (value)
-        - audio_uploads_accordion (open state)
-        - repainting_group (visibility)
-        - text2music_audio_codes_group (visibility)
-        - track_name (visibility)
-        - complete_track_classes (visibility)
+        Tuple of 15 updates for UI components (see output list in event wiring).
     """
     # Map mode to task_type
     task_type = MODE_TO_TASK_TYPE.get(mode, "text2music")
     
     is_simple = (mode == "Simple")
     is_custom = (mode == "Custom")
-    is_cover = (mode == "Cover")
+    is_cover = (mode == "Remix")
     is_repaint = (mode == "Repaint")
     is_extract = (mode == "Extract")
     is_lego = (mode == "Lego")
     is_complete = (mode == "Complete")
+    not_simple = not is_simple
     
-    # Simple mode: show simple group, collapse others
-    # Custom mode: full control
-    # Cover/Repaint/Extract/Lego/Complete: show relevant controls
-    
+    # --- Visibility rules ---
     show_simple = is_simple
-    show_caption = not is_simple  # Always show caption for non-simple modes
-    show_lyrics = not is_simple
-    show_optional = is_custom or is_cover  # Optional params most useful for custom/cover
-    generate_interactive = not is_simple  # Disabled in simple until sample created
+    show_custom_group = not_simple  # 3-col layout for all non-simple modes
+    show_generate_row = not_simple
+    generate_interactive = not_simple
     
-    # Audio uploads: open for cover/repaint/extract/lego/complete
-    audio_uploads_open = is_cover or is_repaint or is_extract or is_lego or is_complete
+    # Source audio row (inline, no accordion): for remix/repaint/extract/lego/complete
+    show_src_audio = is_cover or is_repaint or is_extract or is_lego or is_complete
+    
+    # Optional params: visible for all non-simple modes, but always collapsed
+    show_optional = not_simple
     
     # Repainting controls: only for repaint and lego
     show_repainting = is_repaint or is_lego
     
-    # Audio codes: show for custom and cover (LM codes)
-    show_audio_codes = is_custom or is_cover
+    # Audio codes: only visible in Custom mode
+    show_audio_codes = is_custom
     
     # Track name: for lego and extract
     show_track_name = is_lego or is_extract
@@ -1018,19 +1068,49 @@ def handle_generation_mode_change(mode: str):
     # Complete track classes: only for complete
     show_complete_classes = is_complete
     
+    # Think checkbox: requires LLM initialization AND not in Remix/Repaint mode
+    lm_initialized = llm_handler.llm_initialized if llm_handler else False
+    think_interactive = lm_initialized and not (is_cover or is_repaint)
+    # If think is disabled, force value to False for Remix/Repaint
+    if is_cover or is_repaint:
+        think_update = gr.update(interactive=False, value=False)
+    elif not lm_initialized:
+        think_update = gr.update(interactive=False)
+    else:
+        think_update = gr.update(interactive=True)
+    
+    # Dynamic info text per mode
+    mode_descriptions = {
+        "Simple": t("generation.mode_info_simple"),
+        "Custom": t("generation.mode_info_custom"),
+        "Remix": t("generation.mode_info_remix"),
+        "Repaint": t("generation.mode_info_repaint"),
+        "Extract": t("generation.mode_info_extract"),
+        "Lego": t("generation.mode_info_lego"),
+        "Complete": t("generation.mode_info_complete"),
+    }
+    mode_info_text = mode_descriptions.get(mode, "")
+    
+    # Results section: hidden in Simple mode
+    show_results = not_simple
+    
     return (
-        gr.update(visible=show_simple),  # simple_mode_group
-        gr.Accordion(open=show_caption),  # caption_accordion
-        gr.Accordion(open=show_lyrics),  # lyrics_accordion
+        gr.update(visible=show_simple),          # simple_mode_group
+        gr.update(visible=show_custom_group),     # custom_mode_group
         gr.update(interactive=generate_interactive),  # generate_btn
-        False,  # simple_sample_created - reset
-        gr.Accordion(open=show_optional),  # optional_params_accordion
-        gr.update(value=task_type),  # task_type (hidden)
-        gr.Accordion(open=audio_uploads_open),  # audio_uploads_accordion
-        gr.update(visible=show_repainting),  # repainting_group
-        gr.update(visible=show_audio_codes),  # text2music_audio_codes_group
-        gr.update(visible=show_track_name),  # track_name
+        False,                                    # simple_sample_created - reset
+        gr.Accordion(visible=show_optional, open=False),  # optional_params_accordion
+        gr.update(value=task_type),               # task_type (hidden)
+        gr.update(visible=show_src_audio),        # src_audio_row
+        gr.update(visible=show_repainting),       # repainting_group
+        gr.update(visible=show_audio_codes),      # text2music_audio_codes_group
+        gr.update(visible=show_track_name),       # track_name
         gr.update(visible=show_complete_classes),  # complete_track_classes
+        gr.update(visible=show_generate_row),     # generate_btn_row
+        gr.update(info=mode_info_text),           # generation_mode (info text)
+        gr.update(visible=show_results),          # results_wrapper
+        think_update,                             # think_checkbox
+        gr.update(visible=not_simple),            # load_file_col
     )
 
 
@@ -1089,8 +1169,6 @@ def handle_create_sample(
         - simple_vocal_language
         - time_signature
         - instrumental_checkbox
-        - caption_accordion (open)
-        - lyrics_accordion (open)
         - generate_btn (interactive)
         - simple_sample_created (True)
         - think_checkbox (True)
@@ -1111,8 +1189,6 @@ def handle_create_sample(
             gr.update(),  # simple vocal_language - no change
             gr.update(),  # time_signature - no change
             gr.update(),  # instrumental_checkbox - no change
-            gr.update(),  # caption_accordion - no change
-            gr.update(),  # lyrics_accordion - no change
             gr.update(interactive=False),  # generate_btn - keep disabled
             False,  # simple_sample_created - still False
             gr.update(),  # think_checkbox - no change
@@ -1152,8 +1228,6 @@ def handle_create_sample(
             gr.update(),  # simple vocal_language - no change
             gr.update(),  # time_signature - no change
             gr.update(),  # instrumental_checkbox - no change
-            gr.update(),  # caption_accordion - no change
-            gr.update(),  # lyrics_accordion - no change
             gr.update(interactive=False),  # generate_btn - keep disabled
             False,  # simple_sample_created - still False
             gr.update(),  # think_checkbox - no change
@@ -1162,7 +1236,7 @@ def handle_create_sample(
             gr.update(),  # generation_mode - no change (stay in Simple)
         )
     
-    # Success - populate fields
+    # Success - populate fields and auto-switch to Custom mode
     gr.Info(t("messages.sample_created"))
     
     # Clamp duration to GPU memory limit
@@ -1179,8 +1253,6 @@ def handle_create_sample(
         result.language,  # simple vocal_language
         result.timesignature,  # time_signature
         result.instrumental,  # instrumental_checkbox
-        gr.Accordion(open=True),  # caption_accordion - expand
-        gr.Accordion(open=True),  # lyrics_accordion - expand
         gr.update(interactive=True),  # generate_btn - enable
         True,  # simple_sample_created - True
         True,  # think_checkbox - enable thinking
@@ -1313,5 +1385,199 @@ def handle_format_sample(
         result.language,  # vocal_language
         result.timesignature,  # time_signature
         True,  # is_format_caption_state - True (LM-formatted)
+        result.status_message,  # status_output
+    )
+
+
+def handle_format_caption(
+    llm_handler,
+    caption: str,
+    lyrics: str,
+    bpm,
+    audio_duration,
+    key_scale: str,
+    time_signature: str,
+    lm_temperature: float,
+    lm_top_k: int,
+    lm_top_p: float,
+    constrained_decoding_debug: bool = False,
+):
+    """Format only the caption using the LLM. Lyrics are passed through unchanged.
+    
+    Returns:
+        Tuple of updates for:
+        - captions (updated)
+        - bpm
+        - audio_duration
+        - key_scale
+        - vocal_language
+        - time_signature
+        - is_format_caption_state
+        - status_output
+    """
+    if not llm_handler.llm_initialized:
+        gr.Warning(t("messages.lm_not_initialized"))
+        return (
+            gr.update(),  # captions
+            gr.update(),  # bpm
+            gr.update(),  # audio_duration
+            gr.update(),  # key_scale
+            gr.update(),  # vocal_language
+            gr.update(),  # time_signature
+            gr.update(),  # is_format_caption_state
+            t("messages.lm_not_initialized"),  # status_output
+        )
+
+    user_metadata = {}
+    if bpm is not None and bpm > 0:
+        user_metadata['bpm'] = int(bpm)
+    if audio_duration is not None and float(audio_duration) > 0:
+        user_metadata['duration'] = int(audio_duration)
+    if key_scale and key_scale.strip():
+        user_metadata['keyscale'] = key_scale.strip()
+    if time_signature and time_signature.strip():
+        user_metadata['timesignature'] = time_signature.strip()
+    user_metadata_to_pass = user_metadata if user_metadata else None
+
+    top_k_value = None if not lm_top_k or lm_top_k == 0 else int(lm_top_k)
+    top_p_value = None if not lm_top_p or lm_top_p >= 1.0 else lm_top_p
+
+    result = format_sample(
+        llm_handler=llm_handler,
+        caption=caption,
+        lyrics=lyrics,
+        user_metadata=user_metadata_to_pass,
+        temperature=lm_temperature,
+        top_k=top_k_value,
+        top_p=top_p_value,
+        use_constrained_decoding=True,
+        constrained_decoding_debug=constrained_decoding_debug,
+    )
+
+    if not result.success:
+        gr.Warning(result.status_message or t("messages.format_failed"))
+        return (
+            gr.update(),  # captions
+            gr.update(),  # bpm
+            gr.update(),  # audio_duration
+            gr.update(),  # key_scale
+            gr.update(),  # vocal_language
+            gr.update(),  # time_signature
+            gr.update(),  # is_format_caption_state
+            result.status_message or t("messages.format_failed"),  # status_output
+        )
+
+    gr.Info(t("messages.format_success"))
+    clamped_duration = clamp_duration_to_gpu_limit(result.duration, llm_handler)
+    audio_duration_value = clamped_duration if clamped_duration and clamped_duration > 0 else -1
+
+    # Strip surrounding quotes that LLM may add
+    cleaned_caption = result.caption.strip("'\"") if result.caption else result.caption
+
+    return (
+        cleaned_caption,  # captions — updated
+        result.bpm,  # bpm
+        audio_duration_value,  # audio_duration
+        result.keyscale,  # key_scale
+        result.language,  # vocal_language
+        result.timesignature,  # time_signature
+        True,  # is_format_caption_state
+        result.status_message,  # status_output
+    )
+
+
+def handle_format_lyrics(
+    llm_handler,
+    caption: str,
+    lyrics: str,
+    bpm,
+    audio_duration,
+    key_scale: str,
+    time_signature: str,
+    lm_temperature: float,
+    lm_top_k: int,
+    lm_top_p: float,
+    constrained_decoding_debug: bool = False,
+):
+    """Format only the lyrics using the LLM. Caption is passed through unchanged.
+    
+    Returns:
+        Tuple of updates for:
+        - lyrics (updated)
+        - bpm
+        - audio_duration
+        - key_scale
+        - vocal_language
+        - time_signature
+        - is_format_caption_state
+        - status_output
+    """
+    if not llm_handler.llm_initialized:
+        gr.Warning(t("messages.lm_not_initialized"))
+        return (
+            gr.update(),  # lyrics
+            gr.update(),  # bpm
+            gr.update(),  # audio_duration
+            gr.update(),  # key_scale
+            gr.update(),  # vocal_language
+            gr.update(),  # time_signature
+            gr.update(),  # is_format_caption_state
+            t("messages.lm_not_initialized"),  # status_output
+        )
+
+    user_metadata = {}
+    if bpm is not None and bpm > 0:
+        user_metadata['bpm'] = int(bpm)
+    if audio_duration is not None and float(audio_duration) > 0:
+        user_metadata['duration'] = int(audio_duration)
+    if key_scale and key_scale.strip():
+        user_metadata['keyscale'] = key_scale.strip()
+    if time_signature and time_signature.strip():
+        user_metadata['timesignature'] = time_signature.strip()
+    user_metadata_to_pass = user_metadata if user_metadata else None
+
+    top_k_value = None if not lm_top_k or lm_top_k == 0 else int(lm_top_k)
+    top_p_value = None if not lm_top_p or lm_top_p >= 1.0 else lm_top_p
+
+    result = format_sample(
+        llm_handler=llm_handler,
+        caption=caption,
+        lyrics=lyrics,
+        user_metadata=user_metadata_to_pass,
+        temperature=lm_temperature,
+        top_k=top_k_value,
+        top_p=top_p_value,
+        use_constrained_decoding=True,
+        constrained_decoding_debug=constrained_decoding_debug,
+    )
+
+    if not result.success:
+        gr.Warning(result.status_message or t("messages.format_failed"))
+        return (
+            gr.update(),  # lyrics
+            gr.update(),  # bpm
+            gr.update(),  # audio_duration
+            gr.update(),  # key_scale
+            gr.update(),  # vocal_language
+            gr.update(),  # time_signature
+            gr.update(),  # is_format_caption_state
+            result.status_message or t("messages.format_failed"),  # status_output
+        )
+
+    gr.Info(t("messages.format_success"))
+    clamped_duration = clamp_duration_to_gpu_limit(result.duration, llm_handler)
+    audio_duration_value = clamped_duration if clamped_duration and clamped_duration > 0 else -1
+
+    # Strip surrounding quotes that LLM may add
+    cleaned_lyrics = result.lyrics.strip("'\"") if result.lyrics else result.lyrics
+
+    return (
+        cleaned_lyrics,  # lyrics — updated
+        result.bpm,  # bpm
+        audio_duration_value,  # audio_duration
+        result.keyscale,  # key_scale
+        result.language,  # vocal_language
+        result.timesignature,  # time_signature
+        True,  # is_format_caption_state
         result.status_message,  # status_output
     )
