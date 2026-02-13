@@ -195,7 +195,7 @@
     "remix_strength_label": "Remix Strength",
     "remix_strength_info": "Control how much the remix deviates from the source audio (lower = closer to original)",
     "cover_noise_strength_label": "Cover Strength",
-    "cover_noise_strength_info": "Initialize noise from source audio (0 = pure noise/no cover, 1 = closest to original audio)",
+    "cover_noise_strength_info": "Controls melody retention in Remix mode. Recommended: use the SFT model with a value of 0.1–0.25. A small increase restores the melody, but style transfer may require additional prompt tuning. (0 = pure noise/no cover, 1 = closest to original audio)",
     "score_sensitivity_label": "Quality Score Sensitivity",
     "score_sensitivity_info": "Lower = more sensitive (default: 1.0). Adjusts how PMI maps to [0,1]",
     "think_label": "Think",
