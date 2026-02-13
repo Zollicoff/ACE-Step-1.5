@@ -544,6 +544,8 @@ def setup_event_handlers(demo, dit_handler, llm_handler, dataset_handler, datase
             outputs=[
                 generation_section["src_audio"],
                 generation_section["generation_mode"],
+                generation_section["lyrics"],
+                generation_section["captions"],
             ]
         )
         results_section[f"send_to_repaint_btn_{btn_idx}"].click(
@@ -555,6 +557,8 @@ def setup_event_handlers(demo, dit_handler, llm_handler, dataset_handler, datase
             outputs=[
                 generation_section["src_audio"],
                 generation_section["generation_mode"],
+                generation_section["lyrics"],
+                generation_section["captions"],
             ]
         )
     
