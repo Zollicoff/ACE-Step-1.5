@@ -1943,11 +1943,13 @@ class AceStepConditionGenerationModel(AceStepPreTrainedModel):
         
         # Recalculate cover_steps based on actual num_steps
         cover_steps = int(num_steps * audio_cover_strength)
+        _switched_to_non_cover = False
         for step_idx in range(num_steps):
             current_timestep = t_schedule[step_idx].item()
             t_curr_tensor = current_timestep * torch.ones((bsz,), device=device, dtype=dtype)
             
-            if step_idx >= cover_steps:
+            if step_idx >= cover_steps and not _switched_to_non_cover:
+                _switched_to_non_cover = True
                 encoder_hidden_states = encoder_hidden_states_non_cover
                 encoder_attention_mask = encoder_attention_mask_non_cover
                 context_latents = context_latents_non_cover

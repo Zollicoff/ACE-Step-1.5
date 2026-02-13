@@ -31,7 +31,7 @@ def setup_event_handlers(demo, dit_handler, llm_handler, dataset_handler, datase
     
     generation_section["config_path"].change(
         fn=gen_h.update_model_type_settings,
-        inputs=[generation_section["config_path"]],
+        inputs=[generation_section["config_path"], generation_section["generation_mode"]],
         outputs=[
             generation_section["inference_steps"],
             generation_section["guidance_scale"],
@@ -77,6 +77,7 @@ def setup_event_handlers(demo, dit_handler, llm_handler, dataset_handler, datase
             generation_section["compile_model_checkbox"],
             generation_section["quantization_checkbox"],
             generation_section["mlx_dit_checkbox"],
+            generation_section["generation_mode"],  # preserve current mode across init
         ],
         outputs=[
             generation_section["init_status"], 

@@ -26,6 +26,8 @@ _CHECKPOINT_TO_VARIANT: Dict[str, str] = {
     "acestep-v15-turbo": "turbo",
     "acestep-v15-sft": "sft",
     "acestep-v15-base": "base",
+    # SFT variants (base-SFT uses the same model code as SFT)
+    "acestep-v15-base-sft-fix-inst": "sft",
     # Turbo variants all share the turbo model code
     "acestep-v15-turbo-shift1": "turbo",
     "acestep-v15-turbo-shift3": "turbo",

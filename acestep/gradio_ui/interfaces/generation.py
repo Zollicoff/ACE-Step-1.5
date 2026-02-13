@@ -17,7 +17,7 @@ from acestep.constants import (
     MODE_TO_TASK_TYPE,
 )
 from acestep.gradio_ui.i18n import t
-from acestep.gradio_ui.events.generation_handlers import get_ui_control_config
+from acestep.gradio_ui.events.generation_handlers import get_ui_control_config, _is_pure_base_model
 from acestep.gpu_config import get_global_gpu_config, GPUConfig, find_best_lm_model_on_disk, get_gpu_device_name, GPU_TIER_LABELS, GPU_TIER_CHOICES
 
 
@@ -291,7 +291,11 @@ def create_advanced_settings_section(dit_handler, llm_handler, init_params=None,
     service_mode = defaults["service_mode"]
 
     if service_pre_initialized and 'dit_handler' in init_params:
-        _ui_config = get_ui_control_config(init_params['dit_handler'].is_turbo_model())
+        _cfg_path = init_params.get('config_path', '')
+        _ui_config = get_ui_control_config(
+            init_params['dit_handler'].is_turbo_model(),
+            is_pure_base=_is_pure_base_model((_cfg_path or "").lower()),
+        )
     else:
         _ui_config = get_ui_control_config(True)
 
@@ -506,16 +510,17 @@ def create_generation_tab_section(dit_handler, llm_handler, init_params=None, la
     default_batch_size = defaults["default_batch_size"]
 
     # Determine initial mode choices based on model type
+    # Only pure base models (not SFT, not turbo) get extended modes (Extract/Lego/Complete)
     if service_pre_initialized and 'dit_handler' in init_params:
-        is_turbo = init_params['dit_handler'].is_turbo_model()
+        _config_path = init_params.get('config_path', '')
+        is_pure_base = _is_pure_base_model((_config_path or "").lower())
     else:
         available_models = dit_handler.get_available_acestep_v15_models()
         default_model = "acestep-v15-turbo" if "acestep-v15-turbo" in available_models else (available_models[0] if available_models else None)
         actual_model = init_params.get('config_path', default_model) if service_pre_initialized else default_model
-        actual_model_lower = (actual_model or "").lower()
-        is_turbo = "turbo" in actual_model_lower or "sft" in actual_model_lower
+        is_pure_base = _is_pure_base_model((actual_model or "").lower())
 
-    initial_mode_choices = GENERATION_MODES_TURBO if is_turbo else GENERATION_MODES_BASE
+    initial_mode_choices = GENERATION_MODES_BASE if is_pure_base else GENERATION_MODES_TURBO
 
     # Wrap everything in a Group to eliminate gaps between components
     with gr.Group():

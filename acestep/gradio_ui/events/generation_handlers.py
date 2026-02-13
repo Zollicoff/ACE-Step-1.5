@@ -108,7 +108,7 @@ def load_metadata(file_obj, llm_handler=None):
     """
     if file_obj is None:
         gr.Warning(t("messages.no_file_selected"))
-        return [None] * 36 + [False]  # Return None for all fields, False for is_format_caption
+        return [None] * 37 + [False]  # Return None for all 37 fields, False for is_format_caption
     
     try:
         # Read the uploaded file
@@ -209,10 +209,10 @@ def load_metadata(file_obj, llm_handler=None):
         
     except json.JSONDecodeError as e:
         gr.Warning(t("messages.invalid_json", error=str(e)))
-        return [None] * 36 + [False]
+        return [None] * 37 + [False]
     except Exception as e:
         gr.Warning(t("messages.load_error", error=str(e)))
-        return [None] * 36 + [False]
+        return [None] * 37 + [False]
 
 
 def load_random_example(task_type: str, llm_handler=None):
@@ -435,8 +435,27 @@ def refresh_checkpoints(dit_handler):
     return gr.update(choices=choices)
 
 
-def update_model_type_settings(config_path):
-    """Update UI settings based on model type (fallback when handler not initialized yet)
+def _is_pure_base_model(config_path_lower: str) -> bool:
+    """Check if a model path refers to a pure base model (not SFT or turbo).
+    
+    Only pure base models support extended tasks (Extract, Lego, Complete).
+    SFT and turbo models only support Simple, Custom, Remix, Repaint.
+    
+    Examples:
+        "acestep-v15-base" → True (pure base)
+        "acestep-v15-base-sft-fix-inst" → False (SFT variant)
+        "acestep-v15-sft" → False (SFT)
+        "acestep-v15-turbo" → False (turbo)
+    """
+    return "base" in config_path_lower and "sft" not in config_path_lower and "turbo" not in config_path_lower
+
+
+def update_model_type_settings(config_path, current_mode=None):
+    """Update UI settings based on model type (fallback when handler not initialized yet).
+    
+    Args:
+        config_path: Model config path string (used to determine turbo vs base).
+        current_mode: Current generation mode value to preserve across choices update.
     
     Note: This is used as a fallback when the user changes config_path dropdown 
     before initializing the model. The actual settings are determined by the 
@@ -446,20 +465,19 @@ def update_model_type_settings(config_path):
         config_path = ""
     config_path_lower = config_path.lower()
     
-    # Determine is_turbo based on config_path string
-    # This is a heuristic fallback - actual model type is determined after loading
+    # Determine model category from config_path string.
+    # is_turbo controls inference-step defaults (turbo = few steps, base/sft = many steps).
+    # is_pure_base controls extended task availability (Extract/Lego/Complete).
     if "turbo" in config_path_lower:
         is_turbo = True
-    elif "base" in config_path_lower:
-        is_turbo = False
     else:
-        # Default to turbo settings for unknown model types
-        is_turbo = True
+        is_turbo = False
+    is_pure_base = _is_pure_base_model(config_path_lower)
     
-    return get_model_type_ui_settings(is_turbo)
+    return get_model_type_ui_settings(is_turbo, current_mode=current_mode, is_pure_base=is_pure_base)
 
 
-def init_service_wrapper(dit_handler, llm_handler, checkpoint, config_path, device, init_llm, lm_model_path, backend, use_flash_attention, offload_to_cpu, offload_dit_to_cpu, compile_model, quantization, mlx_dit=True):
+def init_service_wrapper(dit_handler, llm_handler, checkpoint, config_path, device, init_llm, lm_model_path, backend, use_flash_attention, offload_to_cpu, offload_dit_to_cpu, compile_model, quantization, mlx_dit=True, current_mode=None):
     """Wrapper for service initialization, returns status, button state, accordion state, model type settings, and GPU-config-aware UI limits."""
     # Convert quantization checkbox to value (int8_weight_only if checked, None if not)
     quant_value = "int8_weight_only" if quantization else None
@@ -532,9 +550,10 @@ def init_service_wrapper(dit_handler, llm_handler, checkpoint, config_path, devi
     is_model_initialized = dit_handler.model is not None
     accordion_state = gr.Accordion(open=not is_model_initialized)
     
-    # Get model type settings based on actual loaded model
+    # Get model type settings based on actual loaded model and config_path
     is_turbo = dit_handler.is_turbo_model()
-    model_type_settings = get_model_type_ui_settings(is_turbo)
+    is_pure_base = _is_pure_base_model((config_path or "").lower())
+    model_type_settings = get_model_type_ui_settings(is_turbo, current_mode=current_mode, is_pure_base=is_pure_base)
     
     # --- Update UI limits based on GPU config and actual LM state ---
     gpu_config = get_global_gpu_config()
@@ -652,10 +671,25 @@ def on_tier_change(selected_tier, llm_handler=None):
     )
 
 
-def get_ui_control_config(is_turbo: bool) -> dict:
+def get_ui_control_config(is_turbo: bool, is_pure_base: bool = False) -> dict:
     """Return UI control configuration (values, limits, visibility) for model type.
+    
+    Args:
+        is_turbo: Whether the model is a turbo variant (affects inference steps, guidance, etc.).
+        is_pure_base: Whether the model is a pure base model (not SFT, not turbo).
+            Only pure base models support extended tasks (Extract, Lego, Complete).
+            SFT models use the same restricted task/mode set as turbo.
+    
     Used by both interactive init and service-mode startup so controls stay consistent.
     """
+    # Extended modes (Extract/Lego/Complete) only for pure base models
+    if is_pure_base:
+        task_choices = TASK_TYPES_BASE
+        mode_choices = GENERATION_MODES_BASE
+    else:
+        task_choices = TASK_TYPES_TURBO
+        mode_choices = GENERATION_MODES_TURBO
+
     if is_turbo:
         return {
             "inference_steps_value": 8,
@@ -667,8 +701,8 @@ def get_ui_control_config(is_turbo: bool) -> dict:
             "shift_visible": True,
             "cfg_interval_start_visible": False,
             "cfg_interval_end_visible": False,
-            "task_type_choices": TASK_TYPES_TURBO,
-            "generation_mode_choices": GENERATION_MODES_TURBO,
+            "task_type_choices": task_choices,
+            "generation_mode_choices": mode_choices,
         }
     else:
         return {
@@ -681,13 +715,21 @@ def get_ui_control_config(is_turbo: bool) -> dict:
             "shift_visible": True,
             "cfg_interval_start_visible": True,
             "cfg_interval_end_visible": True,
-            "task_type_choices": TASK_TYPES_BASE,
-            "generation_mode_choices": GENERATION_MODES_BASE,
+            "task_type_choices": task_choices,
+            "generation_mode_choices": mode_choices,
         }
 
 
-def get_model_type_ui_settings(is_turbo: bool):
+def get_model_type_ui_settings(is_turbo: bool, current_mode: str = None, is_pure_base: bool = False):
     """Get gr.update() tuple for model-type controls (used by init button / config_path change).
+    
+    Args:
+        is_turbo: Whether the model is a turbo variant.
+        current_mode: Current generation mode value to preserve when updating choices.
+            Prevents Gradio from resetting the Radio value (and triggering unwanted
+            .change events that hide mode-dependent sliders).
+        is_pure_base: Whether the model is a pure base model (not SFT, not turbo).
+            Only pure base models get extended modes (Extract, Lego, Complete).
     
     Returns tuple of updates for:
     - inference_steps
@@ -697,9 +739,15 @@ def get_model_type_ui_settings(is_turbo: bool):
     - cfg_interval_start
     - cfg_interval_end
     - task_type (hidden, keep value)
-    - generation_mode (update choices)
+    - generation_mode (update choices, preserve current value)
     """
-    cfg = get_ui_control_config(is_turbo)
+    cfg = get_ui_control_config(is_turbo, is_pure_base=is_pure_base)
+    new_choices = cfg["generation_mode_choices"]
+    # Preserve current mode if it exists in the new choices; otherwise let Gradio pick default
+    if current_mode and current_mode in new_choices:
+        mode_update = gr.update(choices=new_choices, value=current_mode)
+    else:
+        mode_update = gr.update(choices=new_choices)
     return (
         gr.update(
             value=cfg["inference_steps_value"],
@@ -712,7 +760,7 @@ def get_model_type_ui_settings(is_turbo: bool):
         gr.update(visible=cfg["cfg_interval_start_visible"]),
         gr.update(visible=cfg["cfg_interval_end_visible"]),
         gr.update(),  # task_type - no change (hidden, managed by mode)
-        gr.update(choices=cfg["generation_mode_choices"]),  # generation_mode choices
+        mode_update,  # generation_mode choices (with preserved value)
     )
 
 
@@ -1121,20 +1169,20 @@ def handle_generation_mode_change(mode: str, llm_handler=None):
     )
 
 
-def get_generation_mode_choices(is_turbo: bool, is_sft: bool = False) -> list:
+def get_generation_mode_choices(is_pure_base: bool = False) -> list:
     """Get the list of generation mode choices based on model type.
     
     Args:
-        is_turbo: Whether the model is a turbo model
-        is_sft: Whether the model is an SFT model (base-SFT gets turbo modes)
+        is_pure_base: Whether the model is a pure base model (not SFT, not turbo).
+            Only pure base models get extended modes (Extract, Lego, Complete).
     
     Returns:
         List of mode choice strings
     """
-    if is_turbo or is_sft:
-        return GENERATION_MODES_TURBO
-    else:
+    if is_pure_base:
         return GENERATION_MODES_BASE
+    else:
+        return GENERATION_MODES_TURBO
 
 
 def handle_create_sample(

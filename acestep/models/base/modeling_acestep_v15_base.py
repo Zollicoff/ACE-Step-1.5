@@ -1910,9 +1910,11 @@ class AceStepConditionGenerationModel(AceStepPreTrainedModel):
             context_latents = torch.cat([context_latents, context_latents], dim=0)
             attention_mask = torch.cat([attention_mask, attention_mask], dim=0)
         
+        _switched_to_non_cover = False
         with torch.no_grad():
             for step_idx, (t_curr, t_prev) in enumerate(iterator):
-                if step_idx >= cover_steps:
+                if step_idx >= cover_steps and not _switched_to_non_cover:
+                    _switched_to_non_cover = True
                     if do_cfg_guidance:
                         encoder_hidden_states_non_cover = torch.cat([encoder_hidden_states_non_cover, self.null_condition_emb.expand_as(encoder_hidden_states_non_cover)], dim=0)
                         encoder_attention_mask_non_cover = torch.cat([encoder_attention_mask_non_cover, encoder_attention_mask_non_cover], dim=0)
