@@ -486,11 +486,15 @@ def init_service_wrapper(dit_handler, llm_handler, checkpoint, config_path, devi
     # --- Tier-aware validation before initialization ---
     gpu_config = get_global_gpu_config()
     
-    # macOS safety: force-disable compile and quantization even if user checked them
+    # macOS safety: quantization (torchao) is unsupported on MPS.
+    # Compilation is allowed — the handler redirects it to mx.compile for
+    # MLX components instead of torch.compile.
     if sys.platform == "darwin":
         if compile_model:
-            logger.info("macOS detected: disabling torch.compile (not supported on MPS)")
-            compile_model = False
+            logger.info(
+                "macOS detected: torch.compile not supported; compilation "
+                "will use mx.compile via MLX."
+            )
         if quantization:
             logger.info("macOS detected: disabling INT8 quantization (torchao incompatible with MPS)")
             quantization = False
