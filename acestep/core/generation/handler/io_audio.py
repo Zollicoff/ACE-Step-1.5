@@ -56,7 +56,7 @@ class IoAudioMixin:
             else:
                 audio = torch.from_numpy(audio_np.T)
             return self._normalize_audio_to_stereo_48k(audio, sr)
-        except Exception:
+        except (OSError, RuntimeError, ValueError):
             logger.exception("[process_target_audio] Error processing target audio")
             return None
 
@@ -79,7 +79,7 @@ class IoAudioMixin:
             logger.debug(f"[process_reference_audio] Reference audio shape: {audio.shape}")
             logger.debug(f"[process_reference_audio] Reference audio sample rate: {sr}")
             logger.debug(
-                f"[process_reference_audio] Reference audio duration: {audio.shape[-1] / 48000.0} seconds"
+                f"[process_reference_audio] Reference audio duration: {audio.shape[-1] / sr:.6f} seconds"
             )
 
             audio = self._normalize_audio_to_stereo_48k(audio, sr)
@@ -108,7 +108,7 @@ class IoAudioMixin:
             back_audio = audio[:, back_start : back_start + segment_frames]
 
             return torch.cat([front_audio, middle_audio, back_audio], dim=-1)
-        except Exception:
+        except (OSError, RuntimeError, ValueError):
             logger.exception("[process_reference_audio] Error processing reference audio")
             return None
 
@@ -128,6 +128,6 @@ class IoAudioMixin:
             import torchaudio
             audio, sr = torchaudio.load(audio_file)
             return self._normalize_audio_to_stereo_48k(audio, sr)
-        except Exception:
+        except (OSError, RuntimeError, ValueError):
             logger.exception("[process_src_audio] Error processing source audio")
             return None

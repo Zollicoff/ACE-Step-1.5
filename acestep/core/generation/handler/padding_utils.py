@@ -137,11 +137,7 @@ class PaddingMixin:
                         # List input - adjust each item
                         repainting_end_batch = []
                         for i in range(actual_batch_size):
-                            if processed_src_audio is not None:
-                                adjusted_end = repainting_end[i] + padding_info_batch[i]["left_padding_duration"]
-                                repainting_end_batch.append(adjusted_end)
-                            else:
-                                repainting_end_batch.append(repainting_end[i])
+                            repainting_end_batch.append(repainting_end[i])
             else:
                 # All other tasks (cover, text2music, extract, complete): No repainting
                 # Only repaint and lego tasks should have repainting parameters
@@ -149,7 +145,7 @@ class PaddingMixin:
                 repainting_end_batch = None
 
             return repainting_start_batch, repainting_end_batch, target_wavs_tensor
-        except Exception:
+        except (TypeError, ValueError, RuntimeError, IndexError):
             logger.exception("[prepare_padding_info] Error preparing padding information")
             fallback = torch.stack([self.create_target_wavs(30.0) for _ in range(actual_batch_size)], dim=0)
             return None, None, fallback

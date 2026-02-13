@@ -55,7 +55,7 @@ class TaskUtilsMixin:
                     else:
                         actual_seed_list.append(int(seed_val))
                 seed_value_for_ui = ", ".join(str(s) for s in actual_seed_list)
-        except Exception:
+        except (TypeError, ValueError, OverflowError):
             logger.exception("[prepare_seeds] Failed to prepare seeds")
             actual_seed_list = [random.randint(0, 2**32 - 1) for _ in range(actual_batch_size)]
             seed_value_for_ui = ", ".join(str(s) for s in actual_seed_list)
@@ -118,6 +118,6 @@ class TaskUtilsMixin:
             duration_seconds = max(0.1, round(duration_seconds, 1))
             frames = int(duration_seconds * 48000)
             return torch.zeros(2, frames)
-        except Exception:
+        except (TypeError, ValueError, OverflowError):
             logger.exception("[create_target_wavs] Error creating target audio")
             return torch.zeros(2, 30 * 48000)
