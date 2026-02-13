@@ -48,7 +48,7 @@ class PromptMixin:
                 if match:
                     return match.group(1).strip()
             return caption
-        except Exception:
+        except (AttributeError, TypeError, re.error):
             logger.exception("[extract_caption_from_sft_format] Error extracting caption")
             return caption
 
@@ -87,7 +87,7 @@ class PromptMixin:
                     meta_dict = metas
                 else:
                     meta_dict = {}
-            except Exception:
+            except (TypeError, ValueError, KeyError, IndexError):
                 logger.exception("[build_dit_inputs] Error parsing metas")
                 meta_dict = {}
             if "caption" in meta_dict and meta_dict["caption"]:
@@ -128,7 +128,7 @@ class PromptMixin:
 
                 text_hidden_states = text_hidden_states.to(self.dtype)
                 return text_hidden_states, text_attention_mask
-        except Exception:
+        except (AttributeError, RuntimeError, TypeError, ValueError):
             logger.exception("[_get_text_hidden_states] Failed to encode text prompt")
             raise
 

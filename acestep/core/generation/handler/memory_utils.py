@@ -16,9 +16,9 @@ class MemoryUtilsMixin:
     - Attribute: ``device``.
     """
 
-    def is_silence(self, audio):
+    def is_silence(self, audio: torch.Tensor) -> bool:
         """Return True when audio is effectively silent."""
-        return torch.all(audio.abs() < 1e-6)
+        return bool(torch.all(audio.abs() < 1e-6))
 
     def _get_system_memory_gb(self) -> Optional[float]:
         """Return total system RAM in GB when available."""
