@@ -518,7 +518,7 @@ def init_service_wrapper(dit_handler, llm_handler, checkpoint, config_path, devi
             checkpoint_dir=checkpoint_dir,
             lm_model_path=lm_model_path,
             backend=backend,
-            device=llm_handler.device,  # May be "cpu" if GPU tier is insufficient
+            device=llm_handler.device,
             offload_to_cpu=offload_to_cpu,
             dtype=None,
         )
