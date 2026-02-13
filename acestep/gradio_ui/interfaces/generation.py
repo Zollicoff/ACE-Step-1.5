@@ -117,6 +117,7 @@ def _create_service_config_content(dit_handler, llm_handler, defaults, init_para
                 label=t("service.language_label"),
                 info=t("service.language_info"),
                 scale=1,
+                elem_classes=["has-info"],
             )
 
         # GPU info display and tier override
@@ -156,6 +157,7 @@ def _create_service_config_content(dit_handler, llm_handler, defaults, init_para
                 choices=available_models,
                 value=config_path_value,
                 info=t("service.model_path_info"),
+                elem_classes=["has-info"],
             )
             device_value = init_params.get('device', 'auto') if service_pre_initialized else 'auto'
             device = gr.Dropdown(
@@ -163,6 +165,7 @@ def _create_service_config_content(dit_handler, llm_handler, defaults, init_para
                 value=device_value,
                 label=t("service.device_label"),
                 info=t("service.device_info"),
+                elem_classes=["has-info"],
             )
 
         # LM model and backend
@@ -177,6 +180,7 @@ def _create_service_config_content(dit_handler, llm_handler, defaults, init_para
                 choices=all_lm_models,
                 value=lm_model_path_value,
                 info=t("service.lm_model_path_info") + (f" (Recommended: {recommended_lm})" if recommended_lm else " (LM not available for this GPU tier)"),
+                elem_classes=["has-info"],
             )
             backend_value = init_params.get('backend', recommended_backend) if service_pre_initialized else recommended_backend
             backend_dropdown = gr.Dropdown(
@@ -184,6 +188,7 @@ def _create_service_config_content(dit_handler, llm_handler, defaults, init_para
                 value=backend_value,
                 label=t("service.backend_label"),
                 info=t("service.backend_info") + (f" (vllm unavailable for {gpu_config.tier}: VRAM too low)" if gpu_config.lm_backend_restriction == "pt_mlx_only" else ""),
+                elem_classes=["has-info"],
             )
 
         # Checkboxes
@@ -335,6 +340,7 @@ def create_advanced_settings_section(dit_handler, llm_handler, init_params=None,
                     step=1,
                     label=t("generation.inference_steps_label"),
                     info=t("generation.inference_steps_info"),
+                    elem_classes=["has-info"],
                 )
                 guidance_scale = gr.Slider(
                     minimum=1.0, maximum=15.0, value=7.0, step=0.1,
@@ -569,6 +575,7 @@ def create_generation_tab_section(dit_handler, llm_handler, init_params=None, la
                     lines=2,
                     info=t("generation.simple_query_info"),
                     scale=9,
+                    elem_classes=["has-info"],
                 )
                 with gr.Column(scale=1):
                     simple_vocal_language = gr.Dropdown(
@@ -675,6 +682,7 @@ def create_generation_tab_section(dit_handler, llm_handler, init_params=None, la
                                 placeholder=t("generation.caption_placeholder"),
                                 lines=12,
                                 max_lines=12,
+                                elem_classes=["has-info"],
                             )
                             with gr.Row(elem_classes="instrumental-row"):
                                 format_caption_btn = gr.Button(t("generation.format_caption_btn"), variant="secondary", size="sm")
@@ -685,6 +693,7 @@ def create_generation_tab_section(dit_handler, llm_handler, init_params=None, la
                                 placeholder=t("generation.lyrics_placeholder"),
                                 lines=12,
                                 max_lines=12,
+                                elem_classes=["has-info"],
                             )
                             with gr.Row(elem_classes="instrumental-row"):
                                 instrumental_checkbox = gr.Checkbox(

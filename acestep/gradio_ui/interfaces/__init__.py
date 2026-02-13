@@ -115,6 +115,46 @@ def create_gradio_interface(dit_handler, llm_handler, dataset_handler, init_para
             text-align: center;
             line-height: 1.4;
         }
+
+        /* --- On-hover Tooltips --- */
+        /* Hide info text by default and format as tooltip */
+        .has-info + div,
+        span[data-testid="block-info"] + div,
+        .checkbox-container + div {
+            display: none;
+            position: absolute;
+            background: rgba(30, 30, 30, 0.95);
+            color: #ffffff;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            z-index: 10000;
+            max-width: 300px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+            pointer-events: none;
+            line-height: 1.4;
+            margin-top: 2px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        /* Show tooltips on hover */
+        .block:hover .has-info + div,
+        .block:hover span[data-testid="block-info"] + div,
+        .has-info:hover + div,
+        .checkbox-container:hover + div {
+            display: block;
+        }
+
+        /* Add an info icon indicator */
+        .has-info::after,
+        span[data-testid="block-info"]::after,
+        .checkbox-container:has(+ div span.md) .label-text::after {
+            content: " ⓘ";
+            font-size: 0.9em;
+            opacity: 0.6;
+            margin-left: 4px;
+            cursor: help;
+        }
         """,
     ) as demo:
         
@@ -122,6 +162,7 @@ def create_gradio_interface(dit_handler, llm_handler, dataset_handler, init_para
         <div class="main-header">
             <h1>{t("app.title")}</h1>
             <p>{t("app.subtitle")}</p>
+            <p style="font-size: 0.85rem; color: #888;">{t("common.required_legend").replace("*", '<span style="color: #ff4d4d;">*</span>')}</p>
         </div>
         """)
         
