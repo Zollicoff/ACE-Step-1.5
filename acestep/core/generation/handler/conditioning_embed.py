@@ -1,6 +1,6 @@
 """Reference/text embedding preprocessing helpers for conditioned generation."""
 
-from typing import Dict, Tuple
+from typing import Dict, List, Tuple
 
 import torch
 from loguru import logger
@@ -15,7 +15,7 @@ class ConditioningEmbedMixin:
       ``tiled_encode``.
     """
 
-    def infer_refer_latent(self, refer_audioss):
+    def infer_refer_latent(self, refer_audioss: List[List[torch.Tensor]]) -> Tuple[torch.Tensor, torch.Tensor]:
         """Infer packed reference-audio latents and order mask."""
         refer_audio_order_mask = []
         refer_audio_latents = []

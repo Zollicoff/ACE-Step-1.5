@@ -34,7 +34,26 @@ class ConditioningBatchMixin:
         audio_cover_strength: float = 1.0,
         cover_noise_strength: float = 0.0,
     ) -> Dict[str, Any]:
-        """Prepare model-ready conditioning batch tensors and metadata."""
+        """Prepare model-ready conditioning batch tensors and metadata.
+
+        Args:
+            captions: Per-item captions.
+            lyrics: Per-item lyric strings.
+            keys: Optional per-item keys.
+            target_wavs: Target audio tensor batch.
+            refer_audios: Optional nested reference-audio tensors.
+            metas: Optional per-item metadata strings/dicts.
+            vocal_languages: Optional per-item vocal language codes.
+            repainting_start: Optional repaint start times.
+            repainting_end: Optional repaint end times.
+            instructions: Optional per-item generation instructions.
+            audio_code_hints: Optional per-item serialized audio-code hints.
+            audio_cover_strength: Blend factor for cover/non-cover conditioning.
+
+        Returns:
+            Batch dictionary containing padded tensors and conditioning metadata
+            consumed by ``preprocess_batch`` and downstream generation.
+        """
         batch_size = len(captions)
         audio_code_hints = self._normalize_audio_code_hints(audio_code_hints, batch_size)
 

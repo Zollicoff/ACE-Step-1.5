@@ -29,6 +29,7 @@ class _Host(ConditioningEmbedMixin):
         self.dtype = torch.float32
         self.silence_latent = torch.zeros(1, 128, 6, dtype=torch.float32)
         self.text_encoder = _FakeTextEncoder()
+        self.tiled_encode_calls = 0
 
     def _ensure_silence_latent_on_device(self):
         return None
@@ -39,6 +40,7 @@ class _Host(ConditioningEmbedMixin):
 
     def tiled_encode(self, audio, offload_latent_to_cpu=True):
         del offload_latent_to_cpu
+        self.tiled_encode_calls += 1
         t = max(1, audio.shape[-1] // 1920)
         return torch.zeros(1, 6, t, dtype=torch.float32)
 
@@ -56,6 +58,32 @@ class ConditioningEmbedMixinTests(unittest.TestCase):
         latents, order_mask = host.infer_refer_latent(refer_audioss)
         self.assertEqual(latents.dim(), 3)
         self.assertEqual(order_mask.tolist(), [0, 1])
+        self.assertEqual(host.tiled_encode_calls, 2)
+
+    def test_infer_refer_latent_cache_hit_reuses_encoding(self):
+        """Reuse cached latent when the exact same tensor object appears multiple times."""
+        host = _Host()
+        shared = torch.ones(2, 96000)
+        latents, order_mask = host.infer_refer_latent([[shared], [shared]])
+        self.assertEqual(latents.shape[0], 2)
+        self.assertEqual(order_mask.tolist(), [0, 1])
+        self.assertEqual(host.tiled_encode_calls, 1)
+
+    def test_infer_refer_latent_uses_silence_fast_path(self):
+        """Use silence-latent shortcut when reference audio is an explicit zero tensor."""
+        host = _Host()
+        latents, order_mask = host.infer_refer_latent([[torch.zeros(2, 96000)]])
+        self.assertEqual(latents.shape, (1, 128, 6))
+        self.assertEqual(order_mask.tolist(), [0])
+        self.assertEqual(host.tiled_encode_calls, 0)
+
+    def test_infer_refer_latent_handles_multiple_references_per_item(self):
+        """Flatten multiple references for one batch item while preserving order index."""
+        host = _Host()
+        refer_audioss = [[torch.ones(2, 96000), torch.ones(2, 96000)]]
+        latents, order_mask = host.infer_refer_latent(refer_audioss)
+        self.assertEqual(latents.shape[0], 2)
+        self.assertEqual(order_mask.tolist(), [0, 0])
 
     def test_preprocess_batch_returns_expected_tuple_shape(self):
         """Preprocess batch and return full model-input tuple contract."""
