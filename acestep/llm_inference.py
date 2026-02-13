@@ -22,7 +22,7 @@ from transformers.generation.logits_process import (
     RepetitionPenaltyLogitsProcessor,
 )
 from acestep.constrained_logits_processor import MetadataConstrainedLogitsProcessor
-from acestep.constants import DEFAULT_LM_INSTRUCTION, DEFAULT_LM_UNDERSTAND_INSTRUCTION, DEFAULT_LM_INSPIRED_INSTRUCTION, DEFAULT_LM_REWRITE_INSTRUCTION
+from acestep.constants import DEFAULT_LM_INSTRUCTION, DEFAULT_LM_UNDERSTAND_INSTRUCTION, DEFAULT_LM_INSPIRED_INSTRUCTION, DEFAULT_LM_REWRITE_INSTRUCTION, DURATION_MIN, DURATION_MAX
 from acestep.gpu_config import get_lm_gpu_memory_ratio, get_gpu_memory_gb, get_lm_model_size, get_global_gpu_config
 
 # Minimum free VRAM (GB) required to attempt vLLM initialization.
@@ -200,6 +200,11 @@ class LLMHandler:
           The constrained decoder forces EOS at exactly target_codes, so only a
           small buffer (10 tokens) is needed to avoid a misleading progress bar.
 
+        Duration is clamped to ``[DURATION_MIN, max_dur]`` where *max_dur* is the
+        GPU-config-dependent maximum (from ``get_global_gpu_config()``) capped at
+        ``DURATION_MAX``.  This keeps the progress-bar total aligned with what the
+        constrained decoder actually enforces.
+
         Args:
             target_duration: Target duration in seconds (5 codes = 1 second).
             generation_phase: "cot" or "codes".
@@ -209,7 +214,17 @@ class LLMHandler:
             Computed max_new_tokens value, capped at model's max length.
         """
         if target_duration is not None and target_duration > 0:
-            effective_duration = max(10, min(600, target_duration))
+            # Determine the effective upper bound from GPU config (if available)
+            # so that max_new_tokens does not exceed what the constrained decoder
+            # will actually enforce on lower-tier GPUs.
+            gpu_max_dur = DURATION_MAX
+            try:
+                gpu_cfg = get_global_gpu_config()
+                gpu_max_dur = min(gpu_cfg.max_duration_with_lm, DURATION_MAX)
+            except Exception:
+                pass  # Fallback to DURATION_MAX if GPU config unavailable
+
+            effective_duration = max(DURATION_MIN, min(gpu_max_dur, target_duration))
             target_codes = int(effective_duration * 5)
             if generation_phase == "codes":
                 # Codes phase: CoT already in prompt, only audio codes generated.
