@@ -183,23 +183,22 @@ def mlx_generate_diffusion(
             t_unsq = mx.expand_dims(mx.expand_dims(t_curr, axis=-1), axis=-1)
             xt = xt - vt * t_unsq
             mx.eval(xt)
-            break
-
-        # ODE / SDE update
-        next_t = t_schedule_list[step_idx + 1]
-        if infer_method == "sde":
-            t_unsq = mx.expand_dims(mx.expand_dims(t_curr, axis=-1), axis=-1)
-            pred_clean = xt - vt * t_unsq
-            # Re-noise with next timestep
-            new_noise = mx.random.normal(xt.shape)
-            xt = next_t * new_noise + (1.0 - next_t) * pred_clean
         else:
-            # ODE Euler step: x_{t+1} = x_t - v_t * dt
-            dt = current_t - next_t
-            dt_arr = mx.full((bsz, 1, 1), dt)
-            xt = xt - vt * dt_arr
+            # ODE / SDE update
+            next_t = t_schedule_list[step_idx + 1]
+            if infer_method == "sde":
+                t_unsq = mx.expand_dims(mx.expand_dims(t_curr, axis=-1), axis=-1)
+                pred_clean = xt - vt * t_unsq
+                # Re-noise with next timestep
+                new_noise = mx.random.normal(xt.shape)
+                xt = next_t * new_noise + (1.0 - next_t) * pred_clean
+            else:
+                # ODE Euler step: x_{t+1} = x_t - v_t * dt
+                dt = current_t - next_t
+                dt_arr = mx.full((bsz, 1, 1), dt)
+                xt = xt - vt * dt_arr
 
-        mx.eval(xt)
+            mx.eval(xt)
 
     diff_end = time.time()
     total_end = time.time()
