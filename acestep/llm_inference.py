@@ -1003,42 +1003,46 @@ class LLMHandler:
         # Determine if batch mode
         formatted_prompt_list, is_batch = self._normalize_batch_input(formatted_prompts)
 
-        # For batch mode, process each item sequentially with different seeds
+        # For batch mode, process each item sequentially with different seeds.
+        # Wrap the entire loop in a single _load_model_context() so the model
+        # loads to GPU once and offloads once, instead of per-item.
         if is_batch:
             output_texts = []
-            for i, formatted_prompt in enumerate(formatted_prompt_list):
-                # Set seed for this item if provided
-                if seeds and i < len(seeds):
-                    torch.manual_seed(seeds[i])
-                    if torch.cuda.is_available():
-                        torch.cuda.manual_seed_all(seeds[i])
-                    elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
-                        torch.mps.manual_seed(seeds[i])
 
-                # Generate using single-item method with batch-mode defaults
-                output_text = self._run_pt_single(
-                    formatted_prompt=formatted_prompt,
-                    temperature=temperature,
-                    cfg_scale=cfg_scale,
-                    negative_prompt=negative_prompt,
-                    top_k=top_k,
-                    top_p=top_p,
-                    repetition_penalty=repetition_penalty,
-                    use_constrained_decoding=use_constrained_decoding,
-                    constrained_decoding_debug=constrained_decoding_debug,
-                    target_duration=target_duration,
-                    user_metadata=None,
-                    stop_at_reasoning=False,
-                    skip_genres=True,
-                    skip_caption=True,
-                    skip_language=True,
-                    generation_phase=generation_phase,
-                    caption=caption,
-                    lyrics=lyrics,
-                    cot_text=cot_text,
-                )
+            with self._load_model_context():
+                for i, formatted_prompt in enumerate(formatted_prompt_list):
+                    # Set seed for this item if provided
+                    if seeds and i < len(seeds):
+                        torch.manual_seed(seeds[i])
+                        if torch.cuda.is_available():
+                            torch.cuda.manual_seed_all(seeds[i])
+                        elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+                            torch.mps.manual_seed(seeds[i])
 
-                output_texts.append(output_text)
+                    # Generate using single-item method with batch-mode defaults
+                    output_text = self._run_pt_single(
+                        formatted_prompt=formatted_prompt,
+                        temperature=temperature,
+                        cfg_scale=cfg_scale,
+                        negative_prompt=negative_prompt,
+                        top_k=top_k,
+                        top_p=top_p,
+                        repetition_penalty=repetition_penalty,
+                        use_constrained_decoding=use_constrained_decoding,
+                        constrained_decoding_debug=constrained_decoding_debug,
+                        target_duration=target_duration,
+                        user_metadata=None,
+                        stop_at_reasoning=False,
+                        skip_genres=True,
+                        skip_caption=True,
+                        skip_language=True,
+                        generation_phase=generation_phase,
+                        caption=caption,
+                        lyrics=lyrics,
+                        cot_text=cot_text,
+                    )
+
+                    output_texts.append(output_text)
 
             return output_texts
 
@@ -3832,6 +3836,18 @@ class LLMHandler:
 
         model = self.llm
         if model is None:
+            yield
+            return
+
+        # Reentrancy guard: if an outer context already loaded the model
+        # to the target device, skip the inner load/offload to avoid
+        # redundant CPU↔GPU transfers during batch processing.
+        try:
+            current_device = next(model.parameters()).device.type
+        except StopIteration:
+            current_device = None
+        target_device = str(self.device).split(":")[0]
+        if current_device == target_device:
             yield
             return
 
