@@ -39,9 +39,17 @@ def load_lora(self, lora_path: str) -> str:
     try:
         # Memory-efficient state_dict backup instead of deepcopy
         if self._base_decoder is None:
+            # Log memory before backup
+            if hasattr(self, '_memory_allocated'):
+                mem_before = self._memory_allocated() / (1024**3)
+                logger.info(f"VRAM before LoRA load: {mem_before:.2f}GB")
+            
             # Save only the base model weights as state_dict (CPU to save VRAM)
             self._base_decoder = {k: v.detach().cpu().clone() for k, v in self.model.decoder.state_dict().items()}
-            logger.info("Base decoder state_dict backed up (CPU)")
+            
+            # Calculate backup size in MB
+            backup_size_mb = sum(v.numel() * v.element_size() for v in self._base_decoder.values()) / (1024**2)
+            logger.info(f"Base decoder state_dict backed up to CPU ({backup_size_mb:.1f}MB)")
         else:
             # Restore base decoder from state_dict backup
             logger.info("Restoring base decoder from state_dict backup")
@@ -52,6 +60,11 @@ def load_lora(self, lora_path: str) -> str:
         self.model.decoder = PeftModel.from_pretrained(self.model.decoder, lora_path, is_trainable=False)
         self.model.decoder = self.model.decoder.to(self.device).to(self.dtype)
         self.model.decoder.eval()
+
+        # Log memory after LoRA load
+        if hasattr(self, '_memory_allocated'):
+            mem_after = self._memory_allocated() / (1024**3)
+            logger.info(f"VRAM after LoRA load: {mem_after:.2f}GB")
 
         self.lora_loaded = True
         self.use_lora = True
@@ -83,6 +96,11 @@ def unload_lora(self) -> str:
         return "❌ Base decoder backup not found. Cannot restore."
 
     try:
+        # Log memory before unload
+        if hasattr(self, '_memory_allocated'):
+            mem_before = self._memory_allocated() / (1024**3)
+            logger.info(f"VRAM before LoRA unload: {mem_before:.2f}GB")
+        
         # Get the base model from the PEFT wrapper if it exists
         # This is more memory-efficient than recreating from state_dict
         from peft import PeftModel
@@ -112,6 +130,12 @@ def unload_lora(self) -> str:
         self._lora_adapter_registry = {}
         self._lora_active_adapter = None
         self._lora_scale_state = {}
+
+        # Log memory after unload
+        if hasattr(self, '_memory_allocated'):
+            mem_after = self._memory_allocated() / (1024**3)
+            freed = mem_before - mem_after
+            logger.info(f"VRAM after LoRA unload: {mem_after:.2f}GB (freed: {freed:.2f}GB)")
 
         logger.info("LoRA unloaded, base decoder restored")
         return "✅ LoRA unloaded, using base model"
