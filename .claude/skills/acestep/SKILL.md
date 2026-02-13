@@ -34,6 +34,11 @@ Only use Simple/Random mode (`-d` or `random`) for quick inspiration or instrume
 
 If the user needs a simple music video, use the **acestep-simplemv** skill to render one with waveform visualization and synced lyrics.
 
+**MV Production Requirements**: Making a simple MV requires three additional skills to be installed:
+- **acestep-songwriting** — for writing lyrics and planning song structure
+- **acestep-lyrics-transcription** — for transcribing audio to timestamped lyrics (LRC)
+- **acestep-simplemv** — for rendering the final music video
+
 ## Script Commands
 
 **CRITICAL - Complete Lyrics Input**: When providing lyrics via the `-l` parameter, you MUST pass ALL lyrics content WITHOUT any omission:
@@ -180,7 +185,7 @@ If `api_url` is `https://api.acemusic.ai` and `api_key` is `empty`, you MUST sto
    ```bash
    cd "{project_root}/{.claude or .codex}/skills/acestep/" && bash ./scripts/acestep.sh config --set api_key <KEY>
    ```
-5. Additionally, inform the user: "If you also want to render music videos (MV), it's recommended to configure a lyrics transcription API key as well (OpenAI Whisper or ElevenLabs Scribe), so that lyrics can be automatically transcribed with accurate timestamps. You can configure it later via the `lyrics-transcription` skill."
+5. Additionally, inform the user: "If you also want to render music videos (MV), it's recommended to configure a lyrics transcription API key as well (OpenAI Whisper or ElevenLabs Scribe), so that lyrics can be automatically transcribed with accurate timestamps. You can configure it later via the `acestep-lyrics-transcription` skill."
 
 #### Case 2: API key is configured
 

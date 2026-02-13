@@ -1,5 +1,5 @@
 ---
-name: lyrics-transcription
+name: acestep-lyrics-transcription
 description: Transcribe audio to timestamped lyrics using OpenAI Whisper or ElevenLabs Scribe API. Outputs LRC, SRT, or JSON with word-level timestamps. Use when users want to transcribe songs, generate LRC files, or extract lyrics with timestamps from audio.
 allowed-tools: Read, Write, Bash
 ---
@@ -13,7 +13,7 @@ Transcribe audio files to timestamped lyrics (LRC/SRT/JSON) via OpenAI Whisper o
 **Before transcribing, you MUST check whether the user's API key is configured.** Run the following command to check:
 
 ```bash
-cd "{project_root}/{.claude or .codex}/skills/lyrics-transcription/" && bash ./scripts/lyrics-transcription.sh config --check-key
+cd "{project_root}/{.claude or .codex}/skills/acestep-lyrics-transcription/" && bash ./scripts/acestep-lyrics-transcription.sh config --check-key
 ```
 
 This command only reports whether the active provider's API key is set or empty — it does NOT print the actual key value. **NEVER read or display the user's API key content.** Do not use `config --get` on key fields or read `config.json` directly. The `config --list` command is safe — it automatically masks API keys as `***` in output.
@@ -29,11 +29,11 @@ Use `AskUserQuestion` to ask the user to provide their API key, with the followi
 3. Also offer the option to switch to the other provider if they already have a key for it.
 4. Once the user provides the key, configure it using:
    ```bash
-   cd "{project_root}/{.claude or .codex}/skills/lyrics-transcription/" && bash ./scripts/lyrics-transcription.sh config --set <provider>.api_key <KEY>
+   cd "{project_root}/{.claude or .codex}/skills/acestep-lyrics-transcription/" && bash ./scripts/acestep-lyrics-transcription.sh config --set <provider>.api_key <KEY>
    ```
 5. If the user wants to switch providers, also run:
    ```bash
-   cd "{project_root}/{.claude or .codex}/skills/lyrics-transcription/" && bash ./scripts/lyrics-transcription.sh config --set provider <provider_name>
+   cd "{project_root}/{.claude or .codex}/skills/acestep-lyrics-transcription/" && bash ./scripts/acestep-lyrics-transcription.sh config --set provider <provider_name>
    ```
 6. After configuring, re-run `config --check-key` to verify the key is set before proceeding.
 
@@ -43,16 +43,16 @@ Use `AskUserQuestion` to ask the user to provide their API key, with the followi
 
 ```bash
 # 1. cd to this skill's directory
-cd {project_root}/{.claude or .codex}/skills/lyrics-transcription/
+cd {project_root}/{.claude or .codex}/skills/acestep-lyrics-transcription/
 
 # 2. Configure API key (choose one)
-./scripts/lyrics-transcription.sh config --set openai.api_key sk-...
+./scripts/acestep-lyrics-transcription.sh config --set openai.api_key sk-...
 # or
-./scripts/lyrics-transcription.sh config --set elevenlabs.api_key ...
-./scripts/lyrics-transcription.sh config --set provider elevenlabs
+./scripts/acestep-lyrics-transcription.sh config --set elevenlabs.api_key ...
+./scripts/acestep-lyrics-transcription.sh config --set provider elevenlabs
 
 # 3. Transcribe
-./scripts/lyrics-transcription.sh transcribe --audio /path/to/song.mp3 --language zh
+./scripts/acestep-lyrics-transcription.sh transcribe --audio /path/to/song.mp3 --language zh
 
 # 4. Output saved to: {project_root}/acestep_output/<filename>.lrc
 ```
@@ -65,7 +65,7 @@ cd {project_root}/{.claude or .codex}/skills/lyrics-transcription/
 ## Script Usage
 
 ```bash
-./scripts/lyrics-transcription.sh transcribe --audio <file> [options]
+./scripts/acestep-lyrics-transcription.sh transcribe --audio <file> [options]
 
 Options:
   -a, --audio      Audio file path (required)
@@ -123,15 +123,15 @@ Config file: `scripts/config.json`
 
 ```bash
 # Switch provider
-./scripts/lyrics-transcription.sh config --set provider openai
-./scripts/lyrics-transcription.sh config --set provider elevenlabs
+./scripts/acestep-lyrics-transcription.sh config --set provider openai
+./scripts/acestep-lyrics-transcription.sh config --set provider elevenlabs
 
 # Set API keys
-./scripts/lyrics-transcription.sh config --set openai.api_key sk-...
-./scripts/lyrics-transcription.sh config --set elevenlabs.api_key ...
+./scripts/acestep-lyrics-transcription.sh config --set openai.api_key sk-...
+./scripts/acestep-lyrics-transcription.sh config --set elevenlabs.api_key ...
 
 # View config
-./scripts/lyrics-transcription.sh config --list
+./scripts/acestep-lyrics-transcription.sh config --list
 ```
 
 | Option | Default | Description |
@@ -160,14 +160,14 @@ Config file: `scripts/config.json`
 
 ```bash
 # Basic transcription (uses config defaults)
-./scripts/lyrics-transcription.sh transcribe --audio song.mp3
+./scripts/acestep-lyrics-transcription.sh transcribe --audio song.mp3
 
 # Chinese song to LRC
-./scripts/lyrics-transcription.sh transcribe --audio song.mp3 --language zh
+./scripts/acestep-lyrics-transcription.sh transcribe --audio song.mp3 --language zh
 
 # Use ElevenLabs, output SRT
-./scripts/lyrics-transcription.sh transcribe --audio song.mp3 --provider elevenlabs --format srt
+./scripts/acestep-lyrics-transcription.sh transcribe --audio song.mp3 --provider elevenlabs --format srt
 
 # Custom output path
-./scripts/lyrics-transcription.sh transcribe --audio song.mp3 --output ./my_lyrics.lrc
+./scripts/acestep-lyrics-transcription.sh transcribe --audio song.mp3 --output ./my_lyrics.lrc
 ```

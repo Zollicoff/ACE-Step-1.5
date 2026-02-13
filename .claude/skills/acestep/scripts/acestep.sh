@@ -86,10 +86,10 @@ DEFAULT_CONFIG='{
 # Ensure config file exists
 ensure_config() {
     if [ ! -f "$CONFIG_FILE" ]; then
-        local example="${CONFIG_FILE}.example"
+        local example="${SCRIPT_DIR}/config.example.json"
         if [ -f "$example" ]; then
             cp "$example" "$CONFIG_FILE"
-            echo -e "${YELLOW}Config file created from config.json.example. Please configure your settings:${NC}"
+            echo -e "${YELLOW}Config file created from config.example.json. Please configure your settings:${NC}"
             echo -e "  ${CYAN}./scripts/acestep.sh config --set api_url <url>${NC}"
             echo -e "  ${CYAN}./scripts/acestep.sh config --set api_key <key>${NC}"
         else

@@ -1,12 +1,12 @@
 #!/bin/bash
 #
-# lyrics-transcription.sh - Transcribe audio to timestamped lyrics (LRC/SRT/JSON)
+# acestep-lyrics-transcription.sh - Transcribe audio to timestamped lyrics (LRC/SRT/JSON)
 #
 # Requirements: curl, jq
 #
 # Usage:
-#   ./lyrics-transcription.sh transcribe --audio <file> [options]
-#   ./lyrics-transcription.sh config [--get|--set|--reset]
+#   ./acestep-lyrics-transcription.sh transcribe --audio <file> [options]
+#   ./acestep-lyrics-transcription.sh config [--get|--set|--reset]
 #
 # Output:
 #   - LRC/SRT/JSON files saved to output directory
@@ -84,12 +84,12 @@ DEFAULT_CONFIG='{
 
 ensure_config() {
     if [ ! -f "$CONFIG_FILE" ]; then
-        local example="${CONFIG_FILE}.example"
+        local example="${SCRIPT_DIR}/config.example.json"
         if [ -f "$example" ]; then
             cp "$example" "$CONFIG_FILE"
-            echo -e "${YELLOW}Config file created from config.json.example. Please configure your settings:${NC}"
-            echo -e "  ${CYAN}./scripts/lyrics-transcription.sh config --set provider <openai|elevenlabs>${NC}"
-            echo -e "  ${CYAN}./scripts/lyrics-transcription.sh config --set <provider>.api_key <key>${NC}"
+            echo -e "${YELLOW}Config file created from config.example.json. Please configure your settings:${NC}"
+            echo -e "  ${CYAN}./scripts/acestep-lyrics-transcription.sh config --set provider <openai|elevenlabs>${NC}"
+            echo -e "  ${CYAN}./scripts/acestep-lyrics-transcription.sh config --set <provider>.api_key <key>${NC}"
         else
             echo "$DEFAULT_CONFIG" > "$CONFIG_FILE"
         fi
@@ -290,7 +290,7 @@ transcribe_openai() {
     local api_url=$(get_config "openai.api_url")
     local model=$(get_config "openai.model")
 
-    [ -z "$api_key" ] && { echo -e "${RED}Error: OpenAI API key not configured.${NC}"; echo "Run: ./lyrics-transcription.sh config --set openai.api_key YOUR_KEY"; exit 1; }
+    [ -z "$api_key" ] && { echo -e "${RED}Error: OpenAI API key not configured.${NC}"; echo "Run: ./acestep-lyrics-transcription.sh config --set openai.api_key YOUR_KEY"; exit 1; }
     [ -z "$api_url" ] && api_url="https://api.openai.com/v1"
     [ -z "$model" ] && model="whisper-1"
 
@@ -348,7 +348,7 @@ transcribe_elevenlabs() {
     local api_url=$(get_config "elevenlabs.api_url")
     local model=$(get_config "elevenlabs.model")
 
-    [ -z "$api_key" ] && { echo -e "${RED}Error: ElevenLabs API key not configured.${NC}"; echo "Run: ./lyrics-transcription.sh config --set elevenlabs.api_key YOUR_KEY"; exit 1; }
+    [ -z "$api_key" ] && { echo -e "${RED}Error: ElevenLabs API key not configured.${NC}"; echo "Run: ./acestep-lyrics-transcription.sh config --set elevenlabs.api_key YOUR_KEY"; exit 1; }
     [ -z "$api_url" ] && api_url="https://api.elevenlabs.io/v1"
     [ -z "$model" ] && model="scribe_v2"
 
