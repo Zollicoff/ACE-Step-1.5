@@ -539,7 +539,9 @@ def setup_event_handlers(demo, dit_handler, llm_handler, dataset_handler, datase
             fn=res_h.send_audio_to_remix,
             inputs=[
                 results_section[f"generated_audio_{btn_idx}"],
-                results_section["lm_metadata_state"]
+                results_section["lm_metadata_state"],
+                generation_section["lyrics"],
+                generation_section["captions"],
             ],
             outputs=[
                 generation_section["src_audio"],
@@ -552,7 +554,9 @@ def setup_event_handlers(demo, dit_handler, llm_handler, dataset_handler, datase
             fn=res_h.send_audio_to_repaint,
             inputs=[
                 results_section[f"generated_audio_{btn_idx}"],
-                results_section["lm_metadata_state"]
+                results_section["lm_metadata_state"],
+                generation_section["lyrics"],
+                generation_section["captions"],
             ],
             outputs=[
                 generation_section["src_audio"],

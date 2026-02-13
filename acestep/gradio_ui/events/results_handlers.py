@@ -420,26 +420,40 @@ def send_audio_to_src_with_metadata(audio_file, lm_metadata):
     )
 
 
-def _extract_metadata_for_editing(lm_metadata):
+def _extract_metadata_for_editing(lm_metadata, current_lyrics="", current_caption=""):
     """Extract lyrics and caption from lm_metadata for repaint/remix operations.
+    
+    Falls back to current UI values when lm_metadata is missing or incomplete,
+    so that existing user input is not overwritten with empty strings.
     
     Args:
         lm_metadata: Metadata dictionary from LM generation (or None)
+        current_lyrics: Current lyrics value from the UI (fallback)
+        current_caption: Current caption value from the UI (fallback)
     
     Returns:
-        Tuple of (lyrics, caption) as strings (empty strings if not found)
+        Tuple of (lyrics, caption) as strings
     """
-    lyrics = ""
-    caption = ""
+    lyrics = current_lyrics or ""
+    caption = current_caption or ""
     if lm_metadata and isinstance(lm_metadata, dict):
-        lyrics = lm_metadata.get("lyrics", "")
-        caption = lm_metadata.get("caption", "")
+        lyrics = lm_metadata.get("lyrics", lyrics)
+        caption = lm_metadata.get("caption", caption)
     return lyrics, caption
 
 
-def send_audio_to_remix(audio_file, lm_metadata):
+def send_audio_to_remix(audio_file, lm_metadata, current_lyrics, current_caption):
     """Send generated audio to src_audio and switch mode to Remix.
     Also populate lyrics and caption fields from the generated audio.
+    
+    Falls back to the current UI lyrics/caption when lm_metadata is unavailable
+    (e.g. dit-only generation without LM).
+    
+    Args:
+        audio_file: Generated audio file path
+        lm_metadata: LM metadata dict (may be None)
+        current_lyrics: Current lyrics text in the UI
+        current_caption: Current caption text in the UI
     
     Returns:
         Tuple of (src_audio, generation_mode, lyrics, caption)
@@ -447,7 +461,9 @@ def send_audio_to_remix(audio_file, lm_metadata):
     if audio_file is None:
         return (gr.skip(),) * 4
     
-    lyrics, caption = _extract_metadata_for_editing(lm_metadata)
+    lyrics, caption = _extract_metadata_for_editing(
+        lm_metadata, current_lyrics, current_caption
+    )
     
     return (
         audio_file,                       # src_audio
@@ -457,9 +473,18 @@ def send_audio_to_remix(audio_file, lm_metadata):
     )
 
 
-def send_audio_to_repaint(audio_file, lm_metadata):
+def send_audio_to_repaint(audio_file, lm_metadata, current_lyrics, current_caption):
     """Send generated audio to src_audio and switch mode to Repaint.
-    Also populate lyrics field with lyrics from the generated audio.
+    Also populate lyrics and caption fields from the generated audio.
+    
+    Falls back to the current UI lyrics/caption when lm_metadata is unavailable
+    (e.g. dit-only generation without LM).
+    
+    Args:
+        audio_file: Generated audio file path
+        lm_metadata: LM metadata dict (may be None)
+        current_lyrics: Current lyrics text in the UI
+        current_caption: Current caption text in the UI
     
     Returns:
         Tuple of (src_audio, generation_mode, lyrics, caption)
@@ -467,7 +492,9 @@ def send_audio_to_repaint(audio_file, lm_metadata):
     if audio_file is None:
         return (gr.skip(),) * 4
     
-    lyrics, caption = _extract_metadata_for_editing(lm_metadata)
+    lyrics, caption = _extract_metadata_for_editing(
+        lm_metadata, current_lyrics, current_caption
+    )
     
     return (
         audio_file,                       # src_audio
