@@ -118,42 +118,55 @@ def create_gradio_interface(dit_handler, llm_handler, dataset_handler, init_para
 
         /* --- On-hover Tooltips --- */
         /* Hide info text by default and format as tooltip */
-        .has-info + div,
-        span[data-testid="block-info"] + div,
+        span.has-info + div,
+        span[data-testid="block-info"].has-info + div,
         .checkbox-container + div {
             display: none;
             position: absolute;
-            background: rgba(30, 30, 30, 0.95);
+            background: rgba(30, 30, 30, 0.98);
             color: #ffffff;
-            padding: 8px 12px;
-            border-radius: 6px;
-            font-size: 0.8rem;
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 0.85rem;
             z-index: 10000;
-            max-width: 300px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+            max-width: 320px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
             pointer-events: none;
-            line-height: 1.4;
-            margin-top: 2px;
-            border: 1px solid rgba(255,255,255,0.1);
+            line-height: 1.5;
+            margin-top: 5px;
+            border: 1px solid rgba(255,255,255,0.15);
+            backdrop-filter: blur(4px);
         }
 
-        /* Show tooltips on hover */
-        .block:hover .has-info + div,
-        .block:hover span[data-testid="block-info"] + div,
-        .has-info:hover + div,
+        /* Show tooltips on hover of the label area only */
+        span.has-info:hover + div,
+        span[data-testid="block-info"].has-info:hover + div,
         .checkbox-container:hover + div {
             display: block;
         }
 
-        /* Add an info icon indicator */
-        .has-info::after,
-        span[data-testid="block-info"]::after,
-        .checkbox-container:has(+ div span.md) .label-text::after {
-            content: " ⓘ";
-            font-size: 0.9em;
-            opacity: 0.6;
-            margin-left: 4px;
+        /* High-res info icon using SVG */
+        span.has-info::after,
+        span[data-testid="block-info"].has-info::after,
+        .checkbox-container:has(+ div) .label-text::after {
+            content: "";
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            margin-left: 6px;
+            vertical-align: middle;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cline x1='12' y1='16' x2='12' y2='12'/%3E%3Cline x1='12' y1='8' x2='12.01' y2='8'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-size: contain;
+            opacity: 0.4;
+            transition: opacity 0.2s;
             cursor: help;
+        }
+
+        span.has-info:hover::after,
+        span[data-testid="block-info"].has-info:hover::after,
+        .checkbox-container:hover .label-text::after {
+            opacity: 1;
         }
         """,
     ) as demo:
