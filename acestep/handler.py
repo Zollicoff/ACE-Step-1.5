@@ -335,12 +335,12 @@ class AceStepHandler(
 
         T = z_nlc.shape[1]
         # MLX unified memory: much larger chunk OK than PyTorch MPS.
-        # 2048 latent frames â‰ˆ 87 seconds of audio â€” covers nearly all use cases.
+        # 2048 latent frames ~= 87 seconds of audio; covers nearly all use cases.
         MLX_CHUNK = 2048
         MLX_OVERLAP = 64
 
         if T <= MLX_CHUNK:
-            # No tiling needed â€” caller handles mx.eval()
+            # No tiling needed; caller handles mx.eval()
             return decode_fn(z_nlc)
 
         # Overlap-discard tiling for very long sequences
@@ -588,10 +588,10 @@ class AceStepHandler(
             # MPS safety: torch.compile and torchao quantization are not supported on MPS
             if device == "mps":
                 if compile_model:
-                    logger.warning("[initialize_service] torch.compile is not supported on MPS â€” disabling.")
+                    logger.warning("[initialize_service] torch.compile is not supported on MPS; disabling.")
                     compile_model = False
                 if quantization is not None:
-                    logger.warning("[initialize_service] Quantization (torchao) is not supported on MPS â€” disabling.")
+                    logger.warning("[initialize_service] Quantization (torchao) is not supported on MPS; disabling.")
                     quantization = None
             
             self.compiled = compile_model
@@ -746,7 +746,7 @@ class AceStepHandler(
                         # Only quantize DiT layers; exclude tokenizer and detokenizer submodules.
                         # The tokenizer (ResidualFSQ) and detokenizer contain small Linear layers
                         # that are used for audio code decoding. Quantizing them causes device
-                        # mismatch errors during CPUâ†”GPU offloading because some torchao versions
+                        # mismatch errors during CPU/GPU offloading because some torchao versions
                         # don't fully support .to(device) on AffineQuantizedTensor, and these
                         # layers are too small to benefit from quantization anyway.
                         def _dit_filter_fn(module, fqn):
@@ -1285,7 +1285,7 @@ class AceStepHandler(
         # (e.g. 8 GB) decoding the whole batch at once can OOM.  Process one
         # sample at a time so peak VRAM stays constant regardless of batch size.
         if B > 1:
-            logger.info(f"[tiled_decode] Batch size {B} > 1 â€” decoding samples sequentially to save VRAM")
+            logger.info(f"[tiled_decode] Batch size {B} > 1; decoding samples sequentially to save VRAM")
             per_sample_results = []
             for b_idx in range(B):
                 single = latents[b_idx : b_idx + 1]  # [1, C, T]
@@ -1497,7 +1497,7 @@ class AceStepHandler(
         # Move latents to CPU
         latents_cpu = latents.cpu().to(vae_cpu_dtype)
         
-        # Decode on CPU (no tiling needed â€” CPU has plenty of RAM)
+        # Decode on CPU (no tiling needed; CPU has plenty of RAM)
         try:
             with torch.inference_mode():
                 decoder_output = self.vae.decode(latents_cpu)
@@ -1510,7 +1510,7 @@ class AceStepHandler(
                 self._recursive_to_device(self.vae, original_device, vae_gpu_dtype)
         
         logger.info(f"[_decode_on_cpu] CPU decode complete, result shape={result.shape}")
-        return result  # result stays on CPU â€” fine for audio post-processing
+        return result  # result stays on CPU; fine for audio post-processing
     
     def tiled_encode(self, audio, chunk_size=None, overlap=None, offload_latent_to_cpu=True):
         """
@@ -2006,7 +2006,7 @@ class AceStepHandler(
                     logger.debug(f"[generate_music] Before VAE decode: allocated={self._memory_allocated()/1024**3:.2f}GB, max={self._max_memory_allocated()/1024**3:.2f}GB")
                     
                     # When native MLX VAE is active, bypass VRAM checks and CPU
-                    # offload entirely â€” MLX uses unified memory, not PyTorch VRAM.
+                    # offload entirely; MLX uses unified memory, not PyTorch VRAM.
                     _using_mlx_vae = self.use_mlx_vae and self.mlx_vae is not None
                     _vae_cpu = False
 
@@ -2015,7 +2015,7 @@ class AceStepHandler(
                         import os as _os
                         _vae_cpu = _os.environ.get("ACESTEP_VAE_ON_CPU", "0").lower() in ("1", "true", "yes")
                         if not _vae_cpu:
-                            # MPS (Apple Silicon) uses unified memory â€” get_effective_free_vram_gb()
+                            # MPS (Apple Silicon) uses unified memory; get_effective_free_vram_gb()
                             # relies on CUDA and always returns 0 on Mac, which would incorrectly
                             # force VAE decode onto the CPU.  Skip the auto-CPU logic for MPS.
                             if self.device == "mps":
@@ -2025,7 +2025,7 @@ class AceStepHandler(
                                 logger.info(f"[generate_music] Effective free VRAM before VAE decode: {_effective_free:.2f} GB")
                                 # If less than 0.5 GB free, VAE decode on GPU will almost certainly OOM
                                 if _effective_free < 0.5:
-                                    logger.warning(f"[generate_music] Only {_effective_free:.2f} GB free VRAM â€” auto-enabling CPU VAE decode")
+                                    logger.warning(f"[generate_music] Only {_effective_free:.2f} GB free VRAM; auto-enabling CPU VAE decode")
                                     _vae_cpu = True
                         if _vae_cpu:
                             logger.info("[generate_music] Moving VAE to CPU for decode (ACESTEP_VAE_ON_CPU=1)...")
@@ -2093,7 +2093,7 @@ class AceStepHandler(
                 audio_tensor = pred_wavs[i].cpu()
                 audio_tensors.append(audio_tensor)
             
-            status_message = f"âœ… Generation completed successfully!"
+            status_message = "Generation completed successfully!"
             logger.info(f"[generate_music] Done! Generated {len(audio_tensors)} audio tensors.")
             
             # Extract intermediate information from outputs

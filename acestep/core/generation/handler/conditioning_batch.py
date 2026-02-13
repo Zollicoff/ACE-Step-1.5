@@ -135,6 +135,6 @@ class ConditioningBatchMixin:
         for k, v in batch.items():
             if isinstance(v, torch.Tensor):
                 batch[k] = v.to(self.device)
-                if torch.is_floating_point(v):
-                    batch[k] = v.to(self.dtype)
+                if torch.is_floating_point(batch[k]):
+                    batch[k] = batch[k].to(self.dtype)
         return batch

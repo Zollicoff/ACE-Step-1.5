@@ -16,6 +16,7 @@ import matplotlib.pyplot as plt
 from acestep.training.dataset_builder import DatasetBuilder, AudioSample
 from acestep.debug_utils import debug_log_for, debug_start_for, debug_end_for
 from acestep.gpu_config import get_global_gpu_config
+from acestep.gradio_ui.i18n import t
 
 # Define a safe root directory for all training-related filesystem operations.
 # This limits user-supplied paths (for checkpoints, exports, etc.) to stay
@@ -846,10 +847,10 @@ def stop_training(training_state: Dict) -> Tuple[str, Dict]:
         Tuple of (status, training_state)
     """
     if not training_state.get("is_training", False):
-        return "â„¹ï¸ No training in progress", training_state
+        return t("training.stop_no_training"), training_state
     
     training_state["should_stop"] = True
-    return "â¹ï¸ Stopping training...", training_state
+    return t("training.stop_stopping"), training_state
 
 
 def export_lora(
@@ -862,11 +863,11 @@ def export_lora(
         Status message
     """
     if not export_path or not export_path.strip():
-        return "âŒ Please enter an export path"
+        return t("training.export_path_required")
     # Resolve and validate the base LoRA output directory within the safe root
     safe_lora_dir = _safe_join(SAFE_TRAINING_ROOT, lora_output_dir)
     if safe_lora_dir is None:
-        return "âŒ Invalid LoRA output directory"
+        return t("training.invalid_lora_output_dir")
     
     
     # Check if there's a trained model to export
@@ -880,19 +881,19 @@ def export_lora(
         # Find the latest checkpoint
         checkpoints = [d for d in os.listdir(checkpoint_dir) if d.startswith("epoch_")]
         if not checkpoints:
-            return "âŒ No checkpoints found"
+            return t("training.no_checkpoints_found")
         
         checkpoints.sort(key=lambda x: int(x.split("_")[1]))
         latest = checkpoints[-1]
         source_path = os.path.join(checkpoint_dir, latest)
     else:
-        return f"âŒ No trained model found in {lora_output_dir}"
+        return t("training.no_trained_model_found", path=lora_output_dir)
     
 
     # Resolve and validate the export destination within the safe root
     safe_export_path = _safe_join(SAFE_TRAINING_ROOT, export_path)
     if safe_export_path is None:
-        return "âŒ Invalid export path"
+        return t("training.invalid_export_path")
     
 
     try:
@@ -907,11 +908,11 @@ def export_lora(
         
         shutil.copytree(source_path, safe_export_path)
         
-        return f"âœ… LoRA exported to {safe_export_path}"
+        return t("training.lora_exported", path=safe_export_path)
         
     except Exception as e:
         logger.exception("Export error")
-        return f"âŒ Export failed: {str(e)}"
+        return t("training.export_failed", error=str(e))
 
 
 def start_lokr_training(
@@ -1113,13 +1114,13 @@ def start_lokr_training(
 
 def list_lokr_export_epochs(lokr_output_dir: str) -> Tuple[Any, str]:
     """List available LoKr checkpoint epochs for export dropdown."""
-    default_choice = "Latest (auto)"
+    default_choice = t("training.latest_auto")
     if not lokr_output_dir or not lokr_output_dir.strip():
-        return gr.update(choices=[default_choice], value=default_choice), "âš ï¸ Enter LoKr output directory first"
+        return gr.update(choices=[default_choice], value=default_choice), t("training.lokr_output_dir_required")
 
     checkpoint_dir = os.path.join(lokr_output_dir.strip(), "checkpoints")
     if not os.path.isdir(checkpoint_dir):
-        return gr.update(choices=[default_choice], value=default_choice), "â„¹ï¸ No checkpoints found; export will use latest available weights"
+        return gr.update(choices=[default_choice], value=default_choice), t("training.lokr_no_checkpoints_use_latest")
 
     checkpoints = []
     for d in os.listdir(checkpoint_dir):
@@ -1135,11 +1136,11 @@ def list_lokr_export_epochs(lokr_output_dir: str) -> Tuple[Any, str]:
         checkpoints.append((epoch_num, d))
 
     if not checkpoints:
-        return gr.update(choices=[default_choice], value=default_choice), "â„¹ï¸ No exportable epoch checkpoints found"
+        return gr.update(choices=[default_choice], value=default_choice), t("training.lokr_no_exportable_checkpoints")
 
     checkpoints.sort(key=lambda x: x[0], reverse=True)
     choices = [default_choice] + [d for _, d in checkpoints]
-    return gr.update(choices=choices, value=default_choice), f"âœ… Found {len(checkpoints)} LoKr checkpoints"
+    return gr.update(choices=choices, value=default_choice), t("training.lokr_found_checkpoints", count=len(checkpoints))
 
 
 def export_lokr(
@@ -1153,11 +1154,11 @@ def export_lokr(
         Status message
     """
     if not export_path or not export_path.strip():
-        return "âŒ Please enter an export path"
+        return t("training.export_path_required")
 
     final_dir = os.path.join(lokr_output_dir, "final")
     checkpoint_dir = os.path.join(lokr_output_dir, "checkpoints")
-    default_epoch_choice = "Latest (auto)"
+    default_epoch_choice = t("training.latest_auto")
 
     chosen_epoch = (selected_epoch or "").strip()
     if not chosen_epoch:
@@ -1182,22 +1183,19 @@ def export_lokr(
         if requested.isdigit():
             requested = f"epoch_{requested}"
         if requested not in checkpoint_names:
-            return (
-                f"âŒ Selected epoch not found: {chosen_epoch}. "
-                f"Available: {', '.join(checkpoint_names) if checkpoint_names else '(none)'}"
-            )
+            return t("training.lokr_selected_epoch_not_found", chosen=chosen_epoch, available=(", ".join(checkpoint_names) if checkpoint_names else "(none)"))
         source_file = os.path.join(checkpoint_dir, requested, "lokr_weights.safetensors")
         if not os.path.exists(source_file):
-            return f"âŒ No LoKr weights found for selected epoch: {requested}"
+            return t("training.lokr_no_weights_selected_epoch", epoch=requested)
     elif os.path.exists(os.path.join(final_dir, "lokr_weights.safetensors")):
         source_file = os.path.join(final_dir, "lokr_weights.safetensors")
     elif checkpoint_names:
         latest_checkpoint = checkpoint_names[-1]
         source_file = os.path.join(checkpoint_dir, latest_checkpoint, "lokr_weights.safetensors")
         if not os.path.exists(source_file):
-            return f"âŒ No LoKr weights found in latest checkpoint: {latest_checkpoint}"
+            return t("training.lokr_no_weights_latest_checkpoint", checkpoint=latest_checkpoint)
     else:
-        return f"âŒ No trained LoKr weights found in {lokr_output_dir}"
+        return t("training.lokr_no_trained_weights_found", path=lokr_output_dir)
 
     try:
         import shutil
@@ -1206,13 +1204,13 @@ def export_lokr(
         if export_path.lower().endswith(".safetensors"):
             os.makedirs(os.path.dirname(export_path) if os.path.dirname(export_path) else ".", exist_ok=True)
             shutil.copy2(source_file, export_path)
-            return f"âœ… LoKr exported to {export_path}"
+            return t("training.lokr_exported", path=export_path)
 
         os.makedirs(export_path, exist_ok=True)
         dst_file = os.path.join(export_path, "lokr_weights.safetensors")
         shutil.copy2(source_file, dst_file)
-        return f"âœ… LoKr exported to {dst_file}"
+        return t("training.lokr_exported", path=dst_file)
 
     except Exception as e:
         logger.exception("LoKr export error")
-        return f"âŒ Export failed: {str(e)}"
+        return t("training.export_failed", error=str(e))
