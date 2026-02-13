@@ -11,7 +11,7 @@ class ConditioningTargetMixin:
 
     Depends on host members:
     - Attributes: ``device``, ``dtype``, ``sample_rate``, ``silence_latent``.
-    - Methods: ``_ensure_silence_latent_on_device``, ``_load_model_context``,
+    - Methods: ``_ensure_silence_latent_on_device ``, ``_load_model_context``,
       ``is_silence``, ``_encode_audio_to_latents``, ``_decode_audio_codes_to_latents``.
     """
 

@@ -50,7 +50,7 @@ def scan_directory(
         Tuple of (table_data, status, slider_update, builder_state)
     """
     if not audio_dir or not audio_dir.strip():
-        return [], "❌ Please enter a directory path", _safe_slider(0, value=0, visible=False), builder_state
+        return [], "âŒ Please enter a directory path", _safe_slider(0, value=0, visible=False), builder_state
     
     # Create or use existing builder
     builder = builder_state if builder_state else DatasetBuilder()
@@ -107,17 +107,17 @@ def auto_label_all(
         Tuple of (table_data, status, builder_state)
     """
     if builder_state is None:
-        return [], "❌ Please scan a directory first", builder_state
+        return [], "âŒ Please scan a directory first", builder_state
 
     if not builder_state.samples:
-        return [], "❌ No samples to label. Please scan a directory first.", builder_state
+        return [], "âŒ No samples to label. Please scan a directory first.", builder_state
 
     # Check if handlers are initialized
     if dit_handler is None or dit_handler.model is None:
-        return builder_state.get_samples_dataframe_data(), "❌ Model not initialized. Please initialize the service first.", builder_state
+        return builder_state.get_samples_dataframe_data(), "âŒ Model not initialized. Please initialize the service first.", builder_state
 
     if llm_handler is None or not llm_handler.llm_initialized:
-        return builder_state.get_samples_dataframe_data(), "❌ LLM not initialized. Please initialize the service with LLM enabled.", builder_state
+        return builder_state.get_samples_dataframe_data(), "âŒ LLM not initialized. Please initialize the service with LLM enabled.", builder_state
 
     def progress_callback(msg):
         if progress:
@@ -218,7 +218,7 @@ def save_sample_edit(
         Tuple of (table_data, status, builder_state)
     """
     if builder_state is None:
-        return [], "❌ No dataset loaded", builder_state
+        return [], "âŒ No dataset loaded", builder_state
 
     idx = int(sample_idx)
 
@@ -289,13 +289,13 @@ def save_dataset(
         Status message
     """
     if builder_state is None:
-        return "❌ No dataset to save. Please scan a directory first.", gr.update()
+        return "âŒ No dataset to save. Please scan a directory first.", gr.update()
     
     if not builder_state.samples:
-        return "❌ No samples in dataset.", gr.update()
+        return "âŒ No samples in dataset.", gr.update()
     
     if not save_path or not save_path.strip():
-        return "❌ Please enter a save path.", gr.update()
+        return "âŒ Please enter a save path.", gr.update()
     
     save_path = save_path.strip()
     if not save_path.lower().endswith(".json"):
@@ -304,7 +304,7 @@ def save_dataset(
     # Check if any samples are labeled
     labeled_count = builder_state.get_labeled_count()
     if labeled_count == 0:
-        return "⚠️ Warning: No samples have been labeled. Consider auto-labeling first.\nSaving anyway...", gr.update(value=save_path)
+        return "âš ï¸ Warning: No samples have been labeled. Consider auto-labeling first.\nSaving anyway...", gr.update(value=save_path)
 
     return builder_state.save_dataset(save_path, dataset_name), gr.update(value=save_path)
 
@@ -329,14 +329,14 @@ def load_existing_dataset_for_preprocess(
 
     if not dataset_path or not dataset_path.strip():
         updates = (gr.update(), gr.update(), gr.update(), gr.update(), gr.update())
-        return ("❌ Please enter a dataset path", [], _safe_slider(0, value=0, visible=False), builder_state) + empty_preview + updates
+        return ("âŒ Please enter a dataset path", [], _safe_slider(0, value=0, visible=False), builder_state) + empty_preview + updates
 
     dataset_path = dataset_path.strip()
     debug_log_for("dataset", f"UI load_existing_dataset_for_preprocess: path='{dataset_path}'")
 
     if not os.path.exists(dataset_path):
         updates = (gr.update(), gr.update(), gr.update(), gr.update(), gr.update())
-        return (f"❌ Dataset not found: {dataset_path}", [], _safe_slider(0, value=0, visible=False), builder_state) + empty_preview + updates
+        return (f"âŒ Dataset not found: {dataset_path}", [], _safe_slider(0, value=0, visible=False), builder_state) + empty_preview + updates
 
     # Create new builder (don't reuse old state when loading a file)
     builder = DatasetBuilder()
@@ -358,12 +358,12 @@ def load_existing_dataset_for_preprocess(
 
     # Create info text
     labeled_count = builder.get_labeled_count()
-    info = f"📂 Loaded dataset: {builder.metadata.name}\n"
-    info += f"🔢 Samples: {len(samples)} ({labeled_count} labeled)\n"
-    info += f"🏷️ Custom Tag: {builder.metadata.custom_tag or '(none)'}\n"
-    info += "✅ Ready for preprocessing! You can also edit samples below."
+    info = f"ðŸ“‚ Loaded dataset: {builder.metadata.name}\n"
+    info += f"ðŸ”¢ Samples: {len(samples)} ({labeled_count} labeled)\n"
+    info += f"ðŸ·ï¸ Custom Tag: {builder.metadata.custom_tag or '(none)'}\n"
+    info += "âœ… Ready for preprocessing! You can also edit samples below."
     if any((s.formatted_lyrics and not s.lyrics) for s in builder.samples):
-        info += "\nℹ️ Showing formatted lyrics where lyrics are empty."
+        info += "\nâ„¹ï¸ Showing formatted lyrics where lyrics are empty."
 
     # Get first sample preview
     first_sample = builder.samples[0]
@@ -422,20 +422,20 @@ def preprocess_dataset(
         Status message
     """
     if builder_state is None:
-        return "❌ No dataset loaded. Please scan a directory first."
+        return "âŒ No dataset loaded. Please scan a directory first."
     
     if not builder_state.samples:
-        return "❌ No samples in dataset."
+        return "âŒ No samples in dataset."
     
     labeled_count = builder_state.get_labeled_count()
     if labeled_count == 0:
-        return "❌ No labeled samples. Please auto-label or manually label samples first."
+        return "âŒ No labeled samples. Please auto-label or manually label samples first."
     
     if not output_dir or not output_dir.strip():
-        return "❌ Please enter an output directory."
+        return "âŒ Please enter an output directory."
     
     if dit_handler is None or dit_handler.model is None:
-        return "❌ Model not initialized. Please initialize the service first."
+        return "âŒ Model not initialized. Please initialize the service first."
     
     def progress_callback(msg):
         if progress:
@@ -470,15 +470,15 @@ def load_training_dataset(
         Info text about the dataset
     """
     if not tensor_dir or not tensor_dir.strip():
-        return "❌ Please enter a tensor directory path"
+        return "âŒ Please enter a tensor directory path"
     
     tensor_dir = tensor_dir.strip()
     
     if not os.path.exists(tensor_dir):
-        return f"❌ Directory not found: {tensor_dir}"
+        return f"âŒ Directory not found: {tensor_dir}"
     
     if not os.path.isdir(tensor_dir):
-        return f"❌ Not a directory: {tensor_dir}"
+        return f"âŒ Not a directory: {tensor_dir}"
     
     # Check for manifest
     manifest_path = os.path.join(tensor_dir, "manifest.json")
@@ -492,9 +492,9 @@ def load_training_dataset(
             name = metadata.get("name", "Unknown")
             custom_tag = metadata.get("custom_tag", "")
             
-            info = f"📂 Loaded preprocessed dataset: {name}\n"
-            info += f"🔢 Samples: {num_samples} preprocessed tensors\n"
-            info += f"🏷️ Custom Tag: {custom_tag or '(none)'}"
+            info = f"ðŸ“‚ Loaded preprocessed dataset: {name}\n"
+            info += f"ðŸ”¢ Samples: {num_samples} preprocessed tensors\n"
+            info += f"ðŸ·ï¸ Custom Tag: {custom_tag or '(none)'}"
             
             return info
         except Exception as e:
@@ -504,10 +504,10 @@ def load_training_dataset(
     pt_files = [f for f in os.listdir(tensor_dir) if f.endswith('.pt')]
     
     if not pt_files:
-        return f"❌ No .pt tensor files found in {tensor_dir}"
+        return f"âŒ No .pt tensor files found in {tensor_dir}"
     
-    info = f"📂 Found {len(pt_files)} tensor files in {tensor_dir}\n"
-    info += "ℹ️ No manifest.json found - using all .pt files"
+    info = f"ðŸ“‚ Found {len(pt_files)} tensor files in {tensor_dir}\n"
+    info += "â„¹ï¸ No manifest.json found - using all .pt files"
     
     return info
 
@@ -589,17 +589,17 @@ def start_training(
     This is a generator function that yields progress updates.
     """
     if not tensor_dir or not tensor_dir.strip():
-        yield "❌ Please enter a tensor directory path", "", None, training_state
+        yield "âŒ Please enter a tensor directory path", "", None, training_state
         return
     
     tensor_dir = tensor_dir.strip()
     
     if not os.path.exists(tensor_dir):
-        yield f"❌ Tensor directory not found: {tensor_dir}", "", None, training_state
+        yield f"âŒ Tensor directory not found: {tensor_dir}", "", None, training_state
         return
     
     if dit_handler is None or dit_handler.model is None:
-        yield "❌ Model not initialized. Please initialize the service first.", "", None, training_state
+        yield "âŒ Model not initialized. Please initialize the service first.", "", None, training_state
         return
     
     # Training preset: LoRA training must run on non-quantized DiT.
@@ -626,11 +626,11 @@ def start_training(
         if hasattr(dit_handler, "switch_to_training_preset"):
             switch_status, switched = dit_handler.switch_to_training_preset()
             if not switched:
-                yield f"❌ {switch_status}", "", None, training_state
+                yield f"âŒ {switch_status}", "", None, training_state
                 return
-            yield f"✅ {switch_status}", "", None, training_state
+            yield f"âœ… {switch_status}", "", None, training_state
         else:
-            yield "❌ Training requires non-quantized DiT, and auto-switch is unavailable in this build.", "", None, training_state
+            yield "âŒ Training requires non-quantized DiT, and auto-switch is unavailable in this build.", "", None, training_state
             return
 
     # Check for required training dependencies
@@ -638,7 +638,7 @@ def start_training(
         from lightning.fabric import Fabric
         from peft import get_peft_model, LoraConfig
     except ImportError as e:
-        yield f"❌ Missing required packages: {e}\nPlease install: pip install peft lightning", "", None, training_state
+        yield f"âŒ Missing required packages: {e}\nPlease install: pip install peft lightning", "", None, training_state
         return
     
     training_state["is_training"] = True
@@ -723,7 +723,7 @@ def start_training(
         # Start timer
         start_time = time.time()
         
-        yield f"🚀 Starting training from {tensor_dir}...", "", initial_plot, training_state
+        yield f"ðŸš€ Starting training from {tensor_dir}...", "", initial_plot, training_state
         
         # Create trainer
         trainer = LoRATrainer(
@@ -741,8 +741,8 @@ def start_training(
             status_text = str(status)
             status_lower = status_text.lower()
             if (
-                status_text.startswith("âŒ")
-                or status_text.startswith("❌")
+                status_text.startswith("Ã¢ÂÅ’")
+                or status_text.startswith("âŒ")
                 or "training failed" in status_lower
                 or "error:" in status_lower
                 or "module not found" in status_lower
@@ -751,7 +751,7 @@ def start_training(
                 failure_message = status_text
             # Calculate elapsed time and ETA
             elapsed_seconds = time.time() - start_time
-            time_info = f"⏱️ Elapsed: {_format_duration(elapsed_seconds)}"
+            time_info = f"â±ï¸ Elapsed: {_format_duration(elapsed_seconds)}"
             
             # Parse "Epoch x/y" from status to calculate ETA
             match = re.search(r"Epoch\s+(\d+)/(\d+)", str(status))
@@ -784,9 +784,9 @@ def start_training(
             yield display_status, log_text, plot_figure, training_state
             
             if training_state.get("should_stop", False):
-                logger.info("⏹️ Training stopped by user")
-                log_lines.append("⏹️ Training stopped by user")
-                yield f"⏹️ Stopped ({time_info})", "\n".join(log_lines[-15:]), plot_figure, training_state
+                logger.info("â¹ï¸ Training stopped by user")
+                log_lines.append("â¹ï¸ Training stopped by user")
+                yield f"â¹ï¸ Stopped ({time_info})", "\n".join(log_lines[-15:]), plot_figure, training_state
                 break
         
         total_time = time.time() - start_time
@@ -798,7 +798,7 @@ def start_training(
             log_lines.append(failure_message)
             yield final_msg, "\n".join(log_lines[-15:]), final_plot, training_state
             return
-        completion_msg = f"✅ Training completed! Total time: {_format_duration(total_time)}"
+        completion_msg = f"âœ… Training completed! Total time: {_format_duration(total_time)}"
         
         logger.info(completion_msg)
         log_lines.append(completion_msg)
@@ -808,7 +808,7 @@ def start_training(
     except Exception as e:
         logger.exception("Training error")
         training_state["is_training"] = False
-        yield f"❌ Error: {str(e)}", str(e), _training_loss_figure({}, [], []), training_state
+        yield f"âŒ Error: {str(e)}", str(e), _training_loss_figure({}, [], []), training_state
 
 def _safe_join(base_root: str, user_path: str) -> Optional[str]:
     """Safely join a user-supplied path to a base root, preventing escapes.
@@ -846,10 +846,10 @@ def stop_training(training_state: Dict) -> Tuple[str, Dict]:
         Tuple of (status, training_state)
     """
     if not training_state.get("is_training", False):
-        return "ℹ️ No training in progress", training_state
+        return "â„¹ï¸ No training in progress", training_state
     
     training_state["should_stop"] = True
-    return "⏹️ Stopping training...", training_state
+    return "â¹ï¸ Stopping training...", training_state
 
 
 def export_lora(
@@ -862,11 +862,11 @@ def export_lora(
         Status message
     """
     if not export_path or not export_path.strip():
-        return "❌ Please enter an export path"
+        return "âŒ Please enter an export path"
     # Resolve and validate the base LoRA output directory within the safe root
     safe_lora_dir = _safe_join(SAFE_TRAINING_ROOT, lora_output_dir)
     if safe_lora_dir is None:
-        return "❌ Invalid LoRA output directory"
+        return "âŒ Invalid LoRA output directory"
     
     
     # Check if there's a trained model to export
@@ -880,19 +880,21 @@ def export_lora(
         # Find the latest checkpoint
         checkpoints = [d for d in os.listdir(checkpoint_dir) if d.startswith("epoch_")]
         if not checkpoints:
-            return "❌ No checkpoints found"
+            return "âŒ No checkpoints found"
         
         checkpoints.sort(key=lambda x: int(x.split("_")[1]))
         latest = checkpoints[-1]
         source_path = os.path.join(checkpoint_dir, latest)
     else:
-        return f"❌ No trained model found in {lora_output_dir}"
+        return f"âŒ No trained model found in {lora_output_dir}"
     
+
     # Resolve and validate the export destination within the safe root
     safe_export_path = _safe_join(SAFE_TRAINING_ROOT, export_path)
     if safe_export_path is None:
-        return "❌ Invalid export path"
+        return "âŒ Invalid export path"
     
+
     try:
         import shutil
         
@@ -905,11 +907,11 @@ def export_lora(
         
         shutil.copytree(source_path, safe_export_path)
         
-        return f"✅ LoRA exported to {safe_export_path}"
+        return f"âœ… LoRA exported to {safe_export_path}"
         
     except Exception as e:
         logger.exception("Export error")
-        return f"❌ Export failed: {str(e)}"
+        return f"âŒ Export failed: {str(e)}"
 
 
 def start_lokr_training(
@@ -935,16 +937,16 @@ def start_lokr_training(
 ):
     """Start LoKr training from preprocessed tensors."""
     if not tensor_dir or not tensor_dir.strip():
-        yield "❌ Please enter a tensor directory path", "", None, training_state
+        yield "âŒ Please enter a tensor directory path", "", None, training_state
         return
 
     tensor_dir = tensor_dir.strip()
     if not os.path.exists(tensor_dir):
-        yield f"❌ Tensor directory not found: {tensor_dir}", "", None, training_state
+        yield f"âŒ Tensor directory not found: {tensor_dir}", "", None, training_state
         return
 
     if dit_handler is None or dit_handler.model is None:
-        yield "❌ Model not initialized. Please initialize the service first.", "", None, training_state
+        yield "âŒ Model not initialized. Please initialize the service first.", "", None, training_state
         return
 
     if getattr(dit_handler, "quantization", None) is not None:
@@ -952,17 +954,17 @@ def start_lokr_training(
         if hasattr(dit_handler, "switch_to_training_preset"):
             switch_status, switched = dit_handler.switch_to_training_preset()
             if not switched:
-                yield f"❌ {switch_status}", "", None, training_state
+                yield f"âŒ {switch_status}", "", None, training_state
                 return
-            yield f"✅ {switch_status}", "", None, training_state
+            yield f"âœ… {switch_status}", "", None, training_state
         else:
-            yield "❌ Training requires non-quantized DiT, and auto-switch is unavailable in this build.", "", None, training_state
+            yield "âŒ Training requires non-quantized DiT, and auto-switch is unavailable in this build.", "", None, training_state
             return
 
     try:
         from lightning.fabric import Fabric  # noqa: F401
     except ImportError as e:
-        yield f"❌ Missing required packages: {e}\nPlease install: pip install lightning lycoris-lora", "", None, training_state
+        yield f"âŒ Missing required packages: {e}\nPlease install: pip install lightning lycoris-lora", "", None, training_state
         return
 
     training_state["is_training"] = True
@@ -1039,7 +1041,7 @@ def start_lokr_training(
         loss_list = []
         initial_plot = _training_loss_figure(training_state, step_list, loss_list)
         start_time = time.time()
-        yield f"🚀 Starting LoKr training from {tensor_dir}...", "", initial_plot, training_state
+        yield f"ðŸš€ Starting LoKr training from {tensor_dir}...", "", initial_plot, training_state
 
         trainer = LoKRTrainer(
             dit_handler=dit_handler,
@@ -1054,7 +1056,7 @@ def start_lokr_training(
             status_text = str(status)
             status_lower = status_text.lower()
             if (
-                status_text.startswith("❌")
+                status_text.startswith("âŒ")
                 or "training failed" in status_lower
                 or "error:" in status_lower
                 or "module not found" in status_lower
@@ -1063,7 +1065,7 @@ def start_lokr_training(
                 failure_message = status_text
 
             elapsed_seconds = time.time() - start_time
-            time_info = f"⏱️ Elapsed: {_format_duration(elapsed_seconds)}"
+            time_info = f"â±ï¸ Elapsed: {_format_duration(elapsed_seconds)}"
             match = re.search(r"Epoch\s+(\d+)/(\d+)", status_text)
             if match:
                 current_ep = int(match.group(1))
@@ -1086,8 +1088,8 @@ def start_lokr_training(
             yield display_status, log_text, plot_figure, training_state
 
             if training_state.get("should_stop", False):
-                log_lines.append("⏹️ Training stopped by user")
-                yield f"⏹️ Stopped ({time_info})", "\n".join(log_lines[-15:]), plot_figure, training_state
+                log_lines.append("â¹ï¸ Training stopped by user")
+                yield f"â¹ï¸ Stopped ({time_info})", "\n".join(log_lines[-15:]), plot_figure, training_state
                 break
 
         total_time = time.time() - start_time
@@ -1099,25 +1101,25 @@ def start_lokr_training(
             yield final_msg, "\n".join(log_lines[-15:]), final_plot, training_state
             return
 
-        completion_msg = f"✅ LoKr training completed! Total time: {_format_duration(total_time)}"
+        completion_msg = f"âœ… LoKr training completed! Total time: {_format_duration(total_time)}"
         log_lines.append(completion_msg)
         yield completion_msg, "\n".join(log_lines[-15:]), final_plot, training_state
 
     except Exception as e:
         logger.exception("LoKr training error")
         training_state["is_training"] = False
-        yield f"❌ Error: {str(e)}", str(e), _training_loss_figure({}, [], []), training_state
+        yield f"âŒ Error: {str(e)}", str(e), _training_loss_figure({}, [], []), training_state
 
 
 def list_lokr_export_epochs(lokr_output_dir: str) -> Tuple[Any, str]:
     """List available LoKr checkpoint epochs for export dropdown."""
     default_choice = "Latest (auto)"
     if not lokr_output_dir or not lokr_output_dir.strip():
-        return gr.update(choices=[default_choice], value=default_choice), "⚠️ Enter LoKr output directory first"
+        return gr.update(choices=[default_choice], value=default_choice), "âš ï¸ Enter LoKr output directory first"
 
     checkpoint_dir = os.path.join(lokr_output_dir.strip(), "checkpoints")
     if not os.path.isdir(checkpoint_dir):
-        return gr.update(choices=[default_choice], value=default_choice), "ℹ️ No checkpoints found; export will use latest available weights"
+        return gr.update(choices=[default_choice], value=default_choice), "â„¹ï¸ No checkpoints found; export will use latest available weights"
 
     checkpoints = []
     for d in os.listdir(checkpoint_dir):
@@ -1133,11 +1135,11 @@ def list_lokr_export_epochs(lokr_output_dir: str) -> Tuple[Any, str]:
         checkpoints.append((epoch_num, d))
 
     if not checkpoints:
-        return gr.update(choices=[default_choice], value=default_choice), "ℹ️ No exportable epoch checkpoints found"
+        return gr.update(choices=[default_choice], value=default_choice), "â„¹ï¸ No exportable epoch checkpoints found"
 
     checkpoints.sort(key=lambda x: x[0], reverse=True)
     choices = [default_choice] + [d for _, d in checkpoints]
-    return gr.update(choices=choices, value=default_choice), f"✅ Found {len(checkpoints)} LoKr checkpoints"
+    return gr.update(choices=choices, value=default_choice), f"âœ… Found {len(checkpoints)} LoKr checkpoints"
 
 
 def export_lokr(
@@ -1151,7 +1153,7 @@ def export_lokr(
         Status message
     """
     if not export_path or not export_path.strip():
-        return "❌ Please enter an export path"
+        return "âŒ Please enter an export path"
 
     final_dir = os.path.join(lokr_output_dir, "final")
     checkpoint_dir = os.path.join(lokr_output_dir, "checkpoints")
@@ -1181,21 +1183,21 @@ def export_lokr(
             requested = f"epoch_{requested}"
         if requested not in checkpoint_names:
             return (
-                f"❌ Selected epoch not found: {chosen_epoch}. "
+                f"âŒ Selected epoch not found: {chosen_epoch}. "
                 f"Available: {', '.join(checkpoint_names) if checkpoint_names else '(none)'}"
             )
         source_file = os.path.join(checkpoint_dir, requested, "lokr_weights.safetensors")
         if not os.path.exists(source_file):
-            return f"❌ No LoKr weights found for selected epoch: {requested}"
+            return f"âŒ No LoKr weights found for selected epoch: {requested}"
     elif os.path.exists(os.path.join(final_dir, "lokr_weights.safetensors")):
         source_file = os.path.join(final_dir, "lokr_weights.safetensors")
     elif checkpoint_names:
         latest_checkpoint = checkpoint_names[-1]
         source_file = os.path.join(checkpoint_dir, latest_checkpoint, "lokr_weights.safetensors")
         if not os.path.exists(source_file):
-            return f"❌ No LoKr weights found in latest checkpoint: {latest_checkpoint}"
+            return f"âŒ No LoKr weights found in latest checkpoint: {latest_checkpoint}"
     else:
-        return f"❌ No trained LoKr weights found in {lokr_output_dir}"
+        return f"âŒ No trained LoKr weights found in {lokr_output_dir}"
 
     try:
         import shutil
@@ -1204,13 +1206,13 @@ def export_lokr(
         if export_path.lower().endswith(".safetensors"):
             os.makedirs(os.path.dirname(export_path) if os.path.dirname(export_path) else ".", exist_ok=True)
             shutil.copy2(source_file, export_path)
-            return f"✅ LoKr exported to {export_path}"
+            return f"âœ… LoKr exported to {export_path}"
 
         os.makedirs(export_path, exist_ok=True)
         dst_file = os.path.join(export_path, "lokr_weights.safetensors")
         shutil.copy2(source_file, dst_file)
-        return f"✅ LoKr exported to {dst_file}"
+        return f"âœ… LoKr exported to {dst_file}"
 
     except Exception as e:
         logger.exception("LoKr export error")
-        return f"❌ Export failed: {str(e)}"
+        return f"âŒ Export failed: {str(e)}"
