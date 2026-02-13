@@ -534,9 +534,33 @@ def setup_event_handlers(demo, dit_handler, llm_handler, dataset_handler, datase
         js=download_existing_js  # Run the above JS
     )
     # ========== Send to Remix / Repaint Handlers ==========
+    # Mode-UI outputs shared with generation_mode.change — applied atomically
+    # so we don't rely on a chained .change() event for visibility/label updates.
+    _mode_ui_outputs = [
+        generation_section["simple_mode_group"],
+        generation_section["custom_mode_group"],
+        generation_section["generate_btn"],
+        generation_section["simple_sample_created"],
+        generation_section["optional_params_accordion"],
+        generation_section["task_type"],
+        generation_section["src_audio_row"],
+        generation_section["repainting_group"],
+        generation_section["text2music_audio_codes_group"],
+        generation_section["track_name"],
+        generation_section["complete_track_classes"],
+        generation_section["generate_btn_row"],
+        generation_section["generation_mode"],
+        generation_section["results_wrapper"],
+        generation_section["think_checkbox"],
+        generation_section["load_file_col"],
+        generation_section["load_file"],
+        generation_section["audio_cover_strength"],
+        generation_section["cover_noise_strength"],
+    ]
     for btn_idx in range(1, 9):
         results_section[f"send_to_remix_btn_{btn_idx}"].click(
-            fn=res_h.send_audio_to_remix,
+            fn=lambda audio, lm, ly, cap: res_h.send_audio_to_remix(
+                audio, lm, ly, cap, llm_handler),
             inputs=[
                 results_section[f"generated_audio_{btn_idx}"],
                 results_section["lm_metadata_state"],
@@ -548,10 +572,11 @@ def setup_event_handlers(demo, dit_handler, llm_handler, dataset_handler, datase
                 generation_section["generation_mode"],
                 generation_section["lyrics"],
                 generation_section["captions"],
-            ]
+            ] + _mode_ui_outputs,
         )
         results_section[f"send_to_repaint_btn_{btn_idx}"].click(
-            fn=res_h.send_audio_to_repaint,
+            fn=lambda audio, lm, ly, cap: res_h.send_audio_to_repaint(
+                audio, lm, ly, cap, llm_handler),
             inputs=[
                 results_section[f"generated_audio_{btn_idx}"],
                 results_section["lm_metadata_state"],
@@ -563,7 +588,7 @@ def setup_event_handlers(demo, dit_handler, llm_handler, dataset_handler, datase
                 generation_section["generation_mode"],
                 generation_section["lyrics"],
                 generation_section["captions"],
-            ]
+            ] + _mode_ui_outputs,
         )
     
     # ========== Score Calculation Handlers ==========

@@ -1065,28 +1065,25 @@ def update_audio_components_visibility(batch_size):
     return updates_row1 + updates_row2
 
 
-def handle_generation_mode_change(mode: str, llm_handler=None):
-    """
-    Handle unified generation mode change.
+def compute_mode_ui_updates(mode: str, llm_handler=None):
+    """Compute gr.update() tuple for all mode-dependent UI components.
     
-    The mode parameter is one of: "Simple", "Custom", "Remix", "Repaint",
-    "Extract", "Lego", "Complete".
-    
-    Layout per mode:
-    - Simple: ONLY show simple_mode_group; hide everything else.
-    - Custom: Show custom_mode_group (3-col: ref audio | caption | lyrics),
-      optional params (collapsed), generate button row.
-    - Remix: Show custom_mode_group + src audio + audio codes.
-    - Repaint: Show custom_mode_group + src audio + repainting controls.
-    - Extract/Lego: Show custom_mode_group + audio uploads + track name + repainting (lego).
-    - Complete: Show custom_mode_group + audio uploads + complete track classes.
-    
+    Shared by handle_generation_mode_change (Radio .change event) and by
+    send_audio_to_remix / send_audio_to_repaint (button .click events) so
+    that mode-switch UI updates are applied atomically in a single event,
+    without relying on chained .change() events.
+
+    Args:
+        mode: One of "Simple", "Custom", "Remix", "Repaint",
+              "Extract", "Lego", "Complete".
+        llm_handler: Optional LLM handler (used for think-checkbox state).
+
     Returns:
-        Tuple of 15 updates for UI components (see output list in event wiring).
+        Tuple of 19 gr.update objects matching the standard mode-change
+        output list (see event wiring in events/__init__.py).
     """
-    # Map mode to task_type
     task_type = MODE_TO_TASK_TYPE.get(mode, "text2music")
-    
+
     is_simple = (mode == "Simple")
     is_custom = (mode == "Custom")
     is_cover = (mode == "Remix")
@@ -1095,32 +1092,20 @@ def handle_generation_mode_change(mode: str, llm_handler=None):
     is_lego = (mode == "Lego")
     is_complete = (mode == "Complete")
     not_simple = not is_simple
-    
+
     # --- Visibility rules ---
     show_simple = is_simple
-    show_custom_group = not_simple  # 3-col layout for all non-simple modes
+    show_custom_group = not_simple
     show_generate_row = not_simple
     generate_interactive = not_simple
-    
-    # Source audio row (inline, no accordion): for remix/repaint/extract/lego/complete
     show_src_audio = is_cover or is_repaint or is_extract or is_lego or is_complete
-    
-    # Optional params: visible for all non-simple modes, but always collapsed
     show_optional = not_simple
-    
-    # Repainting controls: only for repaint and lego
     show_repainting = is_repaint or is_lego
-    
-    # Audio codes: only visible in Custom mode
     show_audio_codes = is_custom
-    
-    # Track name: for lego and extract
     show_track_name = is_lego or is_extract
-    
-    # Complete track classes: only for complete
     show_complete_classes = is_complete
-    
-    # Audio cover strength: visible in Custom, Remix, Extract, Lego, Complete; hidden in Simple, Repaint
+
+    # Audio cover strength: visible in Custom, Remix, Extract, Lego, Complete
     show_strength = not is_simple and not is_repaint
     if is_cover:
         strength_label = t("generation.remix_strength_label")
@@ -1129,26 +1114,23 @@ def handle_generation_mode_change(mode: str, llm_handler=None):
         strength_label = t("generation.codes_strength_label")
         strength_info = t("generation.codes_strength_info")
     else:
-        # Extract, Lego, Complete — use generic cover strength label
         strength_label = t("generation.cover_strength_label")
         strength_info = t("generation.cover_strength_info")
-    strength_update = gr.update(visible=show_strength, label=strength_label, info=strength_info)
+    strength_update = gr.update(
+        visible=show_strength, label=strength_label, info=strength_info,
+    )
 
-    # Cover noise strength: only visible in Remix mode
     cover_noise_update = gr.update(visible=is_cover)
 
-    # Think checkbox: requires LLM initialization AND not in Remix/Repaint mode
+    # Think checkbox
     lm_initialized = llm_handler.llm_initialized if llm_handler else False
-    think_interactive = lm_initialized and not (is_cover or is_repaint)
-    # If think is disabled, force value to False for Remix/Repaint
     if is_cover or is_repaint:
         think_update = gr.update(interactive=False, value=False)
     elif not lm_initialized:
         think_update = gr.update(interactive=False, value=False)
     else:
         think_update = gr.update(interactive=True)
-    
-    # Dynamic info text per mode
+
     mode_descriptions = {
         "Simple": t("generation.mode_info_simple"),
         "Custom": t("generation.mode_info_custom"),
@@ -1159,31 +1141,42 @@ def handle_generation_mode_change(mode: str, llm_handler=None):
         "Complete": t("generation.mode_info_complete"),
     }
     mode_info_text = mode_descriptions.get(mode, "")
-    
-    # Results section: hidden in Simple mode
+
     show_results = not_simple
-    
+
     return (
-        gr.update(visible=show_simple),          # simple_mode_group
-        gr.update(visible=show_custom_group),     # custom_mode_group
-        gr.update(interactive=generate_interactive),  # generate_btn
-        False,                                    # simple_sample_created - reset
+        gr.update(visible=show_simple),              # simple_mode_group
+        gr.update(visible=show_custom_group),         # custom_mode_group
+        gr.update(interactive=generate_interactive),   # generate_btn
+        False,                                         # simple_sample_created
         gr.Accordion(visible=show_optional, open=False),  # optional_params_accordion
-        gr.update(value=task_type),               # task_type (hidden)
-        gr.update(visible=show_src_audio),        # src_audio_row
-        gr.update(visible=show_repainting),       # repainting_group
-        gr.update(visible=show_audio_codes),      # text2music_audio_codes_group
-        gr.update(visible=show_track_name),       # track_name
-        gr.update(visible=show_complete_classes),  # complete_track_classes
-        gr.update(visible=show_generate_row),     # generate_btn_row
-        gr.update(info=mode_info_text),           # generation_mode (info text)
-        gr.update(visible=show_results),          # results_wrapper
-        think_update,                             # think_checkbox
-        gr.update(visible=not_simple),            # load_file_col (Column)
-        gr.update(visible=not_simple),            # load_file (UploadButton)
-        strength_update,                          # audio_cover_strength
-        cover_noise_update,                       # cover_noise_strength
+        gr.update(value=task_type),                    # task_type
+        gr.update(visible=show_src_audio),             # src_audio_row
+        gr.update(visible=show_repainting),            # repainting_group
+        gr.update(visible=show_audio_codes),           # text2music_audio_codes_group
+        gr.update(visible=show_track_name),            # track_name
+        gr.update(visible=show_complete_classes),       # complete_track_classes
+        gr.update(visible=show_generate_row),          # generate_btn_row
+        gr.update(info=mode_info_text),                # generation_mode (info)
+        gr.update(visible=show_results),               # results_wrapper
+        think_update,                                  # think_checkbox
+        gr.update(visible=not_simple),                 # load_file_col
+        gr.update(visible=not_simple),                 # load_file
+        strength_update,                               # audio_cover_strength
+        cover_noise_update,                            # cover_noise_strength
     )
+
+
+def handle_generation_mode_change(mode: str, llm_handler=None):
+    """Handle unified generation mode change.
+    
+    The mode parameter is one of: "Simple", "Custom", "Remix", "Repaint",
+    "Extract", "Lego", "Complete".
+    
+    Returns:
+        Tuple of 19 updates for UI components (see output list in event wiring).
+    """
+    return compute_mode_ui_updates(mode, llm_handler)
 
 
 def get_generation_mode_choices(is_pure_base: bool = False) -> list:
