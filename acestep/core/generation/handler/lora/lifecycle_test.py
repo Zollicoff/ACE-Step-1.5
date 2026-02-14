@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import torch
 
@@ -103,6 +103,53 @@ class LifecycleTests(unittest.TestCase):
             message = lifecycle.load_lora(handler, tmp)
         self.assertIn("adapter_config.json", message)
         self.assertIn(lifecycle.LOKR_WEIGHTS_FILENAME, message)
+
+    def test_load_lokr_adapter_recreates_with_dora_when_weight_decompose_enabled(self):
+        """Weight-decompose config should request a second LyCORIS net with DoRA enabled."""
+        decoder = _DummyDecoder()
+        base_net = Mock()
+        dora_net = Mock()
+        create_lycoris = Mock(side_effect=[base_net, dora_net])
+        fake_lycoris = SimpleNamespace(
+            LycorisNetwork=SimpleNamespace(apply_preset=Mock()),
+            create_lycoris=create_lycoris,
+        )
+        config = lifecycle.LoKRConfig(weight_decompose=True)
+
+        with patch.dict("sys.modules", {"lycoris": fake_lycoris}):
+            with patch("acestep.core.generation.handler.lora.lifecycle._load_lokr_config", return_value=config):
+                result = lifecycle._load_lokr_adapter(decoder, "weights.safetensors")
+
+        self.assertIs(result, dora_net)
+        self.assertEqual(create_lycoris.call_count, 2)
+        self.assertNotIn("dora_wd", create_lycoris.call_args_list[0].kwargs)
+        self.assertTrue(create_lycoris.call_args_list[1].kwargs["dora_wd"])
+        dora_net.apply_to.assert_called_once_with()
+        dora_net.load_weights.assert_called_once_with("weights.safetensors")
+        self.assertIs(decoder._lycoris_net, dora_net)
+
+    def test_load_lokr_adapter_uses_base_net_when_dora_not_supported(self):
+        """DoRA create failures should warn and keep the initially created LyCORIS net."""
+        decoder = _DummyDecoder()
+        base_net = Mock()
+        create_lycoris = Mock(side_effect=[base_net, RuntimeError("unsupported")])
+        fake_lycoris = SimpleNamespace(
+            LycorisNetwork=SimpleNamespace(apply_preset=Mock()),
+            create_lycoris=create_lycoris,
+        )
+        config = lifecycle.LoKRConfig(weight_decompose=True)
+
+        with patch.dict("sys.modules", {"lycoris": fake_lycoris}):
+            with patch("acestep.core.generation.handler.lora.lifecycle._load_lokr_config", return_value=config):
+                with patch("acestep.core.generation.handler.lora.lifecycle.logger.warning") as mock_warning:
+                    result = lifecycle._load_lokr_adapter(decoder, "weights.safetensors")
+
+        self.assertIs(result, base_net)
+        self.assertEqual(create_lycoris.call_count, 2)
+        mock_warning.assert_called_once()
+        base_net.apply_to.assert_called_once_with()
+        base_net.load_weights.assert_called_once_with("weights.safetensors")
+        self.assertIs(decoder._lycoris_net, base_net)
 
 
 if __name__ == "__main__":

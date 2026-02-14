@@ -93,6 +93,28 @@ def _load_lokr_adapter(decoder: Any, weights_path: str) -> Any:
         rs_lora=lokr_config.rs_lora,
         unbalanced_factorization=lokr_config.unbalanced_factorization,
     )
+
+    if lokr_config.weight_decompose:
+        try:
+            lycoris_net = create_lycoris(
+                decoder,
+                1.0,
+                linear_dim=lokr_config.linear_dim,
+                linear_alpha=lokr_config.linear_alpha,
+                algo="lokr",
+                factor=lokr_config.factor,
+                decompose_both=lokr_config.decompose_both,
+                use_tucker=lokr_config.use_tucker,
+                use_scalar=lokr_config.use_scalar,
+                full_matrix=lokr_config.full_matrix,
+                bypass_mode=lokr_config.bypass_mode,
+                rs_lora=lokr_config.rs_lora,
+                unbalanced_factorization=lokr_config.unbalanced_factorization,
+                dora_wd=True,
+            )
+        except Exception as exc:
+            logger.warning(f"DoRA mode not supported in current LyCORIS build: {exc}")
+
     lycoris_net.apply_to()
     decoder._lycoris_net = lycoris_net
     lycoris_net.load_weights(weights_path)
