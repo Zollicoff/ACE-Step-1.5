@@ -835,26 +835,31 @@ def analyze_src_audio(dit_handler, llm_handler, src_audio, constrained_decoding_
         Tuple of (audio_codes, status, caption, lyrics, bpm, duration, keyscale, language, timesignature, is_format_caption)
     """
     # 10-item error tuple: (codes, status, caption, lyrics, bpm, duration, key, lang, timesig, is_format)
-    _err = ("", "", "", "", None, None, "", "", "", False)
+    def _err(status: str):
+        return ("", status, "", "", None, None, "", "", "", False)
 
     # Step 1: Convert audio to codes
     if not src_audio:
-        gr.Warning("No audio file provided.")
-        return _err
+        status = "No audio file provided."
+        gr.Warning(status)
+        return _err(status)
 
     try:
         codes_string = dit_handler.convert_src_audio_to_codes(src_audio)
     except Exception as e:
-        gr.Warning(f"Failed to convert audio to codes: {e}")
-        return _err
+        status = f"Failed to convert audio to codes: {e}"
+        gr.Warning(status)
+        return _err(status)
 
     if not codes_string or not codes_string.strip():
-        gr.Warning("Audio conversion produced empty codes.")
-        return _err
+        status = "Audio conversion produced empty codes."
+        gr.Warning(status)
+        return _err(status)
 
     if not _contains_audio_code_tokens(codes_string):
-        gr.Warning("Source file is not valid audio or conversion failed (no audio codes detected).")
-        return _err
+        status = "Source file is not valid audio or conversion failed (no audio codes detected)."
+        gr.Warning(status)
+        return _err(status)
 
     # Step 2: Transcribe codes to caption/lyrics/metas via LLM
     if not llm_handler.llm_initialized:
