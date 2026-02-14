@@ -18,9 +18,6 @@ from acestep.debug_utils import debug_log_for, debug_start_for, debug_end_for
 from acestep.gpu_config import get_global_gpu_config
 from acestep.gradio_ui.i18n import t
 
-# Define a safe root directory for all training-related filesystem operations.
-# This limits user-supplied paths (for checkpoints, exports, etc.) to stay
-# within the server's working tree, preventing directory traversal outside it.
 SAFE_TRAINING_ROOT = os.path.abspath(os.getcwd())
 
 
@@ -736,8 +733,12 @@ def start_training(
         training_failed = False
         failure_message = ""
         
-        # Train with progress updates using preprocessed tensors
-        resume_from = resume_checkpoint_dir.strip() if resume_checkpoint_dir and resume_checkpoint_dir.strip() else None
+        resume_from = None
+        if resume_checkpoint_dir and resume_checkpoint_dir.strip():
+            normalized_resume = _safe_join(SAFE_TRAINING_ROOT, resume_checkpoint_dir.strip())
+            if normalized_resume and os.path.exists(normalized_resume):
+                resume_from = normalized_resume
+        
         for step, loss, status in trainer.train_from_preprocessed(tensor_dir, training_state, resume_from=resume_from):
             status_text = str(status)
             status_lower = status_text.lower()
@@ -812,29 +813,19 @@ def start_training(
         yield f"âŒ Error: {str(e)}", str(e), _training_loss_figure({}, [], []), training_state
 
 def _safe_join(base_root: str, user_path: str) -> Optional[str]:
-    """Safely join a user-supplied path to a base root, preventing escapes.
-    
-    Returns an absolute path within base_root, or None if the path is invalid.
-    """
-    if not user_path:
+    """Safely join user path to base root, preventing directory traversal."""
+    if not user_path or not user_path.strip():
         return None
-    # Normalize whitespace
     candidate = user_path.strip()
-    if not candidate:
-        return None
-    # Disallow absolute paths outright; force everything under base_root
     if os.path.isabs(candidate):
         return None
-    # Join with base_root and normalize to an absolute path
     abs_root = os.path.abspath(base_root)
     joined = os.path.abspath(os.path.join(abs_root, candidate))
     try:
         common = os.path.commonpath([abs_root, joined])
     except ValueError:
-        # Different drives on Windows or other path issues
         return None
     if common != abs_root:
-        # Attempted to escape the allowed root
         return None
     return joined
 
