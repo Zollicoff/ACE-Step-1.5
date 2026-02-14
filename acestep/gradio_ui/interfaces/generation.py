@@ -36,10 +36,10 @@ def _compute_init_defaults(dit_handler, llm_handler, init_params, language):
     max_duration = gpu_config.max_duration_with_lm if lm_initialized else gpu_config.max_duration_without_lm
     max_batch_size = gpu_config.max_batch_size_with_lm if lm_initialized else gpu_config.max_batch_size_without_lm
     
-    # Use user-specified default batch size if provided, otherwise default to min(2, max_batch_size)
-    user_default_batch_size = init_params.get('default_batch_size') if init_params else None
-    if user_default_batch_size is not None:
-        default_batch_size = min(user_default_batch_size, max_batch_size)
+    # Use CLI-specified default batch size if provided, otherwise default to min(2, max_batch_size)
+    cli_batch_size = init_params.get('default_batch_size') if init_params else None
+    if cli_batch_size is not None:
+        default_batch_size = min(cli_batch_size, max_batch_size)
     else:
         default_batch_size = min(2, max_batch_size)
     
