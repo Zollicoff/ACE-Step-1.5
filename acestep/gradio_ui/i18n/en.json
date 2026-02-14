@@ -3,9 +3,7 @@
     "title": "🎛️ ACE-Step V1.5 Playground💡",
     "subtitle": "Pushing the Boundaries of Open-Source Music Generation"
   },
-  "common": {
-    "required_legend": "* Required field"
-  },
+  "common": {},
   "dataset": {
     "title": "📊 Dataset Explorer",
     "dataset_label": "Dataset",

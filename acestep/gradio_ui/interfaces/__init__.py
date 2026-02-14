@@ -203,7 +203,6 @@ def create_gradio_interface(dit_handler, llm_handler, dataset_handler, init_para
         <div class="main-header">
             <h1>{t("app.title")}</h1>
             <p>{t("app.subtitle")}</p>
-            <p style="font-size: 0.85rem; color: #888;">{t("common.required_legend").replace("*", '<span style="color: #ff4d4d;">*</span>')}</p>
         </div>
         """)
         
