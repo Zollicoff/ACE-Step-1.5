@@ -80,7 +80,7 @@ class ModelRunner:
         # Detect GPU compute capability to determine bfloat16 support
         # Bfloat16 requires Ampere (compute capability >= 8.0) or newer
         gpu_props = torch.cuda.get_device_properties(rank)
-        compute_capability = gpu_props.major + gpu_props.minor * 0.1
+        compute_capability = gpu_props.major + gpu_props.minor / 10.0
         supports_bfloat16 = compute_capability >= 8.0
         
         # Use dtype instead of deprecated torch_dtype
@@ -109,7 +109,7 @@ class ModelRunner:
         
         # Override to float16 if config requested bfloat16 but GPU doesn't support it
         if config_dtype == torch.bfloat16 and not supports_bfloat16:
-            print(f"[nanovllm] GPU {gpu_props.name} (compute capability {gpu_props.major}.{gpu_props.minor}) does not support bfloat16. Using float16 instead.")
+            print(f"[nanovllm] GPU {gpu_props.name} (compute capability {gpu_props.major}.{gpu_props.minor}) does not support bfloat16. Using float16 instead.", flush=True)
             config_dtype = torch.float16
 
         self.dtype = config_dtype  # Save for later use

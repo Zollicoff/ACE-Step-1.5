@@ -28,7 +28,7 @@ class TestNanovllmDtypeDetection(unittest.TestCase):
         
         with patch('torch.cuda.get_device_properties', return_value=mock_props):
             # Simulate the logic from model_runner.py
-            compute_capability = mock_props.major + mock_props.minor * 0.1
+            compute_capability = mock_props.major + mock_props.minor / 10.0
             supports_bfloat16 = compute_capability >= 8.0
             
             # With no config dtype, should default to float16 on Turing
@@ -45,7 +45,7 @@ class TestNanovllmDtypeDetection(unittest.TestCase):
         mock_props = self._create_mock_gpu_props(7, 0, "Tesla V100")
         
         with patch('torch.cuda.get_device_properties', return_value=mock_props):
-            compute_capability = mock_props.major + mock_props.minor * 0.1
+            compute_capability = mock_props.major + mock_props.minor / 10.0
             supports_bfloat16 = compute_capability >= 8.0
             
             config_dtype = None
@@ -61,7 +61,7 @@ class TestNanovllmDtypeDetection(unittest.TestCase):
         mock_props = self._create_mock_gpu_props(8, 0, "A100")
         
         with patch('torch.cuda.get_device_properties', return_value=mock_props):
-            compute_capability = mock_props.major + mock_props.minor * 0.1
+            compute_capability = mock_props.major + mock_props.minor / 10.0
             supports_bfloat16 = compute_capability >= 8.0
             
             config_dtype = None
@@ -77,7 +77,7 @@ class TestNanovllmDtypeDetection(unittest.TestCase):
         mock_props = self._create_mock_gpu_props(8, 6, "RTX 4060")
         
         with patch('torch.cuda.get_device_properties', return_value=mock_props):
-            compute_capability = mock_props.major + mock_props.minor * 0.1
+            compute_capability = mock_props.major + mock_props.minor / 10.0
             supports_bfloat16 = compute_capability >= 8.0
             
             config_dtype = None
@@ -93,7 +93,7 @@ class TestNanovllmDtypeDetection(unittest.TestCase):
         mock_props = self._create_mock_gpu_props(9, 0, "H100")
         
         with patch('torch.cuda.get_device_properties', return_value=mock_props):
-            compute_capability = mock_props.major + mock_props.minor * 0.1
+            compute_capability = mock_props.major + mock_props.minor / 10.0
             supports_bfloat16 = compute_capability >= 8.0
             
             config_dtype = None
@@ -109,7 +109,7 @@ class TestNanovllmDtypeDetection(unittest.TestCase):
         mock_props = self._create_mock_gpu_props(7, 5, "NVIDIA CMP 50HX")
         
         with patch('torch.cuda.get_device_properties', return_value=mock_props):
-            compute_capability = mock_props.major + mock_props.minor * 0.1
+            compute_capability = mock_props.major + mock_props.minor / 10.0
             supports_bfloat16 = compute_capability >= 8.0
             
             # Config requests bfloat16
@@ -129,7 +129,7 @@ class TestNanovllmDtypeDetection(unittest.TestCase):
         mock_props = self._create_mock_gpu_props(8, 0, "A100")
         
         with patch('torch.cuda.get_device_properties', return_value=mock_props):
-            compute_capability = mock_props.major + mock_props.minor * 0.1
+            compute_capability = mock_props.major + mock_props.minor / 10.0
             supports_bfloat16 = compute_capability >= 8.0
             
             # Config explicitly requests float16
@@ -149,7 +149,7 @@ class TestNanovllmDtypeDetection(unittest.TestCase):
         mock_props = self._create_mock_gpu_props(7, 5, "NVIDIA CMP 50HX")
         
         with patch('torch.cuda.get_device_properties', return_value=mock_props):
-            compute_capability = mock_props.major + mock_props.minor * 0.1
+            compute_capability = mock_props.major + mock_props.minor / 10.0
             supports_bfloat16 = compute_capability >= 8.0
             
             # Config explicitly requests float32
@@ -169,7 +169,7 @@ class TestNanovllmDtypeDetection(unittest.TestCase):
         mock_props = self._create_mock_gpu_props(7, 5, "NVIDIA CMP 50HX")
         
         with patch('torch.cuda.get_device_properties', return_value=mock_props):
-            compute_capability = mock_props.major + mock_props.minor * 0.1
+            compute_capability = mock_props.major + mock_props.minor / 10.0
             supports_bfloat16 = compute_capability >= 8.0
             
             # Config as string
@@ -198,7 +198,7 @@ class TestNanovllmDtypeDetection(unittest.TestCase):
         mock_props = self._create_mock_gpu_props(7, 5, "NVIDIA CMP 50HX")
         
         with patch('torch.cuda.get_device_properties', return_value=mock_props):
-            compute_capability = mock_props.major + mock_props.minor * 0.1
+            compute_capability = mock_props.major + mock_props.minor / 10.0
             supports_bfloat16 = compute_capability >= 8.0
             
             config_dtype = None
@@ -214,7 +214,7 @@ class TestNanovllmDtypeDetection(unittest.TestCase):
         mock_props = self._create_mock_gpu_props(8, 0, "A100")
         
         with patch('torch.cuda.get_device_properties', return_value=mock_props):
-            compute_capability = mock_props.major + mock_props.minor * 0.1
+            compute_capability = mock_props.major + mock_props.minor / 10.0
             supports_bfloat16 = compute_capability >= 8.0
             
             config_dtype = None
