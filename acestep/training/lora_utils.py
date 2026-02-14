@@ -387,15 +387,15 @@ def load_training_checkpoint(
         return result
 
     # Find adapter path
-    adapter_path = os.path.join(safe_dir, "adapter")
-    if os.path.exists(adapter_path):
+    adapter_path = _safe_checkpoint_dir(os.path.join(safe_dir, "adapter"))
+    if adapter_path is not None and os.path.isdir(adapter_path):
         result["adapter_path"] = adapter_path
-    elif os.path.exists(safe_dir):
+    elif os.path.isdir(safe_dir):
         result["adapter_path"] = safe_dir
 
     # Load training state (use safetensors; avoid unsafe pickle-based torch.load)
-    state_path_safe = os.path.join(safe_dir, "training_state.safetensors")
-    if os.path.exists(state_path_safe):
+    state_path_safe = _safe_checkpoint_dir(os.path.join(safe_dir, "training_state.safetensors"))
+    if state_path_safe is not None and os.path.isfile(state_path_safe):
         # safetensors is a safe, non-executable tensor serialization format
         try:
             device_str = None
