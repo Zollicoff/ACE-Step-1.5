@@ -3,9 +3,7 @@
     "title": "🎛️ ACE-Step V1.5 演练场💡",
     "subtitle": "推动开源音乐生成的边界"
   },
-  "common": {
-    "required_legend": "* 必填项"
-  },
+  "common": {},
   "dataset": {
     "title": "📊 数据集浏览器",
     "dataset_label": "数据集",
