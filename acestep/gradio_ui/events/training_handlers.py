@@ -736,7 +736,23 @@ def start_training(
         failure_message = ""
         
         # Train with progress updates using preprocessed tensors
-        resume_from = resume_checkpoint_dir.strip() if resume_checkpoint_dir and resume_checkpoint_dir.strip() else None
+        resume_from = None
+        if resume_checkpoint_dir and resume_checkpoint_dir.strip():
+            # Normalize and constrain the resume path to the safe training root
+            normalized_resume = _safe_join(SAFE_TRAINING_ROOT, resume_checkpoint_dir.strip())
+            if normalized_resume is None:
+                logger.warning(f"Rejected resume checkpoint path outside training root: {resume_checkpoint_dir!r}")
+                log_lines.append("⚠️ Ignoring invalid resume checkpoint path (outside training root)")
+                log_text = "\n".join(log_lines[-15:])
+                yield "⚠️ Invalid resume checkpoint path; starting fresh training", log_text, None, training_state
+            elif not os.path.exists(normalized_resume):
+                logger.warning(f"Resume checkpoint path does not exist: {normalized_resume!r}")
+                log_lines.append(f"⚠️ Resume checkpoint not found at: {normalized_resume}")
+                log_text = "\n".join(log_lines[-15:])
+                yield "⚠️ Resume checkpoint not found; starting fresh training", log_text, None, training_state
+            else:
+                resume_from = normalized_resume
+        
         for step, loss, status in trainer.train_from_preprocessed(tensor_dir, training_state, resume_from=resume_from):
             status_text = str(status)
             status_lower = status_text.lower()
