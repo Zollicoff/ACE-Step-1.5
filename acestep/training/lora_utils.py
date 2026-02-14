@@ -24,7 +24,6 @@ try:
         LoraConfig,
         TaskType,
         PeftModel,
-        PeftConfig,
     )
     PEFT_AVAILABLE = True
 except ImportError:
@@ -256,48 +255,35 @@ def load_lora_weights(
     
     Args:
         model: The base model (without LoRA)
-        lora_path: Path to saved LoRA weights (adapter or .pt file)
-        lora_config: LoRA configuration (required if loading from .pt file)
+        lora_path: Path to saved LoRA adapter directory
+        lora_config: Unused; retained for API compatibility
         
     Returns:
         Model with LoRA weights loaded
     """
-    if not os.path.exists(lora_path):
-        raise FileNotFoundError(f"LoRA weights not found: {lora_path}")
+    safe_lora_path = _safe_checkpoint_dir(lora_path)
+    if safe_lora_path is None:
+        raise ValueError(f"Rejected unsafe LoRA path: {lora_path!r}")
+    if not os.path.exists(safe_lora_path):
+        raise FileNotFoundError(f"LoRA weights not found: {safe_lora_path}")
     
     # Check if it's a PEFT adapter directory
-    if os.path.isdir(lora_path):
+    if os.path.isdir(safe_lora_path):
         if not PEFT_AVAILABLE:
             raise ImportError("PEFT library is required to load adapter. Install with: pip install peft")
         
         # Load PEFT adapter
-        peft_config = PeftConfig.from_pretrained(lora_path)
-        model.decoder = PeftModel.from_pretrained(model.decoder, lora_path)
-        logger.info(f"LoRA adapter loaded from {lora_path}")
+        model.decoder = PeftModel.from_pretrained(model.decoder, safe_lora_path)
+        logger.info(f"LoRA adapter loaded from {safe_lora_path}")
     
-    elif lora_path.endswith('.pt'):
-        # Load from PyTorch state dict
-        if lora_config is None:
-            raise ValueError("lora_config is required when loading from .pt file")
-        
-        # First inject LoRA structure
-        model, _ = inject_lora_into_dit(model, lora_config)
-        
-        # Load weights
-        lora_state_dict = torch.load(lora_path, map_location='cpu', weights_only=True)
-        
-        # Load into model
-        model_state = model.state_dict()
-        for name, param in lora_state_dict.items():
-            if name in model_state:
-                model_state[name].copy_(param)
-            else:
-                logger.warning(f"Unexpected key in LoRA state dict: {name}")
-        
-        logger.info(f"LoRA weights loaded from {lora_path}")
+    elif safe_lora_path.endswith('.pt'):
+        raise ValueError(
+            "Loading LoRA weights from .pt files is disabled for security. "
+            "Use a PEFT adapter directory instead."
+        )
     
     else:
-        raise ValueError(f"Unsupported LoRA weight format: {lora_path}")
+        raise ValueError(f"Unsupported LoRA weight format: {safe_lora_path}")
     
     return model
 
@@ -344,27 +330,22 @@ def save_training_checkpoint(
 
 
 def _safe_checkpoint_dir(user_dir: str) -> Optional[str]:
-    """Safely resolve a user-provided checkpoint directory within SAFE_CHECKPOINT_ROOT.
-
-    Returns an absolute, normalized path inside SAFE_CHECKPOINT_ROOT, or None if invalid.
-    """
+    """Safely resolve a user-provided path within SAFE_CHECKPOINT_ROOT."""
     if not user_dir:
         return None
     candidate = user_dir.strip()
     if not candidate:
         return None
-    # Disallow absolute paths; require paths under SAFE_CHECKPOINT_ROOT
+    safe_root = os.path.realpath(os.path.abspath(SAFE_CHECKPOINT_ROOT))
     if os.path.isabs(candidate):
-        abs_root = os.path.abspath(SAFE_CHECKPOINT_ROOT)
-        normalized = os.path.abspath(candidate)
+        normalized = os.path.realpath(candidate)
     else:
-        abs_root = os.path.abspath(SAFE_CHECKPOINT_ROOT)
-        normalized = os.path.abspath(os.path.join(abs_root, candidate))
+        normalized = os.path.realpath(os.path.join(safe_root, candidate))
     try:
-        common = os.path.commonpath([abs_root, normalized])
+        common = os.path.commonpath([safe_root, normalized])
     except ValueError:
         return None
-    if common != abs_root:
+    if common != safe_root:
         return None
     return normalized
 
