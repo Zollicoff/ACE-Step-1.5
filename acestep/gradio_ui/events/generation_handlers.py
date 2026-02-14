@@ -582,9 +582,16 @@ def init_service_wrapper(dit_handler, llm_handler, checkpoint, config_path, devi
     )
     
     # Preserve current batch size if provided, otherwise use default of min(2, max_batch)
-    # Clamp to new maximum to avoid Gradio validation error
-    if current_batch_size is not None and current_batch_size >= 1:
-        batch_value = min(int(current_batch_size), max_batch)
+    # Convert to int first and validate it's at least 1, then clamp to max
+    if current_batch_size is not None:
+        try:
+            batch_value_int = int(current_batch_size)
+            if batch_value_int >= 1:
+                batch_value = min(batch_value_int, max_batch)
+            else:
+                batch_value = min(2, max_batch)
+        except (ValueError, TypeError):
+            batch_value = min(2, max_batch)
     else:
         batch_value = min(2, max_batch)
     
