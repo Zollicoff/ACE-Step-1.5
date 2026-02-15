@@ -7,6 +7,10 @@ from loguru import logger
 
 from acestep.constants import DEFAULT_DIT_INSTRUCTION
 
+# Maximum batch size supported per coding guidelines
+# (batch operations are supported up to 8 songs)
+MAX_BATCH_SIZE = 8
+
 
 class ServiceGenerateRequestMixin:
     """Prepare normalized service-generation inputs before diffusion execution."""
@@ -67,6 +71,30 @@ class ServiceGenerateRequestMixin:
             repainting_end = [repainting_end]
 
         batch_size = len(captions)
+        
+        # Validate and clamp batch size to maximum supported
+        if batch_size > MAX_BATCH_SIZE:
+            logger.warning(
+                "[service_generate] Batch size {} exceeds maximum supported batch size ({}). "
+                "Clamping to {}.",
+                batch_size,
+                MAX_BATCH_SIZE,
+                MAX_BATCH_SIZE,
+            )
+            batch_size = MAX_BATCH_SIZE
+            captions = captions[:batch_size]
+            # Also truncate other list fields to match clamped batch size
+            if keys is not None:
+                keys = keys[:batch_size]
+            if metas is not None:
+                metas = metas[:batch_size]
+            if vocal_languages is not None:
+                vocal_languages = vocal_languages[:batch_size]
+            if repainting_start is not None:
+                repainting_start = repainting_start[:batch_size]
+            if repainting_end is not None:
+                repainting_end = repainting_end[:batch_size]
+        
         if len(lyrics) < batch_size:
             fill = lyrics[-1] if lyrics else ""
             lyrics = list(lyrics) + [fill] * (batch_size - len(lyrics))
