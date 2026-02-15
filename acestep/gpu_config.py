@@ -1228,6 +1228,10 @@ def update_gpu_config_for_model_type(is_turbo: bool):
     dit_type = "turbo" if is_turbo else "base"
     total_vram_gb = _global_gpu_config.gpu_memory_gb
     
+    # Store old values for comparison
+    old_max_with_lm = _global_gpu_config.max_batch_size_with_lm
+    old_max_without_lm = _global_gpu_config.max_batch_size_without_lm
+    
     # Recompute batch sizes using compute_adaptive_config with correct dit_type
     updated_config = compute_adaptive_config(total_vram_gb, dit_type=dit_type)
     
@@ -1235,8 +1239,18 @@ def update_gpu_config_for_model_type(is_turbo: bool):
     _global_gpu_config.max_batch_size_with_lm = updated_config.max_batch_size_with_lm
     _global_gpu_config.max_batch_size_without_lm = updated_config.max_batch_size_without_lm
     
-    logger.info(
-        f"[update_gpu_config_for_model_type] Updated batch limits for {'turbo' if is_turbo else 'base'} model: "
-        f"with_lm={_global_gpu_config.max_batch_size_with_lm}, "
-        f"without_lm={_global_gpu_config.max_batch_size_without_lm}"
-    )
+    # Log changes
+    model_name = "turbo" if is_turbo else "base"
+    if (updated_config.max_batch_size_with_lm < old_max_with_lm or 
+        updated_config.max_batch_size_without_lm < old_max_without_lm):
+        logger.warning(
+            f"âš ï¸ Batch size limits reduced for {model_name} model (base models require CFG, using 2x VRAM per batch): "
+            f"with_lm: {old_max_with_lm}â†'{_global_gpu_config.max_batch_size_with_lm}, "
+            f"without_lm: {old_max_without_lm}â†'{_global_gpu_config.max_batch_size_without_lm}"
+        )
+    else:
+        logger.info(
+            f"[update_gpu_config_for_model_type] Batch limits for {model_name} model: "
+            f"with_lm={_global_gpu_config.max_batch_size_with_lm}, "
+            f"without_lm={_global_gpu_config.max_batch_size_without_lm}"
+        )
