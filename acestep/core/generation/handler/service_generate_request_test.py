@@ -254,6 +254,47 @@ class ServiceGenerateRequestMixinTests(unittest.TestCase):
         self.assertEqual(out["repainting_end"], repainting_end[:8])
         self.assertEqual(len(out["lyrics"]), 8)
 
+    def test_batch_size_clamping_with_single_value_fields(self):
+        """Batch size clamping should work correctly when single values are expanded."""
+        host = _Host(is_turbo=False)
+        # 10 captions but single values for other fields
+        captions = [f"caption_{i}" for i in range(10)]
+        
+        out = host._normalize_service_generate_inputs(
+            captions=captions,
+            lyrics="single_lyric",
+            keys="single_key",
+            metas={"bpm": 120},
+            vocal_languages="en",
+            repainting_start=0.5,
+            repainting_end=1.5,
+            instructions=None,
+            audio_code_hints=None,
+            infer_steps=12,
+            seed=42,
+        )
+        
+        # Batch size should be clamped to 8
+        self.assertEqual(len(out["captions"]), 8)
+        self.assertEqual(out["captions"], captions[:8])
+        # Single values should be expanded to clamped batch size (8)
+        self.assertEqual(len(out["keys"]), 1)  # Single value becomes list of 1
+        self.assertEqual(out["keys"], ["single_key"])
+        self.assertEqual(len(out["metas"]), 1)  # Single value becomes list of 1
+        self.assertEqual(out["metas"], [{"bpm": 120}])
+        self.assertEqual(len(out["vocal_languages"]), 1)  # Single value becomes list of 1
+        self.assertEqual(out["vocal_languages"], ["en"])
+        self.assertEqual(len(out["repainting_start"]), 1)  # Single value becomes list of 1
+        self.assertEqual(out["repainting_start"], [0.5])
+        self.assertEqual(len(out["repainting_end"]), 1)  # Single value becomes list of 1
+        self.assertEqual(out["repainting_end"], [1.5])
+        # Lyrics should be expanded to match clamped batch size
+        self.assertEqual(len(out["lyrics"]), 8)
+        self.assertEqual(out["lyrics"], ["single_lyric"] * 8)
+        # Seed should create list for clamped batch size
+        self.assertEqual(len(out["seed_list"]), 8)
+        self.assertEqual(out["seed_list"], [42] * 8)
+
 
 if __name__ == "__main__":
     unittest.main()
