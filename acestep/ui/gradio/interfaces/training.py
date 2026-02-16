@@ -7,8 +7,8 @@ The outer gr.Tab wrapper is now created in __init__.py.
 
 import os
 import gradio as gr
-from acestep.gradio_ui.i18n import t
-from acestep.gradio_ui.help_content import create_help_button
+from acestep.ui.gradio.i18n import t
+from acestep.ui.gradio.help_content import create_help_button
 from acestep.constants import DEBUG_TRAINING
 
 

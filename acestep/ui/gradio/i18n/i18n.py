@@ -22,13 +22,12 @@ class I18n:
         self._load_all_translations()
     
     def _load_all_translations(self):
-        """Load all translation files from i18n directory"""
+        """Load all translation files from i18n directory."""
         current_file = os.path.abspath(__file__)
-        module_dir = os.path.dirname(current_file)
-        i18n_dir = os.path.join(module_dir, "i18n")
+        # JSON files live alongside this module in the same directory
+        i18n_dir = os.path.dirname(current_file)
         
         if not os.path.exists(i18n_dir):
-            # Create i18n directory if it doesn't exist
             os.makedirs(i18n_dir)
             return
         

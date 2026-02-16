@@ -9,7 +9,7 @@ space and can be placed inside any existing row or header without
 creating extra blank rows.
 """
 import gradio as gr
-from acestep.gradio_ui.i18n import t
+from acestep.ui.gradio.i18n import t
 
 # Unique counter to avoid DOM id collisions across multiple help buttons.
 _help_counter = 0
