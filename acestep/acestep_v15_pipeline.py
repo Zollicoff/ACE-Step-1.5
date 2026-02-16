@@ -35,7 +35,7 @@ try:
     from .handler import AceStepHandler
     from .llm_inference import LLMHandler
     from .dataset_handler import DatasetHandler
-    from .gradio_ui import create_gradio_interface
+    from .ui.gradio import create_gradio_interface
     from .gpu_config import get_gpu_config, get_gpu_memory_gb, print_gpu_config_info, set_global_gpu_config, VRAM_16GB_MIN_GB, VRAM_AUTO_OFFLOAD_THRESHOLD_GB, is_mps_platform
     from .model_downloader import ensure_lm_model
 except ImportError:
@@ -46,7 +46,7 @@ except ImportError:
     from acestep.handler import AceStepHandler
     from acestep.llm_inference import LLMHandler
     from acestep.dataset_handler import DatasetHandler
-    from acestep.gradio_ui import create_gradio_interface
+    from acestep.ui.gradio import create_gradio_interface
     from acestep.gpu_config import get_gpu_config, get_gpu_memory_gb, print_gpu_config_info, set_global_gpu_config, VRAM_16GB_MIN_GB, VRAM_AUTO_OFFLOAD_THRESHOLD_GB, is_mps_platform
     from acestep.model_downloader import ensure_lm_model
 
@@ -414,7 +414,7 @@ def main():
         # Enable API endpoints if requested
         if args.enable_api:
             print("Enabling API endpoints...")
-            from acestep.gradio_ui.api_routes import setup_api_routes
+            from acestep.ui.gradio.api.api_routes import setup_api_routes
 
             # Launch Gradio first with prevent_thread_lock=True
             demo.launch(

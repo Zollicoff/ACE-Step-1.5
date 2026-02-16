@@ -8,7 +8,7 @@ Validates:
 - create_help_button wiring (with Gradio mocked)
 
 Note: This test file pre-mocks ``gradio`` at the sys.modules level so
-that the import chain through ``acestep.gradio_ui`` succeeds even when
+that the import chain through ``acestep.ui.gradio`` succeeds even when
 Gradio is not installed.  Run with ``python <this_file>`` or via a
 test runner that discovers it directly.
 """
@@ -20,19 +20,19 @@ import unittest
 from unittest.mock import MagicMock
 
 # ---------------------------------------------------------------------------
-# Pre-mock gradio so the acestep.gradio_ui package __init__.py
+# Pre-mock gradio so the acestep.ui.gradio package __init__.py
 # (which eagerly imports gradio) does not blow up.
 # ---------------------------------------------------------------------------
 if "gradio" not in sys.modules:
     sys.modules["gradio"] = MagicMock()
 
-from acestep.gradio_ui.help_content import (  # noqa: E402
+from acestep.ui.gradio.help_content import (  # noqa: E402
     HELP_MODAL_CSS,
     _md_to_html,
     _next_id,
     create_help_button,
 )
-from acestep.gradio_ui.i18n import I18n  # noqa: E402
+from acestep.ui.gradio.i18n import I18n  # noqa: E402
 
 
 # ---------------------------------------------------------------------------

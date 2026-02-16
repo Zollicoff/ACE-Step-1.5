@@ -16,9 +16,9 @@ from acestep.constants import (
     GENERATION_MODES_BASE,
     MODE_TO_TASK_TYPE,
 )
-from acestep.gradio_ui.i18n import t
-from acestep.gradio_ui.help_content import create_help_button
-from acestep.gradio_ui.events.generation_handlers import get_ui_control_config, _is_pure_base_model
+from acestep.ui.gradio.i18n import t
+from acestep.ui.gradio.help_content import create_help_button
+from acestep.ui.gradio.events.generation_handlers import get_ui_control_config, _is_pure_base_model
 from acestep.gpu_config import get_global_gpu_config, GPUConfig, find_best_lm_model_on_disk, get_gpu_device_name, GPU_TIER_LABELS, GPU_TIER_CHOICES
 
 

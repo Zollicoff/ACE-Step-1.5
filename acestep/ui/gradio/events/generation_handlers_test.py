@@ -5,10 +5,12 @@ from types import SimpleNamespace
 from unittest.mock import patch, MagicMock
 
 try:
-    from acestep.gradio_ui.events import generation_handlers
+    from acestep.ui.gradio.events import generation_handlers
+    from acestep.ui.gradio.i18n import t as _t
     _IMPORT_ERROR = None
 except Exception as exc:  # pragma: no cover - environment dependency guard
     generation_handlers = None
+    _t = None
     _IMPORT_ERROR = exc
 
 
@@ -17,6 +19,7 @@ class _FakeDitHandler:
 
     def __init__(self, convert_result):
         self._convert_result = convert_result
+        self.model = MagicMock()  # Required by analyze_src_audio guard
 
     def convert_src_audio_to_codes(self, _src_audio):
         """Return configured conversion output."""
@@ -27,8 +30,8 @@ class _FakeDitHandler:
 class GenerationHandlersTests(unittest.TestCase):
     """Tests for source-audio analysis validation behavior."""
 
-    @patch("acestep.gradio_ui.events.generation_handlers.gr.Warning")
-    @patch("acestep.gradio_ui.events.generation_handlers.understand_music")
+    @patch("acestep.ui.gradio.events.generation.llm_actions.gr.Warning")
+    @patch("acestep.ui.gradio.events.generation.llm_actions.understand_music")
     def test_analyze_src_audio_rejects_non_audio_code_output(
         self,
         understand_music_mock,
@@ -45,12 +48,19 @@ class GenerationHandlersTests(unittest.TestCase):
             constrained_decoding_debug=False,
         )
 
-        self.assertEqual(result, ("", "", "", "", None, None, "", "", "", False))
+        # When codes_string has no audio-code tokens, the function returns
+        # (codes_string, warning_message, "", "", None, None, "", "", "", False)
+        from acestep.ui.gradio.i18n import t
+        self.assertEqual(
+            result,
+            ("ERROR: not an audio file", t("messages.no_audio_codes_generated"),
+             "", "", None, None, "", "", "", False),
+        )
         understand_music_mock.assert_not_called()
         warning_mock.assert_called_once()
 
-    @patch("acestep.gradio_ui.events.generation_handlers.gr.Warning")
-    @patch("acestep.gradio_ui.events.generation_handlers.understand_music")
+    @patch("acestep.ui.gradio.events.generation.llm_actions.gr.Warning")
+    @patch("acestep.ui.gradio.events.generation.llm_actions.understand_music")
     def test_analyze_src_audio_allows_valid_audio_code_output(
         self,
         understand_music_mock,
@@ -83,8 +93,8 @@ class GenerationHandlersTests(unittest.TestCase):
         understand_music_mock.assert_called_once()
         warning_mock.assert_not_called()
 
-    @patch("acestep.gradio_ui.events.generation_handlers.get_global_gpu_config")
-    @patch("acestep.gradio_ui.events.generation_handlers.get_model_type_ui_settings")
+    @patch("acestep.ui.gradio.events.generation.service_init.get_global_gpu_config")
+    @patch("acestep.ui.gradio.events.generation.service_init.get_model_type_ui_settings")
     def test_init_service_wrapper_preserves_batch_size(
         self,
         get_model_type_ui_settings_mock,
@@ -110,6 +120,7 @@ class GenerationHandlersTests(unittest.TestCase):
 
         llm_handler = MagicMock()
         llm_handler.llm_initialized = True
+        llm_handler.initialize.return_value = ("LLM initialized", True)
 
         # Test with current_batch_size = 5
         result = generation_handlers.init_service_wrapper(
@@ -139,8 +150,8 @@ class GenerationHandlersTests(unittest.TestCase):
         self.assertEqual(batch_update["value"], 5)
         self.assertEqual(batch_update["maximum"], 8)
 
-    @patch("acestep.gradio_ui.events.generation_handlers.get_global_gpu_config")
-    @patch("acestep.gradio_ui.events.generation_handlers.get_model_type_ui_settings")
+    @patch("acestep.ui.gradio.events.generation.service_init.get_global_gpu_config")
+    @patch("acestep.ui.gradio.events.generation.service_init.get_model_type_ui_settings")
     def test_init_service_wrapper_defaults_batch_size_when_none(
         self,
         get_model_type_ui_settings_mock,
@@ -166,6 +177,7 @@ class GenerationHandlersTests(unittest.TestCase):
 
         llm_handler = MagicMock()
         llm_handler.llm_initialized = True
+        llm_handler.initialize.return_value = ("LLM initialized", True)
 
         # Test with current_batch_size = None (should default to 2)
         result = generation_handlers.init_service_wrapper(
@@ -193,8 +205,8 @@ class GenerationHandlersTests(unittest.TestCase):
         self.assertEqual(batch_update["value"], 2)
         self.assertEqual(batch_update["maximum"], 8)
 
-    @patch("acestep.gradio_ui.events.generation_handlers.gr.Warning")
-    @patch("acestep.gradio_ui.events.generation_handlers.soundfile.info")
+    @patch("acestep.ui.gradio.events.generation.validation.gr.Warning")
+    @patch("acestep.ui.gradio.events.generation.validation.soundfile.info")
     def test_validate_uploaded_audio_file_returns_none_for_invalid_file(
         self,
         info_mock,
@@ -206,8 +218,8 @@ class GenerationHandlersTests(unittest.TestCase):
         self.assertEqual(result.get("value"), None)
         warning_mock.assert_called_once()
 
-    @patch("acestep.gradio_ui.events.generation_handlers.gr.Warning")
-    @patch("acestep.gradio_ui.events.generation_handlers.soundfile.info")
+    @patch("acestep.ui.gradio.events.generation.validation.gr.Warning")
+    @patch("acestep.ui.gradio.events.generation.validation.soundfile.info")
     def test_validate_uploaded_audio_file_keeps_valid_file(
         self,
         info_mock,
@@ -219,8 +231,8 @@ class GenerationHandlersTests(unittest.TestCase):
         info_mock.assert_called_once_with("ok.wav")
         warning_mock.assert_not_called()
 
-    @patch("acestep.gradio_ui.events.generation_handlers.gr.Warning")
-    @patch("acestep.gradio_ui.events.generation_handlers.soundfile.info")
+    @patch("acestep.ui.gradio.events.generation.validation.gr.Warning")
+    @patch("acestep.ui.gradio.events.generation.validation.soundfile.info")
     def test_validate_uploaded_audio_file_shows_source_role_message(
         self,
         info_mock,
@@ -230,8 +242,8 @@ class GenerationHandlersTests(unittest.TestCase):
         info_mock.side_effect = RuntimeError("bad file")
         result = generation_handlers.validate_uploaded_audio_file("broken.bin", "source")
         self.assertEqual(result.get("value"), None)
-        expected_role = generation_handlers.t("generation.source_audio")
-        expected_message = generation_handlers.t("messages.audio_format_invalid", role=expected_role)
+        expected_role = _t("generation.source_audio")
+        expected_message = _t("messages.audio_format_invalid", role=expected_role)
         warning_mock.assert_called_once_with(
             expected_message
         )
@@ -249,8 +261,8 @@ class LoadMetadataLmCodesTests(unittest.TestCase):
             json.dump(data, f)
         return SimpleNamespace(name=path)
 
-    @patch("acestep.gradio_ui.events.generation_handlers.gr.Info")
-    @patch("acestep.gradio_ui.events.generation_handlers.get_global_gpu_config")
+    @patch("acestep.ui.gradio.events.generation.metadata_loading.gr.Info")
+    @patch("acestep.ui.gradio.events.generation.metadata_loading.get_global_gpu_config")
     def test_think_set_false_when_audio_codes_present(self, gpu_mock, info_mock):
         """When JSON has thinking=True AND non-empty audio_codes, think should be False."""
         import tempfile
@@ -274,8 +286,8 @@ class LoadMetadataLmCodesTests(unittest.TestCase):
         self.assertFalse(think_value, "think should be False when audio_codes present")
         self.assertEqual(audio_codes_value, "<|audio_code_1|><|audio_code_2|>")
 
-    @patch("acestep.gradio_ui.events.generation_handlers.gr.Info")
-    @patch("acestep.gradio_ui.events.generation_handlers.get_global_gpu_config")
+    @patch("acestep.ui.gradio.events.generation.metadata_loading.gr.Info")
+    @patch("acestep.ui.gradio.events.generation.metadata_loading.get_global_gpu_config")
     def test_think_unchanged_when_audio_codes_empty(self, gpu_mock, info_mock):
         """When JSON has thinking=True AND empty audio_codes, think stays True."""
         import tempfile

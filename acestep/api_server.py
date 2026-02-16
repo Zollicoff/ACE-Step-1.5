@@ -63,7 +63,7 @@ from acestep.inference import (
     create_sample,
     format_sample,
 )
-from acestep.gradio_ui.events.results_handlers import _build_generation_info
+from acestep.ui.gradio.events.results_handlers import _build_generation_info
 from acestep.gpu_config import (
     get_gpu_config,
     set_global_gpu_config,
