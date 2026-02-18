@@ -176,8 +176,10 @@ def register_training_api_routes(
             export_path = request.export_path.strip()
             # Constrain export_path to a safe base directory and prevent path traversal
             safe_base = os.path.abspath("./exports")
+            # Strip leading separators to prevent os.path.join from treating input as absolute
+            export_path = export_path.lstrip("/").lstrip("\\")
             export_path = os.path.abspath(os.path.join(safe_base, export_path))
-            if not export_path.startswith(safe_base + os.sep):
+            if not export_path.startswith(safe_base + os.sep) and export_path != safe_base:
                 raise HTTPException(status_code=400, detail="Invalid export path")
 
             os.makedirs(os.path.dirname(export_path), exist_ok=True)
