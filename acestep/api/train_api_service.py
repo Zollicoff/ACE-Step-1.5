@@ -174,10 +174,19 @@ def register_training_api_routes(
 
         try:
             export_path = request.export_path.strip()
+            # Constrain export_path to a safe base directory and prevent path traversal
+            safe_base = os.path.abspath("./exports")
+            export_path = os.path.abspath(os.path.join(safe_base, export_path))
+            if not export_path.startswith(safe_base + os.sep) and export_path != safe_base:
+                raise HTTPException(status_code=400, detail="Invalid export path")
+
             os.makedirs(os.path.dirname(export_path) if os.path.dirname(export_path) else ".", exist_ok=True)
             if os.path.exists(export_path):
                 shutil.rmtree(export_path)
             shutil.copytree(source_path, export_path)
             return wrap_response({"message": "LoRA exported successfully", "export_path": export_path, "source": source_path})
+        except HTTPException:
+            # Re-raise HTTP exceptions to preserve intended status codes
+            raise
         except Exception as exc:
             return wrap_response(None, code=500, error=f"Export failed: {exc}")
