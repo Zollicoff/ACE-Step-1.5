@@ -25,11 +25,10 @@ os.makedirs(DEFAULT_RESULTS_DIR, exist_ok=True)
 def clear_audio_outputs_for_new_generation():
     """Return pre-generation output updates without remounting audio players.
 
-    In Gradio runtime, ask each audio component to seek to the start via
-    ``gr.update(playback_position=0)`` and clear only the batch-download file
-    list (9th output). This rewinds playback on regenerate without assigning
-    ``value=None`` (which would remount players and risk browser-side volume
-    resets).
+    In Gradio runtime, keep the 8 audio components unchanged via ``gr.skip()``
+    and only clear the batch-download file list (9th output). This avoids
+    replacing player DOM nodes while generation is in progress, which can
+    reset browser-side volume state.
 
     In non-Gradio test environments, gracefully fall back to 9 ``None`` values.
     """
@@ -37,7 +36,7 @@ def clear_audio_outputs_for_new_generation():
         import gradio as gr  # local import keeps headless tests dependency-free
     except Exception:
         return (None,) * 9
-    return tuple(gr.update(playback_position=0) for _ in range(8)) + (None,)
+    return (gr.skip(),) * 8 + (None,)
 
 
 def _build_generation_info(
