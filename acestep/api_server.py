@@ -666,7 +666,7 @@ def create_app() -> FastAPI:
                     instruction=instruction_to_use,
                     reference_audio=req.reference_audio_path,
                     src_audio=req.src_audio_path,
-                    audio_codes="",
+                    audio_codes=req.audio_code_string if req.audio_code_string else "",
                     caption=caption,
                     lyrics=lyrics,
                     instrumental=_is_instrumental(lyrics),
@@ -687,6 +687,7 @@ def create_app() -> FastAPI:
                     repainting_start=req.repainting_start,
                     repainting_end=req.repainting_end if req.repainting_end else -1,
                     audio_cover_strength=req.audio_cover_strength,
+                    cover_noise_strength=req.cover_noise_strength,
                     # LM parameters
                     thinking=thinking,  # Use LM for code generation when thinking=True
                     lm_temperature=req.lm_temperature,
