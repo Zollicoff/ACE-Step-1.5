@@ -77,7 +77,7 @@ Star ACE-Step on GitHub and be instantly notified of new releases
     <a href="https://www.comfy.org/"><img src="https://registry.comfy.org/_next/static/media/logo_blue.9ac227d3.png" alt="ComfyUI" height="40" style="margin: 5px;"></a>
     <a href="https://zilliz.com/"><img src="https://avatars.githubusercontent.com/u/18416694" alt="Zilliz" height="40" style="margin: 5px;"></a>
     <a href="https://milvus.io/"><img src="https://miro.medium.com/v2/resize:fit:2400/1*-VEGyAgcIBD62XtZWavy8w.png" alt="Milvus" height="40" style="margin: 5px;"></a>
-    <a href="https://zeabur.com/"><img src="https://zeabur.notion.site/image/attachment%3A6b8b7b3c-5ec6-4ac0-8066-05e5b2bb0dff%3Alogo-dark.svg?table=block&id=2aea221c-948e-80a3-bfc5-fd99174dc03e&spaceId=ba37aeb9-0937-401d-aa41-ce1d3b6ff778&userId=&cache=v2" alt="Zeabur" height="40" width="40" style="margin: 5px;"></a>
+    <a href="https://zeabur.com/"><img src="https://zeabur.notion.site/image/attachment%3A2edc6eef-6894-407f-9878-7dd5f46e5e2b%3Alogo-with-text-dark.svg?table=block&id=224a221c-948e-8021-866a-c6b55292663b&spaceId=ba37aeb9-0937-401d-aa41-ce1d3b6ff778&userId=&cache=v2" alt="Zeabur" height="40" style="margin: 5px;"></a>
 </p>
 
 ## ⚡ Quick Start
