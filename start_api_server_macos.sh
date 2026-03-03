@@ -110,7 +110,7 @@ _startup_update_check() {
     echo "  Current: $commit  ->  Latest: $remote_commit"
     echo
     echo "  Recent changes:"
-    git --no-pager log --oneline "HEAD..origin/$branch" 2>/dev/null | head -10
+    git --no-pager log --oneline -10 "HEAD..origin/$branch" 2>/dev/null
     echo
 
     read -rp "Update now before starting? (Y/N): " update_choice
@@ -143,18 +143,15 @@ echo
 if [[ -f "$SCRIPT_DIR/python_embeded/bin/python3.11" ]]; then
     echo "[Environment] Found embedded Python, verifying..."
 
-    # Ensure executable permissions on binaries (may be lost after extraction)
+    # Proactively fix permissions and Gatekeeper BEFORE any execution attempt.
+    # On macOS Sequoia, running a quarantined binary triggers a blocking popup,
+    # so we must strip attributes and re-sign first.
     chmod +x "$SCRIPT_DIR/python_embeded/bin/"* 2>/dev/null || true
-
-    # Remove macOS quarantine/provenance attributes and re-sign binaries (Gatekeeper fix)
-    if ! "$SCRIPT_DIR/python_embeded/bin/python3.11" -c "pass" 2>/dev/null; then
-        echo "[Setup] Fixing macOS Gatekeeper restrictions..."
-        echo "[Setup]   Removing quarantine attributes..."
-        xattr -cr "$SCRIPT_DIR/python_embeded" 2>/dev/null || true
-        echo "[Setup]   Re-signing binaries (ad-hoc)..."
-        find "$SCRIPT_DIR/python_embeded" -type f \( -name "*.dylib" -o -name "*.so" -o -perm +111 \) \
-            -exec codesign --force --sign - {} \; 2>/dev/null || true
-    fi
+    echo "[Setup] Removing quarantine attributes..."
+    xattr -cr "$SCRIPT_DIR/python_embeded" 2>/dev/null || true
+    echo "[Setup] Re-signing binaries (ad-hoc)..."
+    find "$SCRIPT_DIR/python_embeded" -type f \( -name "*.dylib" -o -name "*.so" -o -perm +111 \) \
+        -exec codesign --force --sign - {} \; 2>/dev/null || true
 
     if "$SCRIPT_DIR/python_embeded/bin/python3.11" -c "pass" 2>/dev/null; then
         echo "[Environment] Using embedded Python."
