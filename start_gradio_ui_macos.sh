@@ -261,7 +261,7 @@ if [[ -f "$SCRIPT_DIR/python_embeded/bin/python3.11" ]]; then
             fi
             if [[ $_need_mlx_fix -eq 1 ]]; then
                 echo "[Setup] Fixing MLX packages (this only runs once)..."
-                "$PYTHON_EXE" -m pip install --upgrade mlx mlx-lm 2>&1 | tail -1
+                "$PYTHON_EXE" -m pip install --upgrade mlx mlx-lm 'transformers>=4.51.0,<4.58.0' 'vector-quantize-pytorch>=1.27.15,<1.28.0' 2>&1 | tail -1
             fi
         fi
 
