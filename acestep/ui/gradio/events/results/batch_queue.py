@@ -49,10 +49,10 @@ def store_batch_in_queue(
     prev_index = batch_index - 1
     if prev_index in batch_queue:
         old_extra = batch_queue[prev_index].get("extra_outputs", {})
-        for k in list(old_extra.keys()):
-            if isinstance(old_extra[k], torch.Tensor):
-                del old_extra[k]
-        batch_queue[prev_index]["extra_outputs"] = {}
+        for k, v in old_extra.items():
+            if isinstance(v, torch.Tensor) and v.is_cuda:
+                # Offload to CPU to free VRAM; data is preserved for potential re-scoring.
+                old_extra[k] = v.cpu()
 
     batch_queue[batch_index] = {
         "status": status,
