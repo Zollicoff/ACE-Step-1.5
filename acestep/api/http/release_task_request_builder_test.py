@@ -14,10 +14,10 @@ class _FakeParser:
 
         self._values = values
 
-    def get(self, key: str):
-        """Return raw value for ``key`` from parser payload."""
+    def get(self, key: str, default=None):
+        """Return raw value for ``key`` from parser payload, or ``default``."""
 
-        return self._values.get(key)
+        return self._values.get(key, default)
 
     def str(self, key: str, default: str = "") -> str:
         """Return string value for ``key`` with default fallback."""
@@ -112,6 +112,46 @@ class ReleaseTaskRequestBuilderTests(unittest.TestCase):
 
         self.assertEqual("from-override", request.prompt)
         self.assertEqual("override-lyrics", request.lyrics)
+
+    def test_build_request_preserves_multi_seed_string(self):
+        """Builder should pass seed string through unchanged so downstream can parse it."""
+
+        parser = _FakeParser(
+            {
+                "use_random_seed": False,
+                "seed": "1024,2048",
+            }
+        )
+        request = build_generate_music_request(
+            parser=parser,
+            request_model_cls=lambda **kwargs: SimpleNamespace(**kwargs),
+            default_dit_instruction="default-instruction",
+            lm_default_temperature=0.85,
+            lm_default_cfg_scale=2.5,
+            lm_default_top_p=0.9,
+        )
+
+        self.assertEqual("1024,2048", request.seed)
+
+    def test_build_request_preserves_integer_seed(self):
+        """Builder should pass an integer seed through unchanged."""
+
+        parser = _FakeParser(
+            {
+                "use_random_seed": False,
+                "seed": 1024,
+            }
+        )
+        request = build_generate_music_request(
+            parser=parser,
+            request_model_cls=lambda **kwargs: SimpleNamespace(**kwargs),
+            default_dit_instruction="default-instruction",
+            lm_default_temperature=0.85,
+            lm_default_cfg_scale=2.5,
+            lm_default_top_p=0.9,
+        )
+
+        self.assertEqual(1024, request.seed)
 
     def test_build_request_forwards_audio_code_string_and_cover_noise_strength(self):
         """Builder should include audio_code_string and cover_noise_strength in payload."""
