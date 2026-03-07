@@ -135,5 +135,73 @@ class GenerateMusicPayloadMixinTests(unittest.TestCase):
         self.assertEqual(payload["extra_outputs"]["pred_latents"].device.type, "cpu")
 
 
-if __name__ == "__main__":
-    unittest.main()
+    def test_build_success_payload_clears_gpu_tensor_keys_from_outputs(self):
+        """It removes GPU tensor entries from outputs after copying them to CPU."""
+        host = _Host()
+        outputs = {
+            "target_latents_input": torch.ones(1, 4, 3),
+            "src_latents": torch.ones(1, 4, 3),
+            "chunk_masks": torch.ones(1, 4),
+            "latent_masks": torch.ones(1, 4),
+            "spans": [(0, 4)],
+            "encoder_hidden_states": torch.ones(1, 2, 3),
+            "encoder_attention_mask": torch.ones(1, 2),
+            "context_latents": torch.ones(1, 4, 3),
+            "lyric_token_idss": torch.ones(1, 2, dtype=torch.long),
+        }
+        pred_wavs = torch.ones(1, 2, 8)
+        pred_latents_cpu = torch.ones(1, 4, 3)
+
+        host._build_generate_music_success_payload(
+            outputs=outputs,
+            pred_wavs=pred_wavs,
+            pred_latents_cpu=pred_latents_cpu,
+            time_costs={"total_time_cost": 1.0},
+            seed_value_for_ui=0,
+            actual_batch_size=1,
+            progress=None,
+        )
+
+        # All accelerator-tensor keys must be cleared from the mutable outputs dict.
+        _cleared = (
+            "src_latents", "target_latents_input", "chunk_masks", "latent_masks",
+            "encoder_hidden_states", "encoder_attention_mask", "context_latents",
+            "lyric_token_idss",
+        )
+        for key in _cleared:
+            self.assertNotIn(key, outputs, f"Key '{key}' was not removed from outputs")
+
+    def test_build_success_payload_all_extra_outputs_are_cpu_tensors(self):
+        """It ensures every tensor in extra_outputs is on CPU."""
+        host = _Host()
+        outputs = {
+            "target_latents_input": torch.ones(1, 4, 3),
+            "src_latents": torch.ones(1, 4, 3),
+            "encoder_hidden_states": torch.ones(1, 2, 3),
+            "encoder_attention_mask": torch.ones(1, 2),
+            "context_latents": torch.ones(1, 4, 3),
+            "lyric_token_idss": torch.ones(1, 2, dtype=torch.long),
+        }
+        pred_wavs = torch.ones(1, 2, 8)
+        pred_latents_cpu = torch.ones(1, 4, 3)
+
+        payload = host._build_generate_music_success_payload(
+            outputs=outputs,
+            pred_wavs=pred_wavs,
+            pred_latents_cpu=pred_latents_cpu,
+            time_costs={"total_time_cost": 1.0},
+            seed_value_for_ui=0,
+            actual_batch_size=1,
+            progress=None,
+        )
+
+        import torch as _torch
+        for key, val in payload["extra_outputs"].items():
+            if isinstance(val, _torch.Tensor):
+                self.assertEqual(
+                    val.device.type, "cpu",
+                    f"extra_outputs['{key}'] is not on CPU (device={val.device})",
+                )
+
+
+

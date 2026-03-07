@@ -4,6 +4,7 @@ This module provides the public ``generate_music`` entry point extracted from
 ``AceStepHandler`` so orchestration stays separate from lower-level helpers.
 """
 
+import gc
 import traceback
 from typing import Any, Dict, List, Optional, Union
 
@@ -249,7 +250,7 @@ class GenerateMusicMixin:
                 use_tiled_decode=use_tiled_decode,
                 time_costs=time_costs,
             )
-            return self._build_generate_music_success_payload(
+            result = self._build_generate_music_success_payload(
                 outputs=outputs,
                 pred_wavs=pred_wavs,
                 pred_latents_cpu=pred_latents_cpu,
@@ -258,6 +259,11 @@ class GenerateMusicMixin:
                 actual_batch_size=actual_batch_size,
                 progress=progress,
             )
+            # Release remaining intermediate state and flush accelerator caches
+            # so memory from this generation is reclaimed before the next one.
+            gc.collect()
+            self._empty_cache()
+            return result
         except Exception as exc:
             error_msg = f"Error: {exc!s}\n{traceback.format_exc()}"
             logger.exception("[generate_music] Generation failed")
