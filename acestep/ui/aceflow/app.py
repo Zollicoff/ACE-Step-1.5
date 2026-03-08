@@ -207,7 +207,8 @@ def _parse_roman_chord_token(token: str) -> Optional[dict]:
 def _resolve_chord_progression(roman_str: str, key: str, scale: str) -> list[str]:
     root_key = str(key or 'C').strip()
     root_index = _CHORD_NOTE_INDEX.get(root_key)
-    intervals = _CHORD_SCALE_INTERVALS['major']
+    scale_name = str(scale or 'major').strip().lower()
+    intervals = _CHORD_SCALE_INTERVALS['minor' if scale_name == 'minor' else 'major']
     if root_index is None:
         return []
     tokens = [tok for tok in re.split(r'[\s,\-–—]+', str(roman_str or '')) if tok]
@@ -268,7 +269,16 @@ def _inject_chord_server_hints(caption: str, lyrics: str, req: dict) -> tuple[st
         return clean_caption, clean_lyrics, str(req.get('keyscale') or '').strip(), []
     scale_label = 'Minor' if chord_scale == 'minor' else 'Major'
     keyscale = str(req.get('keyscale') or '').strip() or f"{chord_key} {scale_label}"
-    return clean_caption, clean_lyrics, keyscale, chords
+    chord_tag = ' '.join(chords)
+    injected_lines = []
+    for line in clean_lyrics.splitlines():
+        m = re.match(r'^\s*\[([^\]]+)\]\s*$', line)
+        if not m:
+            injected_lines.append(line)
+            continue
+        inner = re.sub(r'\s*\|\s*Chords:\s*[^\]]*$', '', m.group(1), flags=re.I).strip()
+        injected_lines.append(f'[{inner} | Chords: {chord_tag}]')
+    return clean_caption, '\n'.join(injected_lines), keyscale, chords
 
 def _is_peft_like(obj: Any) -> bool:
 
@@ -1703,7 +1713,7 @@ def create_app() -> FastAPI:
                     bpm = max(30.0, min(bpm, 300.0))
                 if bpm_auto:
                     bpm = None
-                keyscale = (req.get("keyscale") or "").strip()
+                keyscale = keyscale_from_chords or (req.get("keyscale") or "").strip()
                 if key_auto:
                     keyscale = ""
                 timesignature = (req.get("timesignature") or "").strip()

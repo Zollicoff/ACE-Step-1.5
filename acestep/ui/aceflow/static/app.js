@@ -485,7 +485,8 @@ function parseRomanChordToken(token) {
 function resolveChordProgression(romanStr, key, scale) {
   const rootKey = String(key || 'C').trim();
   const rootIndex = __CHORD_NOTE_INDEX[rootKey];
-  const intervals = __CHORD_SCALE_INTERVALS.major;
+  const scaleName = String(scale || 'major').toLowerCase() === 'minor' ? 'minor' : 'major';
+  const intervals = __CHORD_SCALE_INTERVALS[scaleName];
   if (rootIndex == null) throw new Error(t('error.chord_key_invalid'));
   const tokens = String(romanStr || '').split(/[\s,\-–—]+/).filter(Boolean);
   if (!tokens.length) throw new Error(t('error.chord_empty'));
@@ -915,34 +916,78 @@ function _shuffleDeterministic(arr, seed) {
 
 function chooseNarrativeChordTokens(scale, kind, baseTokens, variantIndex = 0) {
   const pool = filterPlayableChordTokens(baseTokens);
-  const lowerScale = String(scale || 'major').toLowerCase() === 'minor' ? 'minor' : 'major';
   const canonicalKind = canonicalChordSectionName(kind) || 'verse';
-
-  // ── 1. Select the right bank ───────────────────────────────────────────
-  const allBanks = lowerScale === 'minor' ? _MINOR_SECTION_BANKS : _MAJOR_SECTION_BANKS;
-  const lookupKey = allBanks[canonicalKind]
-    ? canonicalKind
-    : canonicalKind.replace(/\s+\d+$/, '');
-  const bank = allBanks[lookupKey] || allBanks['verse'] || [['i', 'bVI', 'bVII', 'V']];
-
-  // ── 2. Deterministic shuffle so every section gets a different pattern ─
-  const shuffled = _shuffleDeterministic(bank, variantIndex * 31 + bank.length * 7);
-  const pickedPattern = shuffled[Math.abs(variantIndex) % shuffled.length];
-
-  // ── 3. Resolve: if the user's pool has a matching token, prefer it ─────
-  //    (preserves key feeling while using richer structures)
-  const resolved = pickedPattern.map((romanToken) => {
-    const exact = pool.find((t) => t === romanToken);
-    if (exact) return exact;
-    // Accept case-insensitive root match for graceful substitution
-    const rootMatch = pool.find((t) =>
-      t.toUpperCase().replace(/^B/, 'b') === romanToken.toUpperCase().replace(/^B/, 'b')
-    );
-    return rootMatch || romanToken;
-  });
-
   const maxLen = (canonicalKind === 'final chorus' || canonicalKind === 'outro') ? 5 : 4;
-  return sanitizeSectionChordTokens(resolved, maxLen);
+  if (!pool.length) return [];
+
+  const base = sanitizeSectionChordTokens(pool, maxLen);
+  if (base.length <= 1) return base;
+
+  const variants = [];
+  const pushVariant = (tokens) => {
+    const clean = sanitizeSectionChordTokens(tokens, maxLen);
+    if (!clean.length) return;
+    if (!variants.some((existing) => tokensEqual(existing, clean))) variants.push(clean);
+  };
+  const byPattern = (pattern) => pattern
+    .map((idx) => base[((idx % base.length) + base.length) % base.length])
+    .filter(Boolean);
+
+  const rotations = Array.from({ length: Math.min(base.length, maxLen) }, (_, idx) => rotateChordTokens(base, idx));
+  rotations.forEach(pushVariant);
+  rotations.forEach((tokens) => pushVariant(tokens.slice().reverse()));
+
+  const tonicish = base.find((tok) => /^i(?!v)|^I(?!V)/.test(String(tok || '')) || String(tok || '').toLowerCase().startsWith('i')) || base[0];
+  const dominantish = base.find((tok) => /^v/i.test(String(tok || '')) || /^b?v/i.test(String(tok || ''))) || base[base.length - 1];
+  const preDominantish = base.find((tok) => /^iv/i.test(String(tok || '')) || /^b?vi/i.test(String(tok || '')) || /^ii/i.test(String(tok || ''))) || base[1] || base[0];
+
+  // Shared motif ideas: rotations keep the user's harmonic DNA, while pattern variants
+  // add section-specific motion without introducing external scale degrees.
+  pushVariant(byPattern([0, 1, base.length - 1, 0]));
+  pushVariant(byPattern([0, 2, 1, base.length - 1]));
+  pushVariant(byPattern([base.length - 1, 1, 0, 2]));
+  if (base.length >= 4) {
+    pushVariant(byPattern([0, 1, 2, 3, 0]));
+    pushVariant(byPattern([0, 2, 3, 1]));
+  }
+
+  switch (canonicalKind) {
+    case 'intro':
+      pushVariant(byPattern([1, 2, 0, base.length - 1]));
+      pushVariant(byPattern([base.length - 2, base.length - 1, 0, 1]));
+      pushVariant([tonicish, ...rotateChordTokens(base, 1).slice(0, Math.max(0, maxLen - 1))]);
+      break;
+    case 'verse':
+      pushVariant(base);
+      pushVariant(byPattern([0, 2, 1, base.length - 1]));
+      pushVariant(byPattern([0, 1, 0, base.length - 1]));
+      break;
+    case 'chorus':
+    case 'final chorus':
+      pushVariant(byPattern([1, 2, base.length - 1, 0]));
+      pushVariant(byPattern([0, 1, base.length - 1, 0]));
+      pushVariant([preDominantish, dominantish, tonicish, dominantish, tonicish]);
+      break;
+    case 'bridge':
+    case 'solo':
+    case 'guitar solo':
+    case 'instrumental':
+      pushVariant(byPattern([2, 1, base.length - 1, 0]));
+      pushVariant([tonicish, preDominantish, dominantish, tonicish]);
+      pushVariant([tonicish, base[Math.min(2, base.length - 1)] || tonicish, tonicish]);
+      break;
+    case 'outro':
+      pushVariant(byPattern([0, 1, 2, base.length - 1, 0]));
+      pushVariant([tonicish, preDominantish, dominantish, tonicish, tonicish]);
+      pushVariant([tonicish, ...rotateChordTokens(base, 1).slice(0, Math.max(0, maxLen - 2)), tonicish]);
+      break;
+    default:
+      pushVariant(base);
+      break;
+  }
+
+  const ordered = _shuffleDeterministic(variants, (variantIndex * 31) + variants.length * 7 + canonicalKind.length * 11);
+  return ordered[Math.abs(variantIndex) % ordered.length] || base;
 }
 
 
@@ -1160,7 +1205,8 @@ function findChordSectionRule(sectionLabel, sectionRules) {
 
 function getChordReferenceSequence(baseData, sectionRules, lyricsText) {
   const headers = parseLyricsSectionHeaders(lyricsText || '');
-  if (!headers.length) return baseData.chords;
+  const baseChords = ((baseData && Array.isArray(baseData.chords) && baseData.chords.length) ? baseData.chords : []);
+  if (!headers.length) return baseChords;
   const sequence = [];
   headers.forEach((header) => {
     const rule = findChordSectionRule(header.raw, sectionRules || []);
@@ -1168,57 +1214,35 @@ function getChordReferenceSequence(baseData, sectionRules, lyricsText) {
       sequence.push(...rule.data.chords);
       return;
     }
-    if (header.inlineChords && header.inlineChords.length) {
-      sequence.push(...header.inlineChords);
+    if (baseChords.length) {
+      sequence.push(...baseChords);
       return;
     }
-    sequence.push(...((baseData && Array.isArray(baseData.chords) && baseData.chords.length) ? baseData.chords : []));
+    if (header.inlineChords && header.inlineChords.length) {
+      sequence.push(...header.inlineChords);
+    }
   });
-  return sequence.length ? sequence : baseData.chords;
+  return sequence.length ? sequence : baseChords;
 }
 
 
 function buildChordReferencePlan(baseData, sectionRules, lyricsText) {
   const headers = parseLyricsSectionHeaders(lyricsText || '');
   const plan = [];
-  const baseRomanTokens = getRomanTokens((baseData && baseData.roman) ? baseData.roman : (el('chord_roman')?.value || ''));
-  const globalInline = headers.map((h) => sanitizeResolvedChordNames(h.inlineChords || [], 5).join(' - ')).filter(Boolean);
-  const baseInlineSig = sanitizeResolvedChordNames((baseData && baseData.chords) ? baseData.chords : [], 5).join(' - ');
-  const hasExplicitSectionRules = Array.isArray(sectionRules) && sectionRules.length > 0;
-  const staleUniformInline = globalInline.length > 1 && globalInline.every((sig) => sig === globalInline[0]) && (!hasExplicitSectionRules || !baseInlineSig || globalInline[0] === baseInlineSig);
-  let previousDisplay = [];
-  const usedSignatures = new Set();
-  headers.forEach((header, headerIndex) => {
+  headers.forEach((header) => {
     const rawLabel = header.raw;
     const canonical = header.canonical;
     const rule = findChordSectionRule(rawLabel, sectionRules || []);
     let chords = ((rule && rule.data && rule.data.chords) ? rule.data.chords : []).slice();
-    let source = rule ? 'override' : 'auto';
-    if (!chords.length && header.inlineChords && header.inlineChords.length && !staleUniformInline) {
+    let source = rule ? 'override' : 'base';
+    if (!chords.length) {
+      chords = sanitizeResolvedChordNames((baseData && baseData.chords) ? baseData.chords : [], canonical === 'final chorus' || canonical === 'outro' ? 5 : 4);
+    }
+    if (!chords.length && header.inlineChords && header.inlineChords.length) {
       chords = header.inlineChords.slice();
       source = 'lyrics';
     }
-    if (!chords.length && baseRomanTokens.length) {
-      for (let attempt = 0; attempt < 10; attempt += 1) {
-        const narrativeRoman = pickChordTemplate(el('chord_scale')?.value || 'major', canonical || rawLabel, baseRomanTokens, (headerIndex * 13) + attempt * 7);
-        try {
-          chords = narrativeRoman.length ? resolveChordProgression(narrativeRoman.join(' - '), el('chord_key')?.value || 'C', el('chord_scale')?.value || 'major') : [];
-        } catch (e) {
-          chords = [];
-        }
-        const display = sanitizeResolvedChordNames(chords, canonical === 'final chorus' || canonical === 'outro' ? 5 : 4);
-        const sig = `${canonical || rawLabel}|${display.join('-')}`;
-        const allowRepeat = ['chorus', 'final chorus', 'outro'].includes(canonical || '');
-        if (!display.length) continue;
-        if (!allowRepeat && tokensEqual(display, previousDisplay)) continue;
-        if (!allowRepeat && usedSignatures.has(sig)) continue;
-        usedSignatures.add(sig);
-        break;
-      }
-    }
-    if (!chords.length) chords = sanitizeResolvedChordNames((baseData && baseData.chords) ? baseData.chords : [], canonical === 'final chorus' || canonical === 'outro' ? 5 : 4);
     const displayChords = sanitizeResolvedChordNames(chords, canonical === 'final chorus' || canonical === 'outro' ? 5 : 4);
-    previousDisplay = displayChords.slice();
     plan.push({
       label: rawLabel,
       section: canonical,
@@ -1249,6 +1273,13 @@ function formatChordReferencePlan(plan) {
 
 async function applyChordProgressionFullConditioning() {
   const originalLyrics = el('lyrics')?.value || '';
+  try {
+    syncChordSectionOverridesFromCurrentProgression();
+  } catch (err) {
+    const status = el('chord_status');
+    if (status) status.textContent = err && err.message ? err.message : String(err);
+    return false;
+  }
   const data = refreshChordPreview();
   if (!data) return false;
   const status = el('chord_status');
@@ -1256,7 +1287,10 @@ async function applyChordProgressionFullConditioning() {
     if (status) status.textContent = t('status.chord_full_uploading');
     const bpmVal = Number(el('bpm')?.value || 120) || 120;
     const targetDuration = Math.max(10, Number(el('duration')?.value || 180) || 180);
-    const sectionPlan = buildChordReferencePlan(data, data.sectionRules || [], originalLyrics);
+    const appliedLyrics = el('chord_apply_lyrics')?.checked
+      ? injectChordTagsIntoLyrics(originalLyrics, data.sectionChordTag, data.lyricsTag, data.sectionRules || [])
+      : originalLyrics;
+    const sectionPlan = buildChordReferencePlan(data, data.sectionRules || [], appliedLyrics);
     applyChordProgressionToUi();
     const sequenceChords = sectionPlan.flatMap((item) => Array.isArray(item.chords) ? item.chords : []);
     generatedChordReferenceSequence = sequenceChords.slice();
@@ -1364,14 +1398,16 @@ function injectChordTagsIntoLyrics(text, sectionChordTag, progressionTag, sectio
     const base = parsed.raw;
     const canonical = parsed.canonical;
     const rule = findChordSectionRule(base, sectionRules);
-    const inlineChords = Array.isArray(parsed.inlineChords) ? parsed.inlineChords : [];
     let effectiveTag = (rule && rule.data && rule.data.sectionChordTag) ? rule.data.sectionChordTag : '';
-    if (!effectiveTag && inlineChords.length) effectiveTag = `Chords: ${inlineChords.join(' ')}`;
     if (!effectiveTag) effectiveTag = sectionChordTag;
+    if (!effectiveTag) {
+      const inlineChords = Array.isArray(parsed.inlineChords) ? parsed.inlineChords : [];
+      if (inlineChords.length) effectiveTag = `Chords: ${inlineChords.join(' ')}`;
+    }
     const tagBody = String(effectiveTag || '').replace(/^Chords:\s*/i, '').trim();
     const compactTag = sanitizeResolvedChordNames(tagBody.split(/[\s,\-–—]+/).filter(Boolean), canonical === 'final chorus' || canonical === 'outro' ? 5 : 4);
-    effectiveTag = `Chords: ${compactTag.join(' ')}`;
-    return `[${base} | ${effectiveTag}]`;
+    effectiveTag = compactTag.length ? `Chords: ${compactTag.join(' ')}` : '';
+    return effectiveTag ? `[${base} | ${effectiveTag}]` : `[${base}]`;
   });
   const clean = stripChordLyricsTag(out.join('\n'));
   if (!touched) {
@@ -1381,6 +1417,29 @@ function injectChordTagsIntoLyrics(text, sectionChordTag, progressionTag, sectio
 }
 
 
+
+function syncChordSectionOverridesFromCurrentProgression() {
+  const mapEl = el('chord_section_map');
+  if (!mapEl) return '';
+  const roman = String(el('chord_roman')?.value || '').trim();
+  if (!roman) {
+    mapEl.value = '';
+    return '';
+  }
+  const lyricsText = stripChordLyricsTag(el('lyrics')?.value || '');
+  const scale = el('chord_scale')?.value || 'major';
+  const mapText = buildAutoChordSectionMap(lyricsText, roman, scale);
+  mapEl.value = mapText;
+  return mapText;
+}
+
+function resetChordPreviewUi() {
+  const ids = ['chord_resolved_preview', 'chord_caption_preview', 'chord_keyscale_preview', 'chord_sections_preview'];
+  ids.forEach((id) => {
+    const node = el(id);
+    if (node) node.textContent = '—';
+  });
+}
 
 function refreshChordPreview() {
   const status = el('chord_status');
@@ -1410,6 +1469,13 @@ function refreshChordPreview() {
 }
 
 function applyChordProgressionToUi() {
+  try {
+    syncChordSectionOverridesFromCurrentProgression();
+  } catch (err) {
+    const status = el('chord_status');
+    if (status) status.textContent = err && err.message ? err.message : String(err);
+    return false;
+  }
   const data = refreshChordPreview();
   if (!data) return false;
   const captionEl = el('caption');
@@ -1445,22 +1511,24 @@ function removeChordProgressionFromUi() {
   const lyricsEl = el('lyrics');
   if (captionEl) captionEl.value = stripChordCaptionTag(captionEl.value || '');
   if (lyricsEl) lyricsEl.value = stripChordLyricsTag(lyricsEl.value || '');
+  if (el('chord_roman')) el('chord_roman').value = '';
+  if (el('chord_section_map')) el('chord_section_map').value = '';
+  resetChordPreviewUi();
   let msg = t('status.chord_removed');
-  if (generatedChordConditioningPath) {
-    if (uploadedRefAudioPath === generatedChordConditioningPath) uploadedRefAudioPath = '';
-    generatedChordConditioningPath = '';
-    generatedChordConditioningName = '';
-    chordConditioningMode = 'none';
-    generatedChordReferenceSequence = [];
-    generatedChordSectionPlan = [];
-    generatedChordReferenceBpm = null;
-    generatedChordReferenceTargetDuration = null;
-    generatedChordAudioCodes = '';
-    generatedChordReferenceMeta = null;
-    if (el('audio_codes')) el('audio_codes').value = '';
-    if (refAudioStatus) refAudioStatus.textContent = '';
-    msg += ' ' + t('status.chord_full_cleared');
-  }
+  const hadChordConditioning = !!generatedChordConditioningPath;
+  if (uploadedRefAudioPath === generatedChordConditioningPath) uploadedRefAudioPath = '';
+  generatedChordConditioningPath = '';
+  generatedChordConditioningName = '';
+  chordConditioningMode = 'none';
+  generatedChordReferenceSequence = [];
+  generatedChordSectionPlan = [];
+  generatedChordReferenceBpm = null;
+  generatedChordReferenceTargetDuration = null;
+  generatedChordAudioCodes = '';
+  generatedChordReferenceMeta = null;
+  if (el('audio_codes')) el('audio_codes').value = '';
+  if (refAudioStatus) refAudioStatus.textContent = '';
+  if (hadChordConditioning) msg += ' ' + t('status.chord_full_cleared');
   const status = el('chord_status');
   if (status) status.textContent = msg;
 }
