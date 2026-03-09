@@ -1809,6 +1809,16 @@ def create_app() -> FastAPI:
                     src_audio_rel = str(req.get("src_audio") or "").strip()
                     if src_audio_rel:
                         src_audio_abs = _resolve_uploaded_path(src_audio_rel)
+                try:
+                    audio_cover_strength = float(req.get("audio_cover_strength", 1.0))
+                except Exception:
+                    audio_cover_strength = 1.0
+                audio_cover_strength = max(0.0, min(audio_cover_strength, 1.0))
+                try:
+                    cover_noise_strength = float(req.get("cover_noise_strength", 0.0))
+                except Exception:
+                    cover_noise_strength = 0.0
+                cover_noise_strength = max(0.0, min(cover_noise_strength, 1.0))
                 params = GenerationParams(
                     task_type=task_type,
                     reference_audio=reference_audio_abs,
@@ -1836,6 +1846,8 @@ def create_app() -> FastAPI:
                     timesteps=parsed_timesteps,
                     repainting_start=repainting_start,
                     repainting_end=repainting_end,
+                    audio_cover_strength=audio_cover_strength,
+                    cover_noise_strength=cover_noise_strength,
                     thinking=thinking,
                     lm_temperature=lm_temperature,
                     lm_cfg_scale=lm_cfg_scale,
