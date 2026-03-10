@@ -79,6 +79,15 @@ class ConditioningTextMixin:
             )
             actual_caption = actual_captions[i]
             actual_language = actual_languages[i]
+
+            # SFT-stems lego: wrap caption to match training-time prompt format.
+            # During training, the caption block is always formatted as:
+            #   "Local: {caption}\nMask Control: true"
+            # Detect lego tasks by their instruction pattern.
+            if "based on the audio context" in instruction.lower():
+                if not actual_caption.startswith("Local:"):
+                    actual_caption = f"Local: {actual_caption}\nMask Control: true"
+
             text_prompt = SFT_GEN_PROMPT.format(instruction, actual_caption, parsed_metas[i])
 
             if i == 0:
