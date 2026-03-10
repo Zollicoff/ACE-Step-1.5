@@ -306,6 +306,84 @@ class TestCfgMaskBeforeCFG(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
+# NaN guard: aggressive repetition penalty edge case
+# ---------------------------------------------------------------------------
+
+@unittest.skipIf(LLMHandler is None, f"llm_inference import unavailable: {_IMPORT_ERROR}")
+class TestCfgNanGuard(unittest.TestCase):
+    """CFG result must not contain NaN when repetition penalty drives a token to -inf
+    in both conditional and unconditional branches simultaneously (edge case).
+
+    (-inf) + scale * ((-inf) - (-inf))  =>  NaN in IEEE 754 arithmetic
+    The nan_to_num guard must replace NaN with -inf so those tokens are safely
+    excluded from sampling rather than causing undefined behaviour.
+    """
+
+    VOCAB_SIZE = 10
+
+    def test_cfg_nan_replaced_with_neg_inf(self):
+        """NaN entries in cfg_logits (outside CODES_GENERATION) are replaced with -inf."""
+        handler = _make_handler()
+        vocab_size = self.VOCAB_SIZE
+        total_batch = 2  # batch_size=1: [cond, uncond]
+
+        # Both cond and uncond logits are -inf for token 4 → CFG produces NaN for that token
+        cond = torch.full((1, 1, vocab_size), 0.0)
+        uncond = torch.full((1, 1, vocab_size), 0.0)
+        cond[0, 0, 4] = float('-inf')
+        uncond[0, 0, 4] = float('-inf')
+        # Token 7 (EOS substitute) stays finite so sampling always has a valid candidate
+        cond[0, 0, 7] = 100.0
+        uncond[0, 0, 7] = 100.0
+        combined = torch.cat([cond, uncond], dim=0)
+        outputs = SimpleNamespace(logits=combined, past_key_values=None)
+        model = MagicMock(return_value=outputs)
+        model.generation_config = MagicMock()
+        model.generation_config.use_cache = False
+        handler.llm = model
+        handler.llm_tokenizer.eos_token_id = 7
+
+        captured_logits = []
+
+        def fake_sample(logits, temperature):
+            captured_logits.append(logits.clone())
+            return torch.tensor([7])
+
+        with patch.object(handler, "_sample_tokens", side_effect=fake_sample):
+            input_ids = torch.zeros((total_batch, 3), dtype=torch.long)
+            # Use a THINK_TAG processor so the full-vocab CFG else-branch is taken
+            constrained_proc = _make_constrained_processor(FSMState.THINK_TAG, vocab_size)
+            handler._generate_with_cfg_custom(
+                batch_input_ids=input_ids,
+                batch_attention_mask=None,
+                max_new_tokens=1,
+                temperature=1.0,
+                cfg_scale=2.0,
+                top_k=None,
+                top_p=None,
+                repetition_penalty=1.0,
+                pad_token_id=7,
+                streamer=None,
+                constrained_processor=constrained_proc,
+            )
+
+        self.assertEqual(len(captured_logits), 1)
+        logits = captured_logits[0][0]  # [vocab_size] for seq 0
+
+        # No NaN values in the logits passed to the sampler
+        self.assertFalse(
+            torch.isnan(logits).any().item(),
+            f"NaN found in cfg_logits: {logits}",
+        )
+        # Token 4 (was NaN before guard) must be -inf after the guard
+        self.assertEqual(
+            logits[4].item(),
+            float('-inf'),
+            f"Expected -inf for NaN token, got {logits[4].item()}",
+        )
+
+
+# ---------------------------------------------------------------------------
 # Fix 4: Per-sequence EOS tracking (batch compaction)
 # ---------------------------------------------------------------------------
 

@@ -2530,6 +2530,11 @@ class LLMHandler:
                     # Apply CFG formula: cfg_logits = uncond + cfg_scale * (cond - uncond)
                     # Upcast to float32 to prevent overflow in float16 (CFG scaling can exceed fp16 range)
                     cfg_logits = uncond_logits.float() + cfg_scale * (cond_logits.float() - uncond_logits.float())
+                    # Guard against NaN from (-inf) + scale * ((-inf) - (-inf)).
+                    # This can happen when repetition penalty drives a token to -inf in both
+                    # cond and uncond branches simultaneously.  Replace NaN with -inf so those
+                    # tokens are simply excluded from sampling.
+                    cfg_logits = torch.nan_to_num(cfg_logits, nan=float('-inf'))
 
                 # Apply constrained processor (modifies logits based on FSM state, e.g. duration constraint)
                 if constrained_processor is not None:
