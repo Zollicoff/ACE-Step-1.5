@@ -139,6 +139,7 @@ class GenerationParams:
 
     repainting_start: float = 0.0
     repainting_end: float = -1
+    chunk_mask_mode: str = "auto"  # "explicit" = 0/1 mask from repaint range; "auto" = all 2.0 (model decides)
     audio_cover_strength: float = 1.0
     cover_noise_strength: float = 0.0  # 0=pure noise (no cover), 1=closest to src audio
 
@@ -614,6 +615,7 @@ def generate_music(
             timesteps=params.timesteps,
             latent_shift=params.latent_shift,
             latent_rescale=params.latent_rescale,
+            chunk_mask_mode=getattr(params, "chunk_mask_mode", "auto"),
             progress=progress,
         )
 

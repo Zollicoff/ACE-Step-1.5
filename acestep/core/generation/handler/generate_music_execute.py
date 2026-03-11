@@ -80,6 +80,7 @@ class GenerateMusicExecuteMixin:
                     audio_code_hints=service_inputs["audio_code_hints_batch"],
                     return_intermediate=service_inputs["should_return_intermediate"],
                     timesteps=timesteps,
+                    chunk_mask_modes=service_inputs.get("chunk_mask_modes_batch"),
                 )
             except Exception as exc:
                 _error["exc"] = exc

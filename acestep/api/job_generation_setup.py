@@ -161,6 +161,7 @@ def build_generation_setup(
         timesteps=parsed_timesteps,
         repainting_start=req.repainting_start,
         repainting_end=req.repainting_end if req.repainting_end else -1,
+        chunk_mask_mode=getattr(req, "chunk_mask_mode", "auto"),
         audio_cover_strength=req.audio_cover_strength,
         cover_noise_strength=req.cover_noise_strength,
         thinking=thinking,
