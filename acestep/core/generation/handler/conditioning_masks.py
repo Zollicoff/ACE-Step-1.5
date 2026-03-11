@@ -27,6 +27,7 @@ class ConditioningMaskMixin:
         repainting_start: Optional[List[float]],
         repainting_end: Optional[List[float]],
         silence_latent_tiled: torch.Tensor,
+        chunk_mask_modes: Optional[List[str]] = None,
     ) -> Tuple[torch.Tensor, List[Tuple[str, int, int]], torch.Tensor, torch.Tensor]:
         """Create chunk masks/spans and corresponding source latents."""
         chunk_masks = []
@@ -67,6 +68,10 @@ class ConditioningMaskMixin:
             is_covers.append(is_cover)
 
         chunk_masks_tensor = torch.stack(chunk_masks)
+        if chunk_mask_modes:
+            for i, mode in enumerate(chunk_mask_modes):
+                if mode == "auto":
+                    chunk_masks_tensor[i] = 2.0
         is_covers_tensor = torch.BoolTensor(is_covers).to(self.device)
 
         src_latents_list = []

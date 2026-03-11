@@ -125,6 +125,7 @@ class GenerateMusicMixin:
         timesteps: Optional[List[float]] = None,
         latent_shift: float = 0.0,
         latent_rescale: float = 1.0,
+        chunk_mask_mode: str = "auto",
         progress=None,
     ) -> Dict[str, Any]:
         """Generate audio from text/reference inputs and return response payload.
@@ -208,6 +209,7 @@ class GenerateMusicMixin:
                 audio_code_string=audio_code_string,
                 repainting_start=repainting_start,
                 repainting_end=repainting_end,
+                chunk_mask_mode=chunk_mask_mode,
             )
             vram_error = self._vram_preflight_check(
                 actual_batch_size=actual_batch_size,

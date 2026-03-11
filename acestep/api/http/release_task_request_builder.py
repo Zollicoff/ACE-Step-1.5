@@ -66,6 +66,7 @@ def build_generate_music_request(
         reference_audio_path=reference_audio,
         src_audio_path=src_audio,
         task_type=parser.str("task_type", "text2music"),
+        chunk_mask_mode=parser.str("chunk_mask_mode", "auto"),
         use_adg=parser.bool("use_adg"),
         cfg_interval_start=parser.float("cfg_interval_start", 0.0),
         cfg_interval_end=parser.float("cfg_interval_end", 1.0),

@@ -62,6 +62,7 @@ class GenerateMusicRequest(BaseModel):
         description="User-provided audio semantic codes string for code-control generation. When non-empty, skips LM code generation.",
     )
     task_type: str = "text2music"
+    chunk_mask_mode: Literal["explicit", "auto"] = "auto"
     analysis_only: bool = False
     full_analysis_only: bool = False
 
