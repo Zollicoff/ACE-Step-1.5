@@ -76,12 +76,10 @@ class ConditioningMaskMixin:
             if has_target_audio:
                 if i in repainting_ranges:
                     src_latent = target_latents[i].clone()
+                    start_latent, end_latent = repainting_ranges[i]
                     instruction_i = instructions[i] if instructions and i < len(instructions) else ""
                     is_lego = _LEGO_INSTRUCTION_MARKER in instruction_i.lower()
                     if not is_lego:
-                        # Repaint: silence the masked region so DiT regenerates it.
-                        # Lego: preserve source audio as musical context for the DiT.
-                        start_latent, end_latent = repainting_ranges[i]
                         src_latent[start_latent:end_latent] = silence_latent_tiled[start_latent:end_latent]
                     src_latents_list.append(src_latent)
                 else:

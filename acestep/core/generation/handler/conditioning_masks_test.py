@@ -221,9 +221,10 @@ class ConditioningMaskLegoBehaviorTests(unittest.TestCase):
             src_latents[0, start_l:end_l].abs().sum().item() < 1e-6,
             "non-lego instruction must still silence the repaint region",
         )
+
+    def test_no_source_audio_produces_silence_latents(self):
         """Without source audio, src_latents should be silence (text2music behavior)."""
         host = _make_host()
-        # target_wavs all zeros = no audio
         target_wavs = torch.zeros(1, 2, 48000)
         chunk_masks, spans, is_covers, src_latents = _build(
             host,
