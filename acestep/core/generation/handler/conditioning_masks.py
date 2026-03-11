@@ -4,6 +4,10 @@ from typing import Dict, List, Optional, Tuple
 
 import torch
 
+# Phrase unique to lego task instructions — used to detect lego items from instruction text.
+# Matches both TASK_INSTRUCTIONS["lego"] and TASK_INSTRUCTIONS["lego_default"].
+_LEGO_INSTRUCTION_MARKER = "based on the audio context"
+
 
 class ConditioningMaskMixin:
     """Mixin containing repaint mask/span and source-latent builders.
@@ -72,8 +76,13 @@ class ConditioningMaskMixin:
             if has_target_audio:
                 if i in repainting_ranges:
                     src_latent = target_latents[i].clone()
-                    start_latent, end_latent = repainting_ranges[i]
-                    src_latent[start_latent:end_latent] = silence_latent_tiled[start_latent:end_latent]
+                    instruction_i = instructions[i] if instructions and i < len(instructions) else ""
+                    is_lego = _LEGO_INSTRUCTION_MARKER in instruction_i.lower()
+                    if not is_lego:
+                        # Repaint: silence the masked region so DiT regenerates it.
+                        # Lego: preserve source audio as musical context for the DiT.
+                        start_latent, end_latent = repainting_ranges[i]
+                        src_latent[start_latent:end_latent] = silence_latent_tiled[start_latent:end_latent]
                     src_latents_list.append(src_latent)
                 else:
                     src_latents_list.append(target_latents[i].clone())

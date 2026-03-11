@@ -23,18 +23,18 @@ class DetermineTaskTypeTests(unittest.TestCase):
         self.assertFalse(is_cover)
         self.assertTrue(can_repaint)
 
-    def test_lego_task_does_not_enable_repainting(self):
-        """Lego task must NOT set can_use_repainting=True.
+    def test_lego_task_enables_repainting_for_chunk_mask(self):
+        """Lego task should set can_use_repainting=True so the chunk mask is computed
+        from repainting_start/end, marking which positions have active audio to generate.
 
-        Lego mode uses the source audio as musical context; passing it through
-        the repainting path would overwrite source latents with silence and
-        cause the DiT to receive no audio context.
+        Source audio silencing is prevented separately in _build_chunk_masks_and_src_latents
+        via instruction-text detection, not here.
         """
         is_repaint, is_lego, is_cover, can_repaint = self.host.determine_task_type("lego", None)
         self.assertFalse(is_repaint)
         self.assertTrue(is_lego)
         self.assertFalse(is_cover)
-        self.assertFalse(can_repaint, "lego must not use the repainting path")
+        self.assertTrue(can_repaint, "lego must use the repainting path to get a proper chunk mask")
 
     def test_cover_task_is_not_repaint(self):
         """Cover task should not set can_use_repainting=True."""
@@ -62,14 +62,14 @@ class DetermineTaskTypeTests(unittest.TestCase):
         self.assertTrue(is_cover)
         self.assertFalse(can_repaint)
 
-    def test_lego_with_audio_codes_still_not_repainting(self):
-        """Lego with audio codes should remain can_use_repainting=False."""
+    def test_lego_with_audio_codes_enables_repainting(self):
+        """Lego with audio codes should still have can_use_repainting=True for chunk mask."""
         is_repaint, is_lego, is_cover, can_repaint = self.host.determine_task_type(
             "lego", "<|audio_code_1|>"
         )
         self.assertTrue(is_lego)
         self.assertTrue(is_cover)
-        self.assertFalse(can_repaint, "audio codes must not re-enable repainting for lego")
+        self.assertTrue(can_repaint, "lego must use the repainting path for chunk mask")
 
 
 if __name__ == "__main__":

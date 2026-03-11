@@ -5,7 +5,10 @@ from typing import List, Optional
 
 import torch
 
-from acestep.core.generation.handler.conditioning_masks import ConditioningMaskMixin
+from acestep.core.generation.handler.conditioning_masks import (
+    ConditioningMaskMixin,
+    _LEGO_INSTRUCTION_MARKER,
+)
 
 
 class _Host(ConditioningMaskMixin):
@@ -56,28 +59,52 @@ def _build(
 
 
 class ConditioningMaskLegoBehaviorTests(unittest.TestCase):
-    """Verify lego mode keeps source audio latents intact (no silence replacement)."""
+    """Verify lego mode keeps source audio latents intact (no silence replacement).
 
-    def test_lego_no_repainting_preserves_source_latents(self):
-        """With repainting_start/end=None (lego path), src_latents equal target_latents.
+    For lego, can_use_repainting=True so repainting_start/end are set and the
+    chunk mask is computed from the repainting range. However, src_latents must
+    NOT be silenced — the source audio is the musical context for the DiT.
+    """
 
-        After the fix, lego must NOT call prepare_padding_info with can_use_repainting=True,
-        so repainting_start/end arrive as None here. The source audio must be passed
-        unchanged to the DiT as musical context.
+    def test_lego_with_repainting_range_preserves_source_latents(self):
+        """Lego with repainting_start/end must preserve src_latents (no silencing).
+
+        The chunk mask is computed from the range (marking which positions have
+        active audio to generate), but the source latents carry the backing track
+        context and must reach the DiT unchanged.
         """
         host = _make_host()
         target_latents = torch.ones(1, 100, 16) * 2.5
+        lego_instruction = "Generate the GUITAR track based on the audio context:"
         chunk_masks, spans, is_covers, src_latents = _build(
             host,
+            instructions=[lego_instruction],
             target_latents=target_latents,
-            repainting_start=None,
-            repainting_end=None,
+            repainting_start=[0.0],
+            repainting_end=[4.0],  # 4 s at sample_rate=48000, stride=1920 → latents 0..100
         )
         self.assertTrue(
             torch.allclose(src_latents, target_latents),
             "lego src_latents must equal the source audio latents, not be silenced",
         )
-        self.assertEqual(spans[0][0], "full", "lego span should be 'full'")
+        self.assertEqual(spans[0][0], "repainting", "lego span should be 'repainting' (from range)")
+
+    def test_lego_default_instruction_preserves_source_latents(self):
+        """The lego_default instruction also preserves src_latents."""
+        host = _make_host()
+        target_latents = torch.ones(1, 100, 16) * 1.7
+        lego_default_instruction = "Generate the track based on the audio context:"
+        chunk_masks, spans, is_covers, src_latents = _build(
+            host,
+            instructions=[lego_default_instruction],
+            target_latents=target_latents,
+            repainting_start=[0.0],
+            repainting_end=[4.0],
+        )
+        self.assertTrue(
+            torch.allclose(src_latents, target_latents),
+            "lego_default src_latents must equal the source audio latents",
+        )
 
     def test_repaint_full_range_silences_repainting_region(self):
         """Repaint with full range should overwrite the repainting region with silence.
@@ -129,7 +156,71 @@ class ConditioningMaskLegoBehaviorTests(unittest.TestCase):
                 msg="src_latents outside repaint mask should preserve original audio",
             )
 
-    def test_no_audio_produces_silence_src_latents(self):
+    def test_lego_instruction_marker_constant(self):
+        """The _LEGO_INSTRUCTION_MARKER constant matches the actual lego instruction templates."""
+        lego_instructions = [
+            "Generate the GUITAR track based on the audio context:",
+            "Generate the track based on the audio context:",
+            "Generate the DRUMS track based on the audio context:",
+        ]
+        for instr in lego_instructions:
+            self.assertIn(
+                _LEGO_INSTRUCTION_MARKER,
+                instr.lower(),
+                f"Marker must match lego instruction: {instr!r}",
+            )
+
+    def test_lego_detection_is_case_insensitive(self):
+        """Lego detection must be case-insensitive via .lower()."""
+        host = _make_host()
+        target_latents = torch.ones(1, 100, 16) * 2.5
+        # Use mixed-case version of the instruction
+        mixed_case_instruction = "Generate the GUITAR Track BASED ON THE AUDIO CONTEXT:"
+        chunk_masks, spans, is_covers, src_latents = _build(
+            host,
+            instructions=[mixed_case_instruction],
+            target_latents=target_latents,
+            repainting_start=[0.0],
+            repainting_end=[4.0],
+        )
+        self.assertTrue(
+            torch.allclose(src_latents, target_latents),
+            "lego detection must be case-insensitive; src_latents should be preserved",
+        )
+
+    def test_lego_with_empty_instructions_does_not_raise(self):
+        """Empty instructions list must not cause an index error or silence lego latents."""
+        host = _make_host()
+        target_latents = torch.ones(1, 100, 16) * 2.5
+        # Empty instructions list — instructions[i] lookup falls back to ""
+        chunk_masks, spans, is_covers, src_latents = _build(
+            host,
+            instructions=[],
+            target_latents=target_latents,
+            repainting_start=[0.0],
+            repainting_end=[4.0],
+        )
+        # With an empty instructions list, is_lego=False, so the repaint silencing applies.
+        # This is a graceful fallback — the important thing is no exception is raised.
+        self.assertEqual(src_latents.shape, target_latents.shape)
+
+    def test_non_lego_instruction_still_silences_repaint(self):
+        """A non-lego instruction in the repainting path must still silence src_latents."""
+        host = _make_host()
+        target_latents = torch.ones(1, 100, 16) * 2.5
+        repaint_instruction = "Repaint the mask area based on the given conditions:"
+        chunk_masks, spans, is_covers, src_latents = _build(
+            host,
+            instructions=[repaint_instruction],
+            target_latents=target_latents,
+            repainting_start=[0.0],
+            repainting_end=[4.0],
+        )
+        start_l, end_l = spans[0][1], spans[0][2]
+        self.assertTrue(
+            src_latents[0, start_l:end_l].abs().sum().item() < 1e-6,
+            "non-lego instruction must still silence the repaint region",
+        )
         """Without source audio, src_latents should be silence (text2music behavior)."""
         host = _make_host()
         # target_wavs all zeros = no audio
