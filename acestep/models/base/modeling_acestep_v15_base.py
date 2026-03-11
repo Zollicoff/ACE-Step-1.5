@@ -1988,7 +1988,8 @@ class AceStepConditionGenerationModel(AceStepPreTrainedModel):
                     xt = xt - vt * dt_tensor
                     t_after_step = t_prev
 
-                if repaint_mask is not None and clean_src_latents is not None:
+                is_last_step = (step_idx == infer_steps - 1)
+                if repaint_mask is not None and clean_src_latents is not None and not is_last_step:
                     xt = apply_repaint_step_injection(
                         xt, clean_src_latents, repaint_mask, t_after_step, noise,
                     )
