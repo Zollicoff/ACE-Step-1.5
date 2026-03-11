@@ -12,6 +12,9 @@ import torch
 from loguru import logger
 
 from acestep.constants import DEFAULT_DIT_INSTRUCTION
+from acestep.core.generation.handler.repaint_waveform_splice import (
+    apply_repaint_waveform_splice,
+)
 from acestep.gpu_config import (
     DIT_INFERENCE_VRAM_PER_BATCH,
     VRAM_SAFETY_MARGIN_GB,
@@ -254,6 +257,16 @@ class GenerateMusicMixin:
                 use_tiled_decode=use_tiled_decode,
                 time_costs=time_costs,
             )
+            repainting_start_batch = service_inputs.get("repainting_start_batch")
+            repainting_end_batch = service_inputs.get("repainting_end_batch")
+            if repainting_start_batch is not None and repainting_end_batch is not None:
+                pred_wavs = apply_repaint_waveform_splice(
+                    pred_wavs=pred_wavs,
+                    src_wavs=service_inputs["target_wavs_tensor"],
+                    repainting_starts=repainting_start_batch,
+                    repainting_ends=repainting_end_batch,
+                    sample_rate=self.sample_rate,
+                )
             result = self._build_generate_music_success_payload(
                 outputs=outputs,
                 pred_wavs=pred_wavs,
