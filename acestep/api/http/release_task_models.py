@@ -65,6 +65,7 @@ class GenerateMusicRequest(BaseModel):
     chunk_mask_mode: Literal["explicit", "auto"] = "auto"
     analysis_only: bool = False
     full_analysis_only: bool = False
+    extract_codes_only: bool = False
 
     use_adg: bool = False
     cfg_interval_start: float = 0.0
