@@ -78,7 +78,10 @@ def legacy_torch_fix_probe_exit_code(torch_module: Any | None = None) -> int:
         torch_module: Optional injected ``torch`` module for tests.
 
     Returns:
-        ``LEGACY_TORCH_FIX_EXIT_CODE`` when fix should be applied, otherwise ``0``.
+        ``LEGACY_TORCH_FIX_EXIT_CODE`` when fix should be applied or the probe
+        itself fails, otherwise ``0``.
     """
     decision = determine_legacy_torch_fix(torch_module=torch_module)
-    return LEGACY_TORCH_FIX_EXIT_CODE if decision.should_apply else 0
+    if decision.should_apply or decision.reason == "probe_failed":
+        return LEGACY_TORCH_FIX_EXIT_CODE
+    return 0

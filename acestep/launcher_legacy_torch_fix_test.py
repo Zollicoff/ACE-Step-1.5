@@ -21,6 +21,8 @@ class LauncherLegacyTorchFixTests(unittest.TestCase):
         content = self._read("start_gradio_ui.sh")
         self.assertIn("ACESTEP_SKIP_LEGACY_TORCH_FIX", content)
         self.assertIn("legacy_torch_fix_probe_exit_code", content)
+        self.assertIn("legacy NVIDIA compatibility probe failed with exit code $compat_status", content)
+        self.assertIn("return 1", content)
         self.assertIn("torch==2.5.1+cu121", content)
 
     def test_linux_api_launcher_calls_shared_probe(self) -> None:
@@ -38,8 +40,12 @@ class LauncherLegacyTorchFixTests(unittest.TestCase):
         self.assertIn('if /i "%ACESTEP_SKIP_LEGACY_TORCH_FIX%"=="true"', content)
         self.assertIn("legacy_torch_fix_probe_exit_code", content)
         self.assertIn("torch==2.5.1+cu121", content)
-        self.assertEqual(content.count("call :EnsureLegacyNvidiaTorchCompat"), 1)
-        self.assertEqual(content.count("if !ERRORLEVEL! NEQ 0 exit /b !ERRORLEVEL!"), 1)
+        self.assertGreaterEqual(content.count("call :EnsureLegacyNvidiaTorchCompat"), 1)
+        self.assertGreaterEqual(content.count("if !ERRORLEVEL! NEQ 0 exit /b !ERRORLEVEL!"), 1)
+        self.assertRegex(
+            content,
+            r"call :EnsureLegacyNvidiaTorchCompat\s+if !ERRORLEVEL! NEQ 0 exit /b !ERRORLEVEL!",
+        )
 
     def test_windows_api_launcher_calls_shared_probe(self) -> None:
         """Windows API launcher should call shared Python compatibility probe."""
@@ -47,8 +53,12 @@ class LauncherLegacyTorchFixTests(unittest.TestCase):
         self.assertIn('if /i "%ACESTEP_SKIP_LEGACY_TORCH_FIX%"=="true"', content)
         self.assertIn("legacy_torch_fix_probe_exit_code", content)
         self.assertIn("torch==2.5.1+cu121", content)
-        self.assertEqual(content.count("call :EnsureLegacyNvidiaTorchCompat"), 1)
-        self.assertEqual(content.count("if !ERRORLEVEL! NEQ 0 exit /b !ERRORLEVEL!"), 1)
+        self.assertGreaterEqual(content.count("call :EnsureLegacyNvidiaTorchCompat"), 1)
+        self.assertGreaterEqual(content.count("if !ERRORLEVEL! NEQ 0 exit /b !ERRORLEVEL!"), 1)
+        self.assertRegex(
+            content,
+            r"call :EnsureLegacyNvidiaTorchCompat\s+if !ERRORLEVEL! NEQ 0 exit /b !ERRORLEVEL!",
+        )
 
 
 if __name__ == "__main__":
