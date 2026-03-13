@@ -21,13 +21,14 @@ from transformers.generation.logits_process import (
     LogitsProcessorList,
     RepetitionPenaltyLogitsProcessor,
 )
+from acestep.llm_backend_compat import get_vllm_preflight_warning
 from acestep.constrained_logits_processor import MetadataConstrainedLogitsProcessor
 from acestep.constants import DEFAULT_LM_INSTRUCTION, DEFAULT_LM_UNDERSTAND_INSTRUCTION, DEFAULT_LM_INSPIRED_INSTRUCTION, DEFAULT_LM_REWRITE_INSTRUCTION, DURATION_MIN, DURATION_MAX
 from acestep.gpu_config import get_lm_gpu_memory_ratio, get_gpu_memory_gb, get_lm_model_size, get_global_gpu_config
 
 # Minimum free VRAM (GB) required to attempt vLLM initialization.
 # vLLM's KV cache allocator adapts to available memory, so we only need a
-# basic sanity check — not a hard total-VRAM gate.
+# basic sanity check Ã¢â‚¬â€ not a hard total-VRAM gate.
 VRAM_SAFE_FREE_GB = 2.0
 
 
@@ -359,10 +360,10 @@ class LLMHandler:
             self.llm_backend = "pt"
             self.llm_initialized = True
             logger.info(f"5Hz LM initialized successfully using PyTorch backend on {device}")
-            status_msg = f"✅ 5Hz LM initialized successfully\nModel: {model_path}\nBackend: PyTorch\nDevice: {device}"
+            status_msg = f"Ã¢Å“â€¦ 5Hz LM initialized successfully\nModel: {model_path}\nBackend: PyTorch\nDevice: {device}"
             return True, status_msg
         except Exception as e:
-            return False, f"❌ Error initializing 5Hz LM: {str(e)}\n\nTraceback:\n{traceback.format_exc()}"
+            return False, f"Ã¢ÂÅ’ Error initializing 5Hz LM: {str(e)}\n\nTraceback:\n{traceback.format_exc()}"
 
     def _apply_top_k_filter(self, logits: torch.Tensor, top_k: Optional[int]) -> torch.Tensor:
         """Apply top-k filtering to logits"""
@@ -538,7 +539,7 @@ class LLMHandler:
 
             full_lm_model_path = os.path.join(checkpoint_dir, lm_model_path)
             if not os.path.exists(full_lm_model_path):
-                return f"❌ 5Hz LM model not found at {full_lm_model_path}", False
+                return f"Ã¢ÂÅ’ 5Hz LM model not found at {full_lm_model_path}", False
 
             # Proactive CUDA cleanup before LM load to reduce fragmentation on mode/model switch
             if device == "cuda" and torch.cuda.is_available():
@@ -600,7 +601,7 @@ class LLMHandler:
                             success, status_msg = self._load_pytorch_model(full_lm_model_path, device)
                             if not success:
                                 return status_msg, False
-                            status_msg = f"✅ 5Hz LM initialized (PyTorch fallback from MLX)\nModel: {full_lm_model_path}\nBackend: PyTorch"
+                            status_msg = f"Ã¢Å“â€¦ 5Hz LM initialized (PyTorch fallback from MLX)\nModel: {full_lm_model_path}\nBackend: PyTorch"
                             return status_msg, True
                         # else: backend was "vllm" on MPS, continue to vllm attempt below
                 elif backend == "mlx":
@@ -609,7 +610,7 @@ class LLMHandler:
                     success, status_msg = self._load_pytorch_model(full_lm_model_path, device)
                     if not success:
                         return status_msg, False
-                    status_msg = f"✅ 5Hz LM initialized (PyTorch fallback, MLX not available)\nModel: {full_lm_model_path}\nBackend: PyTorch"
+                    status_msg = f"Ã¢Å“â€¦ 5Hz LM initialized (PyTorch fallback, MLX not available)\nModel: {full_lm_model_path}\nBackend: PyTorch"
                     return status_msg, True
 
             if backend == "vllm" and device != "cuda":
@@ -617,6 +618,13 @@ class LLMHandler:
                     f"[initialize] vllm backend requires CUDA, using PyTorch backend for device={device}."
                 )
                 backend = "pt"
+
+            vllm_preflight_warning = None
+            if backend == "vllm":
+                vllm_preflight_warning = get_vllm_preflight_warning(device=device)
+                if vllm_preflight_warning is not None:
+                    logger.warning(f"[initialize] {vllm_preflight_warning}")
+                    backend = "pt"
 
             # Initialize based on user-selected backend
             if backend == "vllm":
@@ -635,19 +643,19 @@ class LLMHandler:
                         free_gb = 0.0
                 if device == "cuda" and free_gb < VRAM_SAFE_FREE_GB:
                     logger.warning(
-                        f"vLLM disabled due to insufficient free VRAM (total={total_gb:.2f}GB, free={free_gb:.2f}GB, need>={VRAM_SAFE_FREE_GB}GB free) — falling back to PyTorch backend"
+                        f"vLLM disabled due to insufficient free VRAM (total={total_gb:.2f}GB, free={free_gb:.2f}GB, need>={VRAM_SAFE_FREE_GB}GB free) Ã¢â‚¬â€ falling back to PyTorch backend"
                     )
                     success, status_msg = self._load_pytorch_model(full_lm_model_path, device)
                     if not success:
                         return status_msg, False
-                    status_msg = f"✅ 5Hz LM initialized successfully (PyTorch fallback)\nModel: {full_lm_model_path}\nBackend: PyTorch"
+                    status_msg = f"Ã¢Å“â€¦ 5Hz LM initialized successfully (PyTorch fallback)\nModel: {full_lm_model_path}\nBackend: PyTorch"
                 else:
                     status_msg = self._initialize_5hz_lm_vllm(
                         full_lm_model_path,
                         enforce_eager=enforce_eager_for_vllm,
                     )
                     logger.info(f"5Hz LM status message: {status_msg}")
-                    if status_msg.startswith("❌"):
+                    if status_msg.startswith("Ã¢ÂÅ’"):
                         if not self.llm_initialized:
                             if device == "mps" and self._is_mlx_available():
                                 logger.warning("vllm failed on MPS, trying MLX backend...")
@@ -659,16 +667,18 @@ class LLMHandler:
                             success, status_msg = self._load_pytorch_model(full_lm_model_path, device)
                             if not success:
                                 return status_msg, False
-                            status_msg = f"✅ 5Hz LM initialized successfully (PyTorch fallback)\nModel: {full_lm_model_path}\nBackend: PyTorch"
+                            status_msg = f"Ã¢Å“â€¦ 5Hz LM initialized successfully (PyTorch fallback)\nModel: {full_lm_model_path}\nBackend: PyTorch"
             elif backend != "mlx":
                 success, status_msg = self._load_pytorch_model(full_lm_model_path, device)
                 if not success:
                     return status_msg, False
+                if vllm_preflight_warning is not None:
+                    status_msg += f"\nNote: {vllm_preflight_warning}"
 
             return status_msg, True
 
         except Exception as e:
-            return f"❌ Error initializing 5Hz LM: {str(e)}\n\nTraceback:\n{traceback.format_exc()}", False
+            return f"Ã¢ÂÅ’ Error initializing 5Hz LM: {str(e)}\n\nTraceback:\n{traceback.format_exc()}", False
 
     def _initialize_5hz_lm_vllm(self, model_path: str, enforce_eager: bool = False) -> str:
         """Initialize 5Hz LM model using vllm backend. When enforce_eager is True, CUDA graph
@@ -676,13 +686,13 @@ class LLMHandler:
         if not torch.cuda.is_available():
             self.llm_initialized = False
             logger.error("CUDA/ROCm is not available. Please check your GPU setup.")
-            return "❌ CUDA/ROCm is not available. Please check your GPU setup."
+            return "Ã¢ÂÅ’ CUDA/ROCm is not available. Please check your GPU setup."
         try:
             from nanovllm import LLM, SamplingParams
         except ImportError:
             self.llm_initialized = False
             logger.error("nano-vllm is not installed. Please install it using 'cd acestep/third_parts/nano-vllm && pip install .")
-            return "❌ nano-vllm is not installed. Please install it using 'cd acestep/third_parts/nano-vllm && pip install ."
+            return "Ã¢ÂÅ’ nano-vllm is not installed. Please install it using 'cd acestep/third_parts/nano-vllm && pip install ."
 
         try:
             current_device = torch.cuda.current_device()
@@ -717,10 +727,16 @@ class LLMHandler:
             logger.info(f"5Hz LM initialized successfully in {time.time() - start_time:.2f} seconds")
             self.llm_initialized = True
             self.llm_backend = "vllm"
-            return f"✅ 5Hz LM initialized successfully\nModel: {model_path}\nDevice: {device_name}\nGPU Memory Utilization: {gpu_memory_utilization:.3f}\nLow GPU Memory Mode: {low_gpu_memory_mode}"
+            return f"Ã¢Å“â€¦ 5Hz LM initialized successfully\nModel: {model_path}\nDevice: {device_name}\nGPU Memory Utilization: {gpu_memory_utilization:.3f}\nLow GPU Memory Mode: {low_gpu_memory_mode}"
         except Exception as e:
             self.llm_initialized = False
-            return f"❌ Error initializing 5Hz LM: {str(e)}\n\nTraceback:\n{traceback.format_exc()}"
+            if "Cannot find a working triton installation" in str(e):
+                return (
+                    "Error: vLLM backend requires a working Triton installation. "
+                    "Falling back to PyTorch is recommended on Windows. "
+                    "Use --backend pt to avoid this warning."
+                )
+            return f"Ã¢ÂÅ’ Error initializing 5Hz LM: {str(e)}\n\nTraceback:\n{traceback.format_exc()}"
 
     def _run_vllm(
         self,
@@ -1701,10 +1717,10 @@ class LLMHandler:
             print(metadata['lyrics'])   # "[Intro: ...]\\n..."
         """
         if not getattr(self, "llm_initialized", False):
-            return {}, "❌ 5Hz LM not initialized. Please initialize it first."
+            return {}, "Ã¢ÂÅ’ 5Hz LM not initialized. Please initialize it first."
 
         if not audio_codes or not audio_codes.strip():
-            return {}, "❌ No audio codes provided. Please paste audio codes first."
+            return {}, "Ã¢ÂÅ’ No audio codes provided. Please paste audio codes first."
 
         logger.info(f"Understanding audio codes (length: {len(audio_codes)} chars)")
 
@@ -1752,7 +1768,7 @@ class LLMHandler:
             logger.debug(f"Generated metadata: {list(metadata.keys())}")
             logger.debug(f"Output text preview: {output_text[:200]}...")
 
-        status_msg = f"✅ Understanding completed successfully\nGenerated fields: {', '.join(metadata.keys())}"
+        status_msg = f"Ã¢Å“â€¦ Understanding completed successfully\nGenerated fields: {', '.join(metadata.keys())}"
         return metadata, status_msg
 
     def _extract_lyrics_from_output(self, output_text: str) -> str:
@@ -1897,7 +1913,7 @@ class LLMHandler:
             print(metadata['lyrics'])   # "[Intro: ...]\\n..."
         """
         if not getattr(self, "llm_initialized", False):
-            return {}, "❌ 5Hz LM not initialized. Please initialize it first."
+            return {}, "Ã¢ÂÅ’ 5Hz LM not initialized. Please initialize it first."
 
         if not query or not query.strip():
             query = "NO USER INPUT"
@@ -1966,7 +1982,7 @@ class LLMHandler:
             logger.debug(f"Generated metadata: {list(metadata.keys())}")
             logger.debug(f"Output text preview: {output_text[:300]}...")
 
-        status_msg = f"✅ Sample created successfully\nGenerated fields: {metadata}"
+        status_msg = f"Ã¢Å“â€¦ Sample created successfully\nGenerated fields: {metadata}"
         return metadata, status_msg
 
     def build_formatted_prompt_for_format(
@@ -2074,7 +2090,7 @@ class LLMHandler:
             print(metadata['bpm'])      # 100
         """
         if not getattr(self, "llm_initialized", False):
-            return {}, "❌ 5Hz LM not initialized. Please initialize it first."
+            return {}, "Ã¢ÂÅ’ 5Hz LM not initialized. Please initialize it first."
 
         if not caption or not caption.strip():
             caption = "NO USER INPUT"
@@ -2164,7 +2180,7 @@ class LLMHandler:
             logger.debug(f"Generated metadata: {list(metadata.keys())}")
             logger.debug(f"Output text preview: {output_text[:300]}...")
 
-        status_msg = f"✅ Format completed successfully\nGenerated fields: {', '.join(metadata.keys())}"
+        status_msg = f"Ã¢Å“â€¦ Format completed successfully\nGenerated fields: {', '.join(metadata.keys())}"
         return metadata, status_msg
 
     def generate_from_formatted_prompt(
@@ -2199,13 +2215,13 @@ class LLMHandler:
             text, status = handler.generate_from_formatted_prompt(prompt, {"temperature": 0.7})
         """
         if not getattr(self, "llm_initialized", False):
-            return "", "❌ 5Hz LM not initialized. Please initialize it first."
+            return "", "Ã¢ÂÅ’ 5Hz LM not initialized. Please initialize it first."
         # Check that the appropriate model is loaded for the active backend
         if self.llm_backend == "mlx":
             if self._mlx_model is None or self.llm_tokenizer is None:
-                return "", "❌ 5Hz LM is missing MLX model or tokenizer."
+                return "", "Ã¢ÂÅ’ 5Hz LM is missing MLX model or tokenizer."
         elif self.llm is None or self.llm_tokenizer is None:
-            return "", "❌ 5Hz LM is missing model or tokenizer."
+            return "", "Ã¢ÂÅ’ 5Hz LM is missing model or tokenizer."
 
         cfg = cfg or {}
         temperature = cfg.get("temperature", 0.6)
@@ -2248,7 +2264,7 @@ class LLMHandler:
                     lyrics=lyrics,
                     cot_text=cot_text,
                 )
-                return output_text, f"✅ Generated successfully (vllm) | length={len(output_text)}"
+                return output_text, f"Ã¢Å“â€¦ Generated successfully (vllm) | length={len(output_text)}"
 
             elif self.llm_backend == "mlx":
                 # MLX backend (Apple Silicon native)
@@ -2273,7 +2289,7 @@ class LLMHandler:
                     lyrics=lyrics,
                     cot_text=cot_text,
                 )
-                return output_text, f"✅ Generated successfully (mlx) | length={len(output_text)}"
+                return output_text, f"Ã¢Å“â€¦ Generated successfully (mlx) | length={len(output_text)}"
 
             # PyTorch backend (fallback)
             output_text = self._run_pt(
@@ -2297,7 +2313,7 @@ class LLMHandler:
                 lyrics=lyrics,
                 cot_text=cot_text,
             )
-            return output_text, f"✅ Generated successfully (pt) | length={len(output_text)}"
+            return output_text, f"Ã¢Å“â€¦ Generated successfully (pt) | length={len(output_text)}"
 
         except Exception as e:
             # Log full traceback for debugging
@@ -2329,7 +2345,7 @@ class LLMHandler:
             elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
                 torch.mps.empty_cache()
                 torch.mps.synchronize()
-            return "", f"❌ Error generating from formatted prompt: {type(e).__name__}: {e or error_detail.splitlines()[-1]}"
+            return "", f"Ã¢ÂÅ’ Error generating from formatted prompt: {type(e).__name__}: {e or error_detail.splitlines()[-1]}"
 
     def _generate_with_constrained_decoding(
         self,
@@ -2811,7 +2827,7 @@ class LLMHandler:
             self.llm_backend = "mlx"
             self.llm_initialized = True
             status_msg = (
-                f"✅ 5Hz LM initialized successfully\n"
+                f"Ã¢Å“â€¦ 5Hz LM initialized successfully\n"
                 f"Model: {model_path}\n"
                 f"Backend: MLX (Apple Silicon native)\n"
                 f"Device: Apple Silicon GPU"
@@ -2822,7 +2838,7 @@ class LLMHandler:
             import traceback
             error_detail = traceback.format_exc()
             logger.warning(f"Failed to load MLX model: {e}\n{error_detail}")
-            return False, f"❌ MLX load failed: {str(e)}"
+            return False, f"Ã¢ÂÅ’ MLX load failed: {str(e)}"
 
     def _make_mlx_cache(self):
         """Create a KV cache for the MLX model."""
@@ -3923,7 +3939,7 @@ class LLMHandler:
 
         # Reentrancy guard: if an outer context already loaded the model
         # to the target device, skip the inner load/offload to avoid
-        # redundant CPU↔GPU transfers during batch processing.
+        # redundant CPUÃ¢â€ â€GPU transfers during batch processing.
         try:
             current_device = next(model.parameters()).device.type
         except StopIteration:
