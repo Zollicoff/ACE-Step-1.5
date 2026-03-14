@@ -393,7 +393,7 @@ if !ERRORLEVEL! EQU 0 (
     exit /b !LEGACY_HELPER_EXIT!
 )
 popd
-    exit /b !LEGACY_HELPER_EXIT!
+exit /b 0
 
 :LoadEnvFile
 REM Load environment variables from .env file if it exists

@@ -972,13 +972,14 @@ class RocmDtypeTests(unittest.TestCase):
         self.assertEqual(result, torch.float16)
 
     def test_get_vae_dtype_treats_cuda_index_device_as_cuda(self):
-        """It treats device strings like ``cuda:0`` as CUDA for VAE dtype selection."""
-        host = _VaeHost(project_root="K:/fake_root", device="cuda:0")
+        """It treats device strings like ``cuda:1`` as CUDA for VAE dtype selection."""
+        host = _VaeHost(project_root="K:/fake_root", device="cuda:1")
         host.dtype = torch.float32
         with patch.object(MEMORY_UTILS_MODULE, "is_rocm_available", return_value=False), \
-                patch.object(MEMORY_UTILS_MODULE, "cuda_supports_bfloat16", return_value=True):
-            result = host._get_vae_dtype("cuda:0")
+                patch.object(MEMORY_UTILS_MODULE, "cuda_supports_bfloat16", return_value=True) as bf16_mock:
+            result = host._get_vae_dtype("cuda:1")
         self.assertEqual(result, torch.bfloat16)
+        bf16_mock.assert_called_once_with(1)
 
 if __name__ == "__main__":
     unittest.main()

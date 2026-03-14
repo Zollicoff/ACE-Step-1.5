@@ -105,14 +105,14 @@ def is_rocm_available() -> bool:
         return False
 
 
-def cuda_supports_bfloat16() -> bool:
-    """Return whether the active CUDA device supports native bfloat16 kernels."""
+def cuda_supports_bfloat16(device_index: int | None = None) -> bool:
+    """Return whether a CUDA device supports native bfloat16 kernels."""
     try:
         import torch
 
         if not torch.cuda.is_available():
             return False
-        major, _ = torch.cuda.get_device_capability()
+        major, _ = torch.cuda.get_device_capability(device_index)
         return major >= 8
     except Exception:
         return False

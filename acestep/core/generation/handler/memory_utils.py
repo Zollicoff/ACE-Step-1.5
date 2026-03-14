@@ -196,7 +196,7 @@ class MemoryUtilsMixin:
                 # On ROCm, defer to self.dtype which is already set to a safe
                 # value (float32 by default, or ACESTEP_ROCM_DTYPE override).
                 return getattr(self, "dtype", torch.float32)
-            if cuda_supports_bfloat16():
+            if cuda_supports_bfloat16(_cuda_device_index(target_device)):
                 return torch.bfloat16
             return torch.float16
         if target_device == "xpu":
