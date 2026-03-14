@@ -75,7 +75,7 @@ class LauncherCompatDecisionTests(unittest.TestCase):
         self.assertEqual("probe_failed", decision.reason)
 
     def test_probe_exit_code_maps_to_decision(self) -> None:
-        """Probe exit code should be 42 only when legacy fix is required."""
+        """Probe exit code is 42 for required-fix and probe-failure cases, else 0."""
         needs_fix = _make_torch(cuda_available=True, capability=(6, 1), arch_list=["sm_70"])
         ok = _make_torch(cuda_available=True, capability=(8, 0), arch_list=["sm_80"])
         broken_cuda = types.SimpleNamespace(

@@ -155,7 +155,7 @@ class MemoryUtilsMixin:
                 if batch_size <= tier_max:
                     logger.debug(
                         f"[VRAM guard] offload_to_cpu=True, batch_size={batch_size} <= "
-                        f"tier limit {tier_max} Ã¢â‚¬â€ skipping dynamic VRAM check"
+                        f"tier limit {tier_max} - skipping dynamic VRAM check"
                     )
                     return batch_size
 
@@ -174,7 +174,9 @@ class MemoryUtilsMixin:
         safety_margin_gb = 1.5
         available_for_batch = free_gb - safety_margin_gb
         if available_for_batch <= 0:
-            logger.warning(f"[VRAM guard] Only {free_gb:.1f} GB free Ã¢â‚¬â€ reducing batch_size to 1")
+            logger.warning(
+                f"[VRAM guard] Only {free_gb:.1f} GB free - reducing batch_size to 1"
+            )
             return 1
 
         max_safe_batch = max(1, int(available_for_batch / per_sample_gb))

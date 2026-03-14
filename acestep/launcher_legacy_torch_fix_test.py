@@ -46,6 +46,8 @@ class LauncherLegacyTorchFixTests(unittest.TestCase):
             content,
             r"call :EnsureLegacyNvidiaTorchCompat\s+if !ERRORLEVEL! NEQ 0 exit /b !ERRORLEVEL!",
         )
+        self.assertIn('if "!LEGACY_CHECK_EXIT!"=="0" (', content)
+        self.assertIn("exit /b !LEGACY_CHECK_EXIT!", content)
 
     def test_windows_api_launcher_calls_shared_probe(self) -> None:
         """Windows API launcher should call shared Python compatibility probe."""

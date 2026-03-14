@@ -374,22 +374,26 @@ if !ERRORLEVEL! EQU 0 (
     REM Keep a legacy-compatible torchao so INT8 quantization remains available
     REM on low-VRAM Pascal/Quadro GPUs.
     uv pip install --python .venv\Scripts\python.exe --force-reinstall torchao==0.11.0 >nul 2>&1
-    if !ERRORLEVEL! EQU 0 (
+    set "TORCHAO_INSTALL_EXIT=!ERRORLEVEL!"
+    if !TORCHAO_INSTALL_EXIT! EQU 0 (
         echo [Compatibility] Installed torchao==0.11.0 (legacy-compatible).
     ) else (
         echo [Compatibility] Warning: failed to install torchao==0.11.0. Quantization may be unavailable.
+        set "LEGACY_HELPER_EXIT=!TORCHAO_INSTALL_EXIT!"
         popd
-        exit /b !ERRORLEVEL!
+        exit /b !LEGACY_HELPER_EXIT!
     )
 ) else (
+    set "LEGACY_INSTALL_EXIT=!ERRORLEVEL!"
     echo [Compatibility] Warning: automatic legacy torch install failed.
     echo [Compatibility] Run manually:
     echo   uv pip install --python .venv\Scripts\python.exe --force-reinstall --index-url https://download.pytorch.org/whl/cu121 torch==2.5.1+cu121 torchvision==0.20.1+cu121 torchaudio==2.5.1+cu121
+    set "LEGACY_HELPER_EXIT=!LEGACY_INSTALL_EXIT!"
     popd
-    exit /b !ERRORLEVEL!
+    exit /b !LEGACY_HELPER_EXIT!
 )
 popd
-exit /b 0
+    exit /b !LEGACY_HELPER_EXIT!
 
 :LoadEnvFile
 REM Load environment variables from .env file if it exists
