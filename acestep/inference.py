@@ -141,7 +141,9 @@ class GenerationParams:
     repainting_end: float = -1
     chunk_mask_mode: str = "auto"  # "explicit" = 0/1 mask from repaint range; "auto" = all 2.0 (model decides)
     repaint_latent_crossfade_frames: int = 10  # latent-level boundary blend width (25Hz frames, 10≈0.4s)
-    repaint_wav_crossfade_sec: float = 0.0  # waveform-level splice crossfade (seconds, 0=hard cut, 0.01=10ms)
+    repaint_wav_crossfade_sec: float = 0.0  # waveform-level splice crossfade (seconds, 0=hard cut)
+    repaint_mode: str = "balanced"  # "conservative", "balanced", or "aggressive"
+    repaint_strength: float = 0.5  # 0.0=aggressive, 1.0=conservative (balanced mode only)
     audio_cover_strength: float = 1.0
     cover_noise_strength: float = 0.0  # 0=pure noise (no cover), 1=closest to src audio
 
@@ -622,8 +624,10 @@ def generate_music(
                 params, "repaint_latent_crossfade_frames", 10,
             ),
             repaint_wav_crossfade_sec=getattr(
-                params, "repaint_wav_crossfade_sec", 0.01,
+                params, "repaint_wav_crossfade_sec", 0.0,
             ),
+            repaint_mode=getattr(params, "repaint_mode", "balanced"),
+            repaint_strength=getattr(params, "repaint_strength", 0.5),
             progress=progress,
         )
 

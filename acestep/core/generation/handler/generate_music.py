@@ -22,6 +22,31 @@ from acestep.gpu_config import (
 )
 
 
+def _resolve_repaint_config(
+    mode: str = "balanced",
+    strength: float = 0.5,
+) -> tuple:
+    """Convert repaint mode and strength into concrete numeric parameters.
+
+    Higher *strength* means more aggressive repainting (less source preservation).
+
+    Args:
+        mode: One of ``"conservative"``, ``"balanced"``, or ``"aggressive"``.
+        strength: 0.0 = conservative (max preservation), 1.0 = aggressive
+            (pure diffusion).  Only effective in balanced mode.
+
+    Returns:
+        Tuple of ``(injection_ratio, crossfade_frames, wav_crossfade_sec)``.
+    """
+    strength = max(0.0, min(1.0, strength))
+    if mode == "aggressive":
+        return 0.0, 0, 0.0
+    if mode == "conservative":
+        return 1.0, 25, 0.05
+    inv = 1.0 - strength
+    return inv, round(25 * inv), 0.05 * inv
+
+
 class GenerateMusicMixin:
     """Coordinate request prep, service execution, decode, and payload assembly.
 
@@ -131,6 +156,8 @@ class GenerateMusicMixin:
         chunk_mask_mode: str = "auto",
         repaint_latent_crossfade_frames: int = 10,
         repaint_wav_crossfade_sec: float = 0.0,
+        repaint_mode: str = "balanced",
+        repaint_strength: float = 0.5,
         progress=None,
     ) -> Dict[str, Any]:
         """Generate audio from text/reference inputs and return response payload.
@@ -224,6 +251,10 @@ class GenerateMusicMixin:
             if vram_error is not None:
                 return vram_error
 
+            injection_ratio, resolved_cf_frames, resolved_wav_cf = (
+                _resolve_repaint_config(repaint_mode, repaint_strength)
+            )
+
             service_run = self._run_generate_music_service_with_progress(
                 progress=progress,
                 actual_batch_size=actual_batch_size,
@@ -241,7 +272,8 @@ class GenerateMusicMixin:
                 cfg_interval_end=cfg_interval_end,
                 shift=shift,
                 infer_method=infer_method,
-                repaint_crossfade_frames=repaint_latent_crossfade_frames,
+                repaint_crossfade_frames=resolved_cf_frames,
+                repaint_injection_ratio=injection_ratio,
             )
             outputs = service_run["outputs"]
             infer_steps_for_progress = service_run["infer_steps_for_progress"]
@@ -262,14 +294,19 @@ class GenerateMusicMixin:
             )
             repainting_start_batch = service_inputs.get("repainting_start_batch")
             repainting_end_batch = service_inputs.get("repainting_end_batch")
-            if repainting_start_batch is not None and repainting_end_batch is not None:
+            do_wav_splice = (
+                repaint_mode != "aggressive"
+                and repainting_start_batch is not None
+                and repainting_end_batch is not None
+            )
+            if do_wav_splice:
                 pred_wavs = apply_repaint_waveform_splice(
                     pred_wavs=pred_wavs,
                     src_wavs=service_inputs["target_wavs_tensor"],
                     repainting_starts=repainting_start_batch,
                     repainting_ends=repainting_end_batch,
                     sample_rate=self.sample_rate,
-                    crossfade_duration=repaint_wav_crossfade_sec,
+                    crossfade_duration=resolved_wav_cf,
                 )
             result = self._build_generate_music_success_payload(
                 outputs=outputs,

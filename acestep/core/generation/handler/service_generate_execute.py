@@ -76,6 +76,7 @@ class ServiceGenerateExecuteMixin:
         shift: float,
         timesteps: Optional[List[float]],
         repaint_crossfade_frames: int = 10,
+        repaint_injection_ratio: float = 0.5,
     ) -> Dict[str, Any]:
         """Build kwargs passed to model generation backends."""
         repaint_mask = payload.get("repaint_mask")
@@ -108,6 +109,7 @@ class ServiceGenerateExecuteMixin:
             "repaint_mask": repaint_mask,
             "clean_src_latents": clean_src_latents,
             "repaint_crossfade_frames": repaint_crossfade_frames,
+            "repaint_injection_ratio": repaint_injection_ratio,
         }
         if timesteps is not None:
             kwargs["timesteps"] = torch.tensor(timesteps, dtype=torch.float32, device=self.device)

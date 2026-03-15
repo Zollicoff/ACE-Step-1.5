@@ -46,6 +46,7 @@ class ServiceGenerateMixin:
         timesteps: Optional[List[float]] = None,
         chunk_mask_modes: Optional[List[str]] = None,
         repaint_crossfade_frames: int = 10,
+        repaint_injection_ratio: float = 0.5,
     ) -> Dict[str, Any]:
         """Generate music latents and metadata from text/audio conditioning inputs.
 
@@ -132,6 +133,7 @@ class ServiceGenerateMixin:
             shift=shift,
             timesteps=timesteps,
             repaint_crossfade_frames=repaint_crossfade_frames,
+            repaint_injection_ratio=repaint_injection_ratio,
         )
         outputs, encoder_hidden_states, encoder_attention_mask, context_latents = (
             self._execute_service_generate_diffusion(
