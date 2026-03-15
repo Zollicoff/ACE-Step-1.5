@@ -175,7 +175,7 @@
     "lm_temperature_label": "LM Temperature",
     "lm_temperature_info": "Controls creativity vs predictability of the 5Hz LM. Lower (0.0–0.5) = safer, more conventional musical choices. Higher (0.8–1.5) = more creative/surprising but riskier. Very high (1.5+) = chaotic, may produce nonsense. Default 1.0 is a good balance. Start here and adjust based on results.",
     "lm_cfg_scale_label": "LM CFG Scale",
-    "lm_cfg_scale_info": "How strongly the LM follows your prompt vs generating freely. 1.0 = no guidance (LM ignores prompt influence). 1.5–2.0 = moderate guidance, good balance. 2.5–3.0 = strong guidance, very prompt-faithful but can reduce variety. ⚠️ Values above 3.0 can cause CUDA crashes (especially on Blackwell/RTX 50-series GPUs) by pushing audio codes out of valid range. Requires a negative prompt to work (set automatically if empty). Only matters when 5Hz LM is active.",
+    "lm_cfg_scale_info": "How strongly the LM follows your prompt vs generating freely. 1.0 = no guidance (LM ignores prompt influence). 1.5–2.0 = moderate guidance, good balance. 2.5–3.0 = strong guidance, very prompt-faithful but can reduce variety. ⚠️ Values above 3.0 can cause CUDA crashes on Blackwell/RTX 50-series GPUs by pushing audio codes out of valid range. Requires a negative prompt to work (set automatically if empty). Only matters when 5Hz LM is active.",
     "lm_top_k_label": "LM Top-K",
     "lm_top_k_info": "Limits LM choices to the K most likely tokens at each step. Lower (10–30) = more focused/predictable output. Higher (50–100) = more diverse. 0 = disabled (no filtering). Works alongside Top-P — both can be active. Start with 0 (disabled) unless you want to constrain diversity.",
     "lm_top_p_label": "LM Top-P (Nucleus Sampling)",
