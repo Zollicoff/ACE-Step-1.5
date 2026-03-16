@@ -755,11 +755,13 @@ class LLMHandler:
         except Exception as e:
             self.llm_initialized = False
             if "Cannot find a working triton installation" in str(e):
-                return (
-                    "❌ vLLM backend requires a working Triton installation. "
-                    "Falling back to PyTorch is recommended on Windows. "
-                    "Use --backend pt to avoid this warning."
-                )
+                status_msg = "❌ vLLM backend requires a working Triton installation."
+                if sys.platform == "win32":
+                    status_msg += (
+                        " Falling back to PyTorch is recommended on Windows. "
+                        "Use --backend pt to avoid this warning."
+                    )
+                return status_msg
             return f"❌ Error initializing 5Hz LM: {str(e)}\n\nTraceback:\n{traceback.format_exc()}"
 
     def _run_vllm(

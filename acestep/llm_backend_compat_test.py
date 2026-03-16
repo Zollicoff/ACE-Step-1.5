@@ -13,6 +13,11 @@ try:
 
     _IMPORT_ERROR = None
 except ImportError as exc:  # pragma: no cover - dependency guard
+    missing_name = getattr(exc, "name", None)
+    if missing_name is None:
+        missing_name = str(exc)
+    if "acestep" in missing_name:
+        raise
     LLMHandler = None
     _IMPORT_ERROR = exc
 
@@ -29,6 +34,8 @@ class VllmBackendCompatTests(unittest.TestCase):
             warning = get_vllm_preflight_warning(device="cuda", platform="win32")
 
         self.assertIsNotNone(warning)
+        self.assertIn("Windows", warning)
+        self.assertIn("Triton", warning)
         self.assertIn("Falling back to the PyTorch backend", warning)
 
     def test_get_vllm_preflight_warning_returns_none_outside_windows_cuda(self) -> None:
@@ -38,8 +45,10 @@ class VllmBackendCompatTests(unittest.TestCase):
             return_value=False,
         ):
             warning = get_vllm_preflight_warning(device="cpu", platform="win32")
+            linux_warning = get_vllm_preflight_warning(device="cuda", platform="linux")
 
         self.assertIsNone(warning)
+        self.assertIsNone(linux_warning)
 
 
 @unittest.skipIf(LLMHandler is None, f"llm_inference import unavailable: {_IMPORT_ERROR}")
