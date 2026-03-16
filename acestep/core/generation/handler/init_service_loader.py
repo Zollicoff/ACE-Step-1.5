@@ -19,12 +19,15 @@ class InitServiceLoaderMixin:
         if not target_device.startswith("cuda"):
             target_device = "cuda"
         try:
-            _ = torch.tensor([True, False], device=target_device).argsort()
+            mask_cat = torch.tensor([[True, False]], device=target_device)
+            _ = mask_cat.argsort(dim=1, descending=True, stable=True)
             return True
         except RuntimeError as exc:
-            if "bool dtype" in str(exc):
-                return False
-            return True
+            logger.debug(
+                "[_cuda_supports_bool_argsort] Treating CUDA bool argsort probe failure as unsupported: {}",
+                exc,
+            )
+            return False
 
     def _apply_cuda_bool_argsort_workaround(self) -> None:
         """Patch dynamic model helpers when bool argsort is unsupported on CUDA."""
@@ -91,12 +94,14 @@ class InitServiceLoaderMixin:
         from torchao.quantization.quant_api import _is_linear
 
         quant_config = self._build_quantization_config(quantization)
-
         def _dit_filter_fn(module, fqn):
-            """Keep only DiT linear layers and exclude tokenizer/detokenizer paths."""
+            """Keep only decoder-side DiT linear layers and exclude tokenizers."""
             if not _is_linear(module, fqn):
                 return False
-            for part in fqn.split("."):
+            parts = fqn.split(".")
+            if not parts or parts[0] != "decoder":
+                return False
+            for part in parts:
                 if part in ("tokenizer", "detokenizer"):
                     return False
             return True

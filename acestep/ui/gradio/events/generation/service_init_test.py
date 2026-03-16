@@ -2,6 +2,7 @@
 
 import importlib
 import os
+import sys
 import unittest
 from unittest.mock import MagicMock, patch
 
@@ -169,15 +170,15 @@ class InitServiceWrapperDeviceResolutionTests(unittest.TestCase):
         # Simulate LLM previously initialised with resolved device="cuda"
         llm_handler = MagicMock()
         llm_handler.llm_initialized = True
-        llm_handler.device = "cuda"  # previously resolved from "auto" → "cuda"
+        llm_handler.device = "cuda"  # previously resolved from "auto" -> "cuda"
 
         module.init_service_wrapper(
             dit_handler,
             llm_handler,
             "/some/project/checkpoints",
             "acestep-v15-turbo",
-            "auto",   # raw UI value – must NOT overwrite the resolved "cuda"
-            False,    # init_llm=False: do not re-initialise LLM
+            "auto",   # raw UI value -- must NOT overwrite the resolved "cuda"
+            False,    # init_llm=False: do not re-initialize LLM
             None,     # lm_model_path
             "vllm",   # backend
             use_flash_attention=False,
@@ -201,7 +202,7 @@ class InitServiceWrapperDeviceResolutionTests(unittest.TestCase):
     def test_init_llm_with_auto_device_calls_initialize(self, mock_gpu_config):
         """When init_llm=True and device='auto', initialize() must be called with 'auto' device.
 
-        The 'auto' → concrete device resolution happens inside initialize(), so we
+        The 'auto' -> concrete device resolution happens inside initialize(), so we
         must pass 'auto' through correctly.
         """
         module = self._import_module()
@@ -224,7 +225,7 @@ class InitServiceWrapperDeviceResolutionTests(unittest.TestCase):
 
         llm_handler = MagicMock()
         llm_handler.llm_initialized = False
-        llm_handler.initialize.return_value = ("✅ LLM initialized", True)
+        llm_handler.initialize.return_value = ("[OK] LLM initialized", True)
 
         module.init_service_wrapper(
             dit_handler,
@@ -280,21 +281,29 @@ class QuantizationSelectionTests(unittest.TestCase):
             "acestep.ui.gradio.events.generation.service_init"
         )
         real_import = __import__
+        removed_torch_module = sys.modules.pop("torch", None)
+        removed_torch_nn_module = sys.modules.pop("torch.nn", None)
 
-        def fake_import(name, globals=None, locals=None, fromlist=(), level=0):
+        def fake_import(name, globals_=None, locals_=None, fromlist=(), level=0):
             """Raise ImportError only for torch imports from the helper."""
-            if name == "torch":
+            if name == "torch" or name.startswith("torch."):
                 raise ImportError("torch missing")
-            return real_import(name, globals, locals, fromlist, level)
+            return real_import(name, globals_, locals_, fromlist, level)
 
-        with patch("builtins.__import__", side_effect=fake_import):
-            self.assertEqual(
-                module._select_quantization_value(
-                    quantization_enabled=True,
-                    device="cuda",
-                ),
-                "int8_weight_only",
-            )
+        try:
+            with patch("builtins.__import__", side_effect=fake_import):
+                self.assertEqual(
+                    module._select_quantization_value(
+                        quantization_enabled=True,
+                        device="cuda",
+                    ),
+                    "int8_weight_only",
+                )
+        finally:
+            if removed_torch_module is not None:
+                sys.modules["torch"] = removed_torch_module
+            if removed_torch_nn_module is not None:
+                sys.modules["torch.nn"] = removed_torch_nn_module
 
 if __name__ == "__main__":
     unittest.main()

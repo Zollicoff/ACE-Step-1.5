@@ -282,15 +282,22 @@ _ensure_legacy_nvidia_torch_compat() {
     [[ ! -x "$SCRIPT_DIR/.venv/bin/python" ]] && return 0
 
     local compat_status
+    local legacy_torch_fix_exit_code
     if (cd "$SCRIPT_DIR" && .venv/bin/python -c \
         "import os, sys; sys.path.insert(0, os.getcwd()); from acestep.launcher_compat import legacy_torch_fix_probe_exit_code; raise SystemExit(legacy_torch_fix_probe_exit_code())"); then
         return 0
     else
         compat_status=$?
     fi
+    legacy_torch_fix_exit_code="$(cd "$SCRIPT_DIR" && .venv/bin/python -c \
+        "import os, sys; sys.path.insert(0, os.getcwd()); from acestep.launcher_compat import LEGACY_TORCH_FIX_EXIT_CODE; print(LEGACY_TORCH_FIX_EXIT_CODE)")" || legacy_torch_fix_exit_code=42
 
-    if [[ "$compat_status" -ne 42 ]]; then
+    if [[ "$compat_status" -eq 0 ]]; then
         return 0
+    fi
+    if [[ "$compat_status" -ne "$legacy_torch_fix_exit_code" ]]; then
+        echo "[Compatibility] Error: legacy NVIDIA compatibility probe failed with exit code $compat_status."
+        return "$compat_status"
     fi
 
     echo "[Compatibility] Applying legacy NVIDIA torch build (CUDA 12.1, supports sm_61)..."
@@ -309,6 +316,7 @@ _ensure_legacy_nvidia_torch_compat() {
         echo "[Compatibility] Warning: failed to install legacy torch automatically."
         echo "[Compatibility] Run manually:"
         echo "  uv pip install --python .venv/bin/python --force-reinstall --index-url https://download.pytorch.org/whl/cu121 torch==2.5.1+cu121 torchvision==0.20.1+cu121 torchaudio==2.5.1+cu121"
+        return 1
     fi
 }
 
