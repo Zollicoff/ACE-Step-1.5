@@ -61,6 +61,7 @@ class JobAnalysisRuntimeTests(unittest.TestCase):
 
         self.assertEqual("Full Hardware Analysis Success", result["status_message"])
         self.assertEqual("pop", result["genre"])
+        self.assertEqual("<|audio_code_1|>", result["audio_codes"])
         store.update_progress_text.assert_called_once_with("job-1", "Starting Deep Analysis...")
 
     def test_analysis_only_uses_lm_and_returns_payload(self) -> None:

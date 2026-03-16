@@ -77,6 +77,7 @@ def maybe_handle_analysis_only_modes(
             "lyrics": metadata_dict.get("lyrics", ""),
             "language": metadata_dict.get("language", "unknown"),
             "metas": metadata_dict,
+            "audio_codes": audio_codes,
             "audio_paths": [],
         }
 
