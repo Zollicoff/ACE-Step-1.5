@@ -1372,7 +1372,7 @@ class LLMHandler:
                         seeds=seeds,
                     )
             except Exception as e:
-                error_msg = f"Error in batch codes generation: {str(e)}"
+                error_msg = f"Error in batch codes generation: {type(e).__name__}: {e}\n{traceback.format_exc()}"
                 logger.error(error_msg)
                 return {
                     "metadata": [],
