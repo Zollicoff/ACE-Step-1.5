@@ -36,7 +36,7 @@ def _warn_if_prerelease_python():
     if getattr(v, "releaselevel", "final") != "final" and sys.platform.startswith("linux"):
         warnings.warn(
             f"Detected pre-release Python {sys.version.split()[0]} ({getattr(v, 'releaselevel', '')}). "
-            "This is known to cause segmentation faults with vLLM/nano-vllm on Linux. "
+            "This is known to cause segmentation faults with the vLLM engine on Linux. "
             "Please install a stable Python release (e.g. 3.11.12+), or use --backend pt as a workaround.",
             RuntimeWarning,
             stacklevel=2,
@@ -668,11 +668,11 @@ class LLMHandler:
             logger.error("CUDA/ROCm is not available. Please check your GPU setup.")
             return "❌ CUDA/ROCm is not available. Please check your GPU setup."
         try:
-            from nanovllm import LLM, SamplingParams
-        except ImportError:
+            from acestep.customized_vllm import LLM, SamplingParams
+        except ImportError as exc:
             self.llm_initialized = False
-            logger.error("nano-vllm is not installed. Please install it using 'cd acestep/third_parts/nano-vllm && pip install .")
-            return "❌ nano-vllm is not installed. Please install it using 'cd acestep/third_parts/nano-vllm && pip install ."
+            logger.error(f"Failed to import customized_vllm engine: {exc}")
+            return f"❌ Failed to import customized_vllm engine: {exc}"
 
         try:
             current_device = torch.cuda.current_device()
@@ -742,7 +742,7 @@ class LLMHandler:
         Accepts either a single formatted prompt (str) or a list of formatted prompts (List[str]).
         Returns a single string for single mode, or a list of strings for batch mode.
         """
-        from nanovllm import SamplingParams
+        from acestep.customized_vllm import SamplingParams
 
         # Determine if batch mode
         formatted_prompt_list, is_batch = self._normalize_batch_input(formatted_prompts)
@@ -2291,11 +2291,11 @@ class LLMHandler:
             import traceback
             error_detail = traceback.format_exc()
             logger.error(f"Error in generate_from_formatted_prompt: {type(e).__name__}: {e}\n{error_detail}")
-            # Reset nano-vllm state on error to prevent stale context from causing
+            # Reset vllm engine state on error to prevent stale context from causing
             # subsequent CUDA illegal memory access errors
             if self.llm_backend == "vllm":
                 try:
-                    from nanovllm.utils.context import reset_context
+                    from acestep.customized_vllm.context import reset_context
                     reset_context()
                 except ImportError:
                     pass
@@ -3841,7 +3841,7 @@ class LLMHandler:
             yield
             return
 
-        # If using nanovllm or MLX, do not offload (managed differently)
+        # If using vllm engine or MLX, do not offload (managed differently)
         if self.llm_backend in ("vllm", "mlx"):
             yield
             return
