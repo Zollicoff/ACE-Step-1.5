@@ -750,7 +750,7 @@ class LLMHandler:
             self.llm_initialized = False
             if "Cannot find a working triton installation" in str(e):
                 return (
-                    "Error: vLLM backend requires a working Triton installation. "
+                    "[ERROR] vLLM backend requires a working Triton installation. "
                     "Falling back to PyTorch is recommended on Windows. "
                     "Use --backend pt to avoid this warning."
                 )

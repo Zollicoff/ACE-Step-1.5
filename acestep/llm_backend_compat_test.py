@@ -97,6 +97,62 @@ class LlmInitializeBackendCompatTests(unittest.TestCase):
         self.assertIn("Backend: PyTorch", status)
         self.assertIn("vLLM backend is unavailable on Windows", status)
 
+    @patch("torch.cuda.synchronize")
+    @patch("torch.cuda.empty_cache")
+    @patch("torch.cuda.is_available", return_value=True)
+    @patch("acestep.llm_inference.MetadataConstrainedLogitsProcessor")
+    @patch("acestep.llm_inference.get_global_gpu_config")
+    @patch("acestep.llm_inference.AutoTokenizer.from_pretrained")
+    @patch("acestep.llm_inference.get_gpu_memory_gb", return_value=24.0)
+    @patch("torch.cuda.mem_get_info", return_value=(8 * 1024**3, 24 * 1024**3))
+    def test_initialize_falls_back_when_vllm_returns_triton_error(
+        self,
+        _mock_mem_get_info: MagicMock,
+        _mock_gpu_memory_gb: MagicMock,
+        mock_tokenizer: MagicMock,
+        mock_gpu_config: MagicMock,
+        _mock_processor: MagicMock,
+        _mock_cuda_available: MagicMock,
+        _mock_empty_cache: MagicMock,
+        _mock_synchronize: MagicMock,
+    ) -> None:
+        """Initialization should still fall back when vLLM returns a Triton-specific error string."""
+        handler = LLMHandler()
+        mock_tokenizer.return_value = MagicMock()
+        mock_gpu_config.return_value = SimpleNamespace(max_duration_with_lm=600, tier="tier6")
+
+        with patch("acestep.llm_inference.os.path.exists", return_value=True), patch(
+            "acestep.llm_inference.get_vllm_preflight_warning",
+            return_value=None,
+        ), patch.object(
+            handler,
+            "_initialize_5hz_lm_vllm",
+            return_value=(
+                "[ERROR] vLLM backend requires a working Triton installation. "
+                "Falling back to PyTorch is recommended on Windows. "
+                "Use --backend pt to avoid this warning."
+            ),
+        ) as init_vllm, patch.object(
+            handler,
+            "_load_pytorch_model",
+            return_value=(
+                True,
+                "[OK] 5Hz LM initialized successfully\nModel: C:/repo/checkpoints/acestep-5Hz-lm-0.6B\nBackend: PyTorch\nDevice: cuda",
+            ),
+        ) as load_pytorch_model:
+            status, ok = handler.initialize(
+                checkpoint_dir="C:/repo/checkpoints",
+                lm_model_path="acestep-5Hz-lm-0.6B",
+                backend="vllm",
+                device="cuda",
+            )
+
+        self.assertTrue(ok)
+        init_vllm.assert_called_once()
+        load_pytorch_model.assert_called_once()
+        self.assertIn("Backend: PyTorch", status)
+        self.assertIn("PyTorch fallback", status)
+
     @patch("acestep.llm_inference.AutoModelForCausalLM.from_pretrained")
     def test_load_pytorch_model_uses_readable_status_markers(
         self,
