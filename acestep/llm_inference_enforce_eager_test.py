@@ -4,7 +4,7 @@ Regression test for the bug where CUDA graph capture would fail when
 ``flash_attn`` is not installed because the SDPA paged-cache decode path
 calls ``.item()`` inside the capture region (a forbidden CPU-GPU sync).
 
-When flash_attn is absent, nano-vllm must run in ``enforce_eager=True``
+When flash_attn is absent, customized_vllm must run in ``enforce_eager=True``
 (eager mode, no CUDA graph capture) to avoid corrupting the CUDA context.
 """
 

@@ -573,7 +573,7 @@ class LLMHandler:
             # Disable CUDA/HIP graph capture on ROCm (unverified on RDNA3 Windows),
             # on Jetson (SDPA paged-cache decode calls .item() during capture),
             # and when flash_attn is not installed (same .item() incompatibility on all CUDA hardware).
-            # When flash_attn is unavailable, nano-vllm falls back to _sdpa_decode_with_paged_cache
+            # When flash_attn is unavailable, customized_vllm falls back to _sdpa_cached_decode
             # which contains a Python loop with .item() calls.  These force CPU-GPU
             # synchronisation that is forbidden inside torch.cuda.CUDAGraph capture,
             # corrupting the CUDA context and causing downstream errors such as:
@@ -585,7 +585,7 @@ class LLMHandler:
                     dev_name = torch.cuda.get_device_name(0).lower()
                     is_jetson = any(k in dev_name for k in ("orin", "xavier", "tegra"))
                     if is_jetson:
-                        logger.info(f"Jetson GPU detected ({dev_name}): disabling CUDA graph capture for nano-vllm")
+                        logger.info(f"Jetson GPU detected ({dev_name}): disabling CUDA graph capture for customized_vllm")
                 except Exception:
                     pass
             _has_flash_attn = False
@@ -596,7 +596,7 @@ class LLMHandler:
                 pass
             if not _has_flash_attn:
                 logger.info(
-                    "flash_attn not installed: disabling CUDA graph capture for nano-vllm "
+                    "flash_attn not installed: disabling CUDA graph capture for customized_vllm "
                     "(SDPA fallback uses .item() calls in paged-cache decode that are "
                     "incompatible with CUDA graph capture)"
                 )
