@@ -71,6 +71,15 @@ class LLMHandler:
         # Shared constrained decoding processor
         self.constrained_processor: Optional[MetadataConstrainedLogitsProcessor] = None
 
+    def _clear_cuda_cache(self) -> None:
+        """Release freed CUDA memory back to the driver.
+
+        Called after LLM generation to prevent PyTorch's caching allocator
+        from holding stale memory blocks across sequential generations.
+        """
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+
         # Shared HuggingFace model for perplexity calculation
         self._hf_model_for_scoring = None
 
@@ -1418,6 +1427,8 @@ class LLMHandler:
                         }
                     },
                 }
+            finally:
+                self._clear_cuda_cache()
 
             # Parse audio codes from each output
             audio_codes_list = []
@@ -2266,11 +2277,7 @@ class LLMHandler:
                     lyrics=lyrics,
                     cot_text=cot_text,
                 )
-                # Consolidate fragmented VRAM after generation to prevent
-                # temporary tensor allocations from accumulating across runs
-                # and forcing subsequent generations into slower shared memory.
-                if torch.cuda.is_available():
-                    torch.cuda.empty_cache()
+                self._clear_cuda_cache()
                 return output_text, f"✅ Generated successfully (vllm) | length={len(output_text)}"
 
             elif self.llm_backend == "mlx":
@@ -2320,9 +2327,7 @@ class LLMHandler:
                 lyrics=lyrics,
                 cot_text=cot_text,
             )
-            # Consolidate fragmented VRAM after generation (see vLLM path above).
-            if torch.cuda.is_available():
-                torch.cuda.empty_cache()
+            self._clear_cuda_cache()
             return output_text, f"✅ Generated successfully (pt) | length={len(output_text)}"
 
         except Exception as e:
