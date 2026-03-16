@@ -56,6 +56,24 @@ def register_generation_mode_handlers(
         outputs=mode_ui_outputs,
     )
 
+    # ========== Initial Mode State on Page Load ==========
+    # compute_mode_ui_updates() controls visibility for 44 mode-dependent UI
+    # components (think_checkbox, generate_btn_row, src_audio_row, etc.) but
+    # is only triggered via the .change() event above.  Gradio does not fire
+    # .change() for the initial value assignment, so mode-dependent state is
+    # never applied on first render — causing the Think checkbox (and
+    # potentially other components) to be missing on page load.
+    # This .load() event fires once on page load to initialize all
+    # mode-dependent UI state using the same handler.
+    context.demo.load(
+        fn=lambda mode, prev: gen_h.handle_generation_mode_change(mode, prev, llm_handler),
+        inputs=[
+            generation_section["generation_mode"],
+            generation_section["previous_generation_mode"],
+        ],
+        outputs=mode_ui_outputs,
+    )
+
     # ========== Extract Mode: Auto-fill caption from track_name ==========
     generation_section["track_name"].change(
         fn=gen_h.handle_extract_track_name_change,
