@@ -152,6 +152,7 @@ class LlmInitializeBackendCompatTests(unittest.TestCase):
         load_pytorch_model.assert_called_once()
         self.assertIn("Backend: PyTorch", status)
         self.assertIn("PyTorch fallback", status)
+        self.assertIn("working Triton installation", status)
 
 
 if __name__ == "__main__":

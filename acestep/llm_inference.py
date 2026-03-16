@@ -644,6 +644,8 @@ class LLMHandler:
                     logger.warning(f"[initialize] {vllm_preflight_warning}")
                     backend = "pt"
 
+            vllm_fallback_note = None
+
             # Initialize based on user-selected backend
             if backend == "vllm":
                 _warn_if_prerelease_python()
@@ -674,6 +676,7 @@ class LLMHandler:
                     )
                     logger.info(f"5Hz LM status message: {status_msg}")
                     if status_msg.startswith("❌"):
+                        vllm_fallback_note = status_msg
                         if not self.llm_initialized:
                             if device == "mps" and self._is_mlx_available():
                                 logger.warning("vllm failed on MPS, trying MLX backend...")
@@ -686,6 +689,8 @@ class LLMHandler:
                             if not success:
                                 return status_msg, False
                             status_msg = f"✅ 5Hz LM initialized successfully (PyTorch fallback)\nModel: {full_lm_model_path}\nBackend: PyTorch"
+                            if vllm_fallback_note is not None:
+                                status_msg += f"\nNote: {vllm_fallback_note}"
             elif backend != "mlx":
                 success, status_msg = self._load_pytorch_model(full_lm_model_path, device)
                 if not success:
