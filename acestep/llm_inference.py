@@ -71,6 +71,13 @@ class LLMHandler:
         # Shared constrained decoding processor
         self.constrained_processor: Optional[MetadataConstrainedLogitsProcessor] = None
 
+        # Shared HuggingFace model for perplexity calculation
+        self._hf_model_for_scoring = None
+
+        # MLX model reference (used when llm_backend == "mlx")
+        self._mlx_model = None
+        self._mlx_model_path = None
+
     def _clear_cuda_cache(self) -> None:
         """Release freed CUDA memory back to the driver.
 
@@ -79,13 +86,6 @@ class LLMHandler:
         """
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
-
-        # Shared HuggingFace model for perplexity calculation
-        self._hf_model_for_scoring = None
-
-        # MLX model reference (used when llm_backend == "mlx")
-        self._mlx_model = None
-        self._mlx_model_path = None
 
     def unload(self) -> None:
         """Release LM weights/tokenizer and clear caches to free memory."""
