@@ -676,7 +676,8 @@ class LLMHandler:
                     )
                     logger.info(f"5Hz LM status message: {status_msg}")
                     if status_msg.startswith("❌"):
-                        vllm_fallback_note = status_msg
+                        logger.warning(f"vLLM initialization failed before PyTorch fallback: {status_msg}")
+                        vllm_fallback_note = status_msg.splitlines()[0]
                         if not self.llm_initialized:
                             if device == "mps" and self._is_mlx_available():
                                 logger.warning("vllm failed on MPS, trying MLX backend...")
