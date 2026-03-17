@@ -3,6 +3,8 @@
 import torch
 import sys
 
+from loguru import logger
+
 from acestep.customized_vllm.transformer import CausalTransformer, load_weights
 from acestep.debug_utils import debug_start, debug_end
 
@@ -101,20 +103,20 @@ class InferencePipeline:
 
         torch.set_default_dtype(self.dtype)
         torch.set_default_device("cuda")
+        try:
+            self.model = CausalTransformer(hf_config)
+            _t = debug_start("load_model", prefix="tensor.vllm")
+            load_weights(self.model, model_path)
+            debug_end("load_model", _t, prefix="tensor.vllm")
 
-        self.model = CausalTransformer(hf_config)
-        _t = debug_start("load_model", prefix="tensor.vllm")
-        load_weights(self.model, model_path)
-        debug_end("load_model", _t, prefix="tensor.vllm")
-
-        self._init_transfer_buffers()
-        self._warmup_pipeline()
-        self._provision_kv_storage()
-        if not enforce_eager:
-            self._compile_execution_graphs()
-
-        torch.set_default_device("cpu")
-        torch.set_default_dtype(saved_dtype)
+            self._init_transfer_buffers()
+            self._warmup_pipeline()
+            self._provision_kv_storage()
+            if not enforce_eager:
+                self._compile_execution_graphs()
+        finally:
+            torch.set_default_device("cpu")
+            torch.set_default_dtype(saved_dtype)
 
     # -- Transfer buffers ------------------------------------------------
 
@@ -179,8 +181,8 @@ class InferencePipeline:
         self._num_cache_blocks = max(1, int(avail) // block_bytes)
         cap = self._num_cache_blocks * self.block_size
         gb = self._num_cache_blocks * block_bytes / 1024**3
-        print(f"[customized_vllm] KV cache: {self._num_cache_blocks} blocks, "
-              f"{cap} tokens, {gb:.2f} GB")
+        logger.info(f"[customized_vllm] KV cache: {self._num_cache_blocks} blocks, "
+                    f"{cap} tokens, {gb:.2f} GB")
 
         self._kv_storage = torch.empty(
             2, hf.num_hidden_layers, self._num_cache_blocks,
@@ -304,27 +306,28 @@ class InferencePipeline:
         )
 
     def _constrain_logits(self, logits, slots):
-        """Apply logits processors.
+        """Apply per-slot logits processors.
 
-        Only the first slot's processor is invoked (since all batch slots
-        share the same processor instance and identical token histories).
-        The constrained result is broadcast to remaining slots.
+        Each slot with a non-None logits_processor is processed individually
+        using its own token history.  In typical ACE-Step usage all batch
+        slots share the same processor instance, but this handles the general
+        case correctly.
         """
-        if not slots or slots[0].logits_processor is None:
+        if not slots:
             return logits
         try:
-            processor = slots[0].logits_processor
-            ids_t = torch.tensor([slots[0].token_ids], device=logits.device)
-            processed = processor(ids_t, logits[0:1].clone())
-            logits[0] = processed[0]
-            for i in range(1, len(slots)):
-                if slots[i].logits_processor is not None:
-                    logits[i] = logits[0]
+            for i, slot in enumerate(slots):
+                if slot.logits_processor is None:
+                    continue
+                ids_t = torch.tensor([slot.token_ids], device=logits.device)
+                processed = slot.logits_processor(ids_t, logits[i:i+1].clone())
+                logits[i] = processed[0]
         except TypeError:
             import traceback
-            print(f"\n[customized_vllm] TypeError in _constrain_logits "
-                  f"(n_slots={len(slots)}, processor_state={getattr(processor, 'state', '?')}):\n"
-                  f"{traceback.format_exc()}", file=sys.stderr, flush=True)
+            logger.error(f"TypeError in _constrain_logits "
+                         f"(n_slots={len(slots)}, slot_idx={i}, "
+                         f"processor_state={getattr(slot.logits_processor, 'state', '?')}):\n"
+                         f"{traceback.format_exc()}")
             raise
         return logits
 
@@ -363,21 +366,23 @@ class InferencePipeline:
                 cfg_logits = uncond + cfg_s.unsqueeze(1) * (cond - uncond)
                 cfg_logits = self._constrain_logits(cfg_logits, slots[:nc])
                 tids = sample_tokens(cfg_logits, temps, topk, topp).tolist()
-                if slots[0].logits_processor_update_state:
-                    slots[0].logits_processor_update_state(tids[0])
+                for i, s in enumerate(slots[:nc]):
+                    if s.logits_processor_update_state:
+                        s.logits_processor_update_state(tids[i])
                 return tids
 
             logits = self._penalize_repetitions(logits, slots, rep_pen)
             logits = self._constrain_logits(logits.clone(), slots)
             tids = sample_tokens(logits, temps, topk, topp).tolist()
-            if slots and slots[0].logits_processor_update_state:
-                slots[0].logits_processor_update_state(tids[0])
+            for i, s in enumerate(slots):
+                if s.logits_processor_update_state:
+                    s.logits_processor_update_state(tids[i])
             return tids
-        except TypeError as exc:
+        except TypeError:
             import traceback
-            print(f"\n[customized_vllm] TypeError in execute_step "
-                  f"(prefill={is_prefill}, n_slots={len(slots)}):\n"
-                  f"{traceback.format_exc()}", file=sys.stderr, flush=True)
+            logger.error(f"TypeError in execute_step "
+                         f"(prefill={is_prefill}, n_slots={len(slots)}):\n"
+                         f"{traceback.format_exc()}")
             raise
 
     # -- CUDA graph capture ----------------------------------------------
@@ -394,7 +399,7 @@ class InferencePipeline:
         cl = torch.zeros(max_bs, dtype=torch.int32)
         bt = torch.zeros(max_bs, max_blocks, dtype=torch.int32)
         out = torch.zeros(max_bs, self.hf_config.hidden_size)
-        self._compiled_sizes = [1, 2, 4, 8] + list(range(16, max_bs + 1, 16))
+        self._compiled_sizes = sorted(set([1, 2, 4, 8] + list(range(16, max_bs + 1, 16)) + [max_bs]))
         self._graphs = {}
         pool = None
         for bs in reversed(self._compiled_sizes):
