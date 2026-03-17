@@ -102,11 +102,11 @@ class GenerationSlot:
     """Tracks token state, cache blocks, and sampling config for a single sequence."""
 
     _id_gen = count()
-    block_size = 256
 
     def __init__(self, token_ids: list[int], params=SamplingParams(),
-                 is_unconditional: bool = False):
+                 is_unconditional: bool = False, block_size: int = 256):
         self.slot_id = next(GenerationSlot._id_gen)
+        self.block_size = block_size
         self.status = SlotStatus.PENDING
         self.token_ids = copy(token_ids)
         self.last_token = token_ids[-1]
@@ -248,6 +248,7 @@ class LLM:
         tok = kwargs.get("tokenizer", None)
         self.tokenizer = tok if tok is not None else AutoTokenizer.from_pretrained(model, use_fast=True)
         self._eos = self.tokenizer.eos_token_id
+        self._block_size = cfg.kvcache_block_size
         self._cache = CachePool(self._pipeline._num_cache_blocks, cfg.kvcache_block_size)
         self._active_slots: list[GenerationSlot] = []
         atexit.register(self.exit)
@@ -292,11 +293,12 @@ class LLM:
         all_slots = []
         for prompt, sp, uncond in zip(prompts, sampling_params, unconditional_prompts):
             ids = self.tokenizer.encode(prompt) if isinstance(prompt, str) else prompt
-            cond = GenerationSlot(ids, sp)
+            bs = getattr(self, '_block_size', 256)
+            cond = GenerationSlot(ids, sp, block_size=bs)
             if sp.cfg_scale > 1.0:
                 u_ids = (self.tokenizer.encode(uncond) if isinstance(uncond, str)
                          else (uncond if uncond is not None else ids))
-                uncond_slot = GenerationSlot(u_ids, sp, is_unconditional=True)
+                uncond_slot = GenerationSlot(u_ids, sp, is_unconditional=True, block_size=bs)
                 cond.paired_slot = uncond_slot
                 uncond_slot.paired_slot = cond
                 all_slots.extend([cond, uncond_slot])
