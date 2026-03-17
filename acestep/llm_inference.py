@@ -78,14 +78,20 @@ class LLMHandler:
         self._mlx_model = None
         self._mlx_model_path = None
 
-    def _clear_cuda_cache(self) -> None:
-        """Release freed CUDA memory back to the driver.
+    def _clear_accelerator_cache(self) -> None:
+        """Release freed accelerator memory back to the driver.
 
-        Called after LLM generation to prevent PyTorch's caching allocator
+        Supports CUDA, XPU (Intel), and MPS (Apple Silicon) backends.
+        Called after LLM generation to prevent the caching allocator
         from holding stale memory blocks across sequential generations.
         """
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
+        elif hasattr(torch, "xpu") and torch.xpu.is_available():
+            torch.xpu.empty_cache()
+        elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+            if hasattr(torch.mps, "empty_cache"):
+                torch.mps.empty_cache()
 
     def unload(self) -> None:
         """Release LM weights/tokenizer and clear caches to free memory."""
@@ -1428,7 +1434,7 @@ class LLMHandler:
                     },
                 }
             finally:
-                self._clear_cuda_cache()
+                self._clear_accelerator_cache()
 
             # Parse audio codes from each output
             audio_codes_list = []
@@ -2277,7 +2283,7 @@ class LLMHandler:
                     lyrics=lyrics,
                     cot_text=cot_text,
                 )
-                self._clear_cuda_cache()
+                self._clear_accelerator_cache()
                 return output_text, f"✅ Generated successfully (vllm) | length={len(output_text)}"
 
             elif self.llm_backend == "mlx":
@@ -2303,6 +2309,7 @@ class LLMHandler:
                     lyrics=lyrics,
                     cot_text=cot_text,
                 )
+                self._clear_accelerator_cache()
                 return output_text, f"✅ Generated successfully (mlx) | length={len(output_text)}"
 
             # PyTorch backend (fallback)
@@ -2327,7 +2334,7 @@ class LLMHandler:
                 lyrics=lyrics,
                 cot_text=cot_text,
             )
-            self._clear_cuda_cache()
+            self._clear_accelerator_cache()
             return output_text, f"✅ Generated successfully (pt) | length={len(output_text)}"
 
         except Exception as e:
@@ -2351,15 +2358,7 @@ class LLMHandler:
                 except Exception:
                     pass  # Ignore errors during cleanup
             # Clear accelerator cache to release any corrupted memory
-            if torch.cuda.is_available():
-                torch.cuda.empty_cache()
-                torch.cuda.synchronize()
-            elif hasattr(torch, 'xpu') and torch.xpu.is_available():
-                torch.xpu.empty_cache()
-                torch.xpu.synchronize()
-            elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
-                torch.mps.empty_cache()
-                torch.mps.synchronize()
+            self._clear_accelerator_cache()
             return "", f"❌ Error generating from formatted prompt: {type(e).__name__}: {e or error_detail.splitlines()[-1]}"
 
     def _generate_with_constrained_decoding(
