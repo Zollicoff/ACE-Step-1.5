@@ -147,7 +147,7 @@ class InferencePipeline:
         torch.cuda.empty_cache()
         torch.cuda.reset_peak_memory_stats()
         n = min(self.max_num_batched_tokens // self.max_model_len, self.max_num_seqs)
-        dummy_slots = [GenerationSlot([0] * self.max_model_len) for _ in range(n)]
+        dummy_slots = [GenerationSlot([0] * self.max_model_len, block_size=self.block_size) for _ in range(n)]
         self._execute_prefill(dummy_slots)
         reset_context()
         torch.cuda.empty_cache()
