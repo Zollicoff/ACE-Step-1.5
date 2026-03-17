@@ -600,11 +600,12 @@ class LLMHandler:
                     "(SDPA fallback uses .item() calls in paged-cache decode that are "
                     "incompatible with CUDA graph capture)"
                 )
+            _has_triton = False
             try:
                 import triton  # noqa: F401
                 _has_triton = True
             except ImportError:
-                _has_triton = False
+                pass
             if not _has_triton:
                 logger.info(
                     "Triton not available: disabling CUDA graph capture for nano-vllm "
