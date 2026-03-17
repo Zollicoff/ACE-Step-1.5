@@ -1,7 +1,10 @@
 """Unit tests for accelerator cache cleanup in ``LLMHandler``."""
 
 import unittest
-from unittest.mock import patch
+from types import SimpleNamespace
+from unittest.mock import MagicMock, patch
+
+import torch
 
 try:
     from acestep.llm_inference import LLMHandler
@@ -13,40 +16,45 @@ except ImportError as exc:  # pragma: no cover - dependency guard
 
 @unittest.skipIf(LLMHandler is None, f"llm_inference import unavailable: {_IMPORT_ERROR}")
 class LlmAcceleratorCacheCleanupTests(unittest.TestCase):
-    """Verify _clear_accelerator_cache handles each backend correctly."""
+    """Verify _clear_accelerator_cache clears the correct backend based on self.device."""
 
-    def test_clears_cuda_cache_when_available(self):
-        """CUDA cache should be emptied when CUDA is available."""
+    def test_clears_cuda_cache_when_device_is_cuda(self):
+        """CUDA cache should be emptied when self.device is 'cuda'."""
         handler = LLMHandler()
+        handler.device = "cuda"
         with patch("torch.cuda.is_available", return_value=True), \
              patch("torch.cuda.empty_cache") as cuda_mock:
             handler._clear_accelerator_cache()
         cuda_mock.assert_called_once()
 
-    def test_clears_xpu_cache_when_available(self):
-        """XPU cache should be emptied when XPU is available."""
+    def test_clears_xpu_cache_when_device_is_xpu(self):
+        """XPU cache should be emptied when self.device is 'xpu'."""
         handler = LLMHandler()
-        with patch("torch.cuda.is_available", return_value=False), \
-             patch("torch.xpu.is_available", return_value=True, create=True), \
-             patch("torch.xpu.empty_cache", create=True) as xpu_mock:
+        handler.device = "xpu"
+        fake_xpu = SimpleNamespace(
+            is_available=lambda: True,
+            empty_cache=MagicMock(),
+        )
+        with patch.object(torch, "xpu", fake_xpu, create=True):
             handler._clear_accelerator_cache()
-        xpu_mock.assert_called_once()
+        fake_xpu.empty_cache.assert_called_once()
 
-    def test_clears_mps_cache_when_available(self):
-        """MPS cache should be emptied when MPS is available."""
+    def test_clears_mps_cache_when_device_is_mps(self):
+        """MPS cache should be emptied when self.device is 'mps'."""
         handler = LLMHandler()
-        with patch("torch.cuda.is_available", return_value=False), \
-             patch("torch.backends.mps.is_available", return_value=True), \
-             patch("torch.mps.empty_cache", create=True) as mps_mock:
+        handler.device = "mps"
+        fake_mps_backend = SimpleNamespace(is_available=lambda: True)
+        fake_mps = SimpleNamespace(empty_cache=MagicMock())
+        with patch.object(torch.backends, "mps", fake_mps_backend), \
+             patch.object(torch, "mps", fake_mps, create=True):
             handler._clear_accelerator_cache()
-        mps_mock.assert_called_once()
+        fake_mps.empty_cache.assert_called_once()
 
-    def test_noop_when_no_accelerator_available(self):
-        """Method should be a safe no-op when no accelerator is present."""
+    def test_noop_when_device_is_cpu(self):
+        """Method should be a safe no-op when device is CPU."""
         handler = LLMHandler()
-        with patch("torch.cuda.is_available", return_value=False), \
-             patch("torch.backends.mps.is_available", return_value=False), \
-             patch("torch.cuda.empty_cache") as cuda_mock:
+        handler.device = "cpu"
+        with patch("torch.cuda.empty_cache") as cuda_mock:
             handler._clear_accelerator_cache()
         cuda_mock.assert_not_called()
 
