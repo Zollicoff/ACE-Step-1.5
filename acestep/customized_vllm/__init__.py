@@ -40,6 +40,7 @@ class SamplingParams:
 
     def __post_init__(self):
         assert self.temperature > 1e-10, "greedy sampling is not permitted"
+        assert self.max_tokens > 0, "max_tokens must be > 0"
         assert self.cfg_scale >= 1.0, "cfg_scale must be >= 1.0"
         if self.top_k is not None:
             assert self.top_k > 0, "top_k must be > 0"
