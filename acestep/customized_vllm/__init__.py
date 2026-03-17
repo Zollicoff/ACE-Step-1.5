@@ -181,6 +181,11 @@ class CachePool:
 
     def grow_if_needed(self, slot: GenerationSlot):
         if len(slot) % self.block_size == 1 and len(slot) > slot.prompt_length:
+            if not self.available:
+                raise RuntimeError(
+                    f"KV cache exhausted during decode: slot {slot.slot_id} needs a new block "
+                    f"but 0/{self.total} blocks are available"
+                )
             slot.cache_blocks.append(self.available.popleft())
 
 
@@ -275,6 +280,14 @@ class LLM:
             sampling_params = [sampling_params] * len(prompts)
         if unconditional_prompts is None:
             unconditional_prompts = [None] * len(prompts)
+        if len(sampling_params) != len(prompts):
+            raise ValueError(
+                f"sampling_params length ({len(sampling_params)}) != prompts length ({len(prompts)})"
+            )
+        if len(unconditional_prompts) != len(prompts):
+            raise ValueError(
+                f"unconditional_prompts length ({len(unconditional_prompts)}) != prompts length ({len(prompts)})"
+            )
 
         all_slots = []
         for prompt, sp, uncond in zip(prompts, sampling_params, unconditional_prompts):
