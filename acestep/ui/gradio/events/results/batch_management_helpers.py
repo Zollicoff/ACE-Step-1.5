@@ -32,7 +32,7 @@ def _build_saved_params(
     track_name, complete_track_classes,
     enable_normalization, normalization_db, fade_in_duration, fade_out_duration,
     latent_shift, latent_rescale,
-    repaint_mode=None, repaint_strength=None,
+    repaint_mode="balanced", repaint_strength=0.5,
 ):
     """Build the parameter snapshot dict stored in batch history."""
     return {
