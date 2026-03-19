@@ -153,8 +153,10 @@ def get_i18n(language: Optional[str] = None) -> I18n:
         with _i18n_lock:
             if _i18n_instance is None:
                 _i18n_instance = I18n(default_language=language or "en")
-    elif language is not None:
-        _i18n_instance.set_language(language)
+                return _i18n_instance
+    if language is not None:
+        with _i18n_lock:
+            _i18n_instance.set_language(language)
 
     return _i18n_instance
 

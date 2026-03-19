@@ -123,7 +123,13 @@ _local_cache_lock = Lock()
 
 
 def get_local_cache(cache_dir: Optional[str] = None) -> LocalCache:
-    """Get local cache instance."""
+    """Get local cache instance.
+
+    Note:
+        The ``cache_dir`` is only used on first initialization.  Subsequent
+        calls return the existing singleton regardless of the ``cache_dir``
+        argument.
+    """
     global _local_cache
     if _local_cache is None:
         with _local_cache_lock:
