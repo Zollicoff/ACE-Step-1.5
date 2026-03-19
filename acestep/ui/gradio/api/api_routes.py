@@ -2,6 +2,7 @@
 Gradio API Routes Module
 Add API endpoints compatible with api_server.py and CustomAceStep to Gradio application
 """
+import atexit
 import json
 import os
 import random
@@ -99,6 +100,15 @@ except ImportError:
 
 RESULT_EXPIRE_SECONDS = 7 * 24 * 60 * 60  # 7 days expiration
 RESULT_KEY_PREFIX = "ace_step_v1.5_"
+
+
+def _close_result_cache():
+    """Close the diskcache backend so pending writes are flushed on shutdown."""
+    if DISKCACHE_AVAILABLE and hasattr(_result_cache, "close"):
+        _result_cache.close()
+
+
+atexit.register(_close_result_cache)
 
 # =============================================================================
 # Example Data for Random Sample
