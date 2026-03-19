@@ -11,13 +11,17 @@ class I18nThreadSafetyTests(unittest.TestCase):
 
     def test_concurrent_get_i18n_returns_same_instance(self):
         """Multiple threads calling get_i18n() must all receive the same object."""
-        results: list = []
+        results: list[int] = []
+        errors: list[str] = []
         barrier = threading.Barrier(8)
 
-        def _call_get_i18n():
+        def _call_get_i18n() -> None:
             """Fetch singleton after barrier synchronization."""
-            barrier.wait()
-            results.append(id(get_i18n()))
+            try:
+                barrier.wait(timeout=5)
+                results.append(id(get_i18n()))
+            except Exception as exc:  # noqa: BLE001
+                errors.append(f"get_i18n failed: {exc!r}")
 
         threads = [threading.Thread(target=_call_get_i18n) for _ in range(8)]
         for t in threads:
@@ -25,6 +29,7 @@ class I18nThreadSafetyTests(unittest.TestCase):
         for t in threads:
             t.join()
 
+        self.assertEqual(errors, [], f"Thread failure detected: {errors}")
         self.assertEqual(len(set(results)), 1, "get_i18n() returned different instances across threads")
 
     def test_lock_attribute_exists(self):

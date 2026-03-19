@@ -26,19 +26,25 @@ class ApiKeyLockTests(unittest.TestCase):
         """Concurrent set/get of api_key must not lose updates."""
         set_api_key(None)
         barrier = threading.Barrier(4)
-        errors: list = []
+        errors: list[str] = []
 
-        def _writer(value: str):
+        def _writer(value: str) -> None:
             """Set api_key after barrier synchronization."""
-            barrier.wait()
-            set_api_key(value)
+            try:
+                barrier.wait(timeout=5)
+                set_api_key(value)
+            except Exception as exc:  # noqa: BLE001
+                errors.append(f"writer failed: {exc!r}")
 
-        def _reader():
+        def _reader() -> None:
             """Read api_key after barrier synchronization."""
-            barrier.wait()
-            key = _get_api_key()
-            if key is not None and key not in ("key-a", "key-b"):
-                errors.append(f"unexpected key value: {key}")
+            try:
+                barrier.wait(timeout=5)
+                key = _get_api_key()
+                if key is not None and key not in ("key-a", "key-b"):
+                    errors.append(f"unexpected key value: {key}")
+            except Exception as exc:  # noqa: BLE001
+                errors.append(f"reader failed: {exc!r}")
 
         threads = [
             threading.Thread(target=_writer, args=("key-a",)),
@@ -66,23 +72,23 @@ class ResultCacheFallbackTests(unittest.TestCase):
     def test_concurrent_store_and_get(self):
         """Concurrent store/get on dict fallback must not raise."""
         barrier = threading.Barrier(8)
-        errors: list = []
+        errors: list[str] = []
 
-        def _store(idx: int):
+        def _store(idx: int) -> None:
             """Store a result after barrier synchronization."""
-            barrier.wait()
             try:
+                barrier.wait(timeout=5)
                 store_result(f"task-{idx}", {"idx": idx})
-            except Exception as exc:
-                errors.append(str(exc))
+            except Exception as exc:  # noqa: BLE001
+                errors.append(f"store failed: {exc!r}")
 
-        def _get(idx: int):
+        def _get(idx: int) -> None:
             """Retrieve a result after barrier synchronization."""
-            barrier.wait()
             try:
+                barrier.wait(timeout=5)
                 get_result(f"task-{idx}")
-            except Exception as exc:
-                errors.append(str(exc))
+            except Exception as exc:  # noqa: BLE001
+                errors.append(f"get failed: {exc!r}")
 
         threads = []
         for i in range(4):
