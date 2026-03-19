@@ -4,6 +4,7 @@ Supports multiple languages with easy translation management
 """
 import os
 import json
+from threading import Lock
 from typing import Dict, Optional
 
 
@@ -133,25 +134,28 @@ class I18n:
 
 # Global i18n instance
 _i18n_instance: Optional[I18n] = None
+_i18n_lock = Lock()
 
 
 def get_i18n(language: Optional[str] = None) -> I18n:
     """
     Get global i18n instance
-    
+
     Args:
         language: Optional language to set
-    
+
     Returns:
         I18n instance
     """
     global _i18n_instance
-    
+
     if _i18n_instance is None:
-        _i18n_instance = I18n(default_language=language or "en")
+        with _i18n_lock:
+            if _i18n_instance is None:
+                _i18n_instance = I18n(default_language=language or "en")
     elif language is not None:
         _i18n_instance.set_language(language)
-    
+
     return _i18n_instance
 
 
