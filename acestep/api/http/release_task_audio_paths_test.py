@@ -2,6 +2,7 @@
 
 import asyncio
 import os
+import tempfile
 import unittest
 from unittest import mock
 
@@ -59,10 +60,11 @@ class ReleaseTaskAudioPathsTests(unittest.TestCase):
     def test_save_upload_to_temp_cleans_up_on_fd_close_failure(self):
         """If os.close(fd) raises OSError, temp file should be removed and error re-raised."""
 
+        leaked_path = os.path.join(tempfile.gettempdir(), "leaked.wav")
         upload = _FakeUpload(payload=b"data", filename="clip.wav")
         with mock.patch(
             "acestep.api.http.release_task_audio_paths.tempfile.mkstemp",
-            return_value=(99, "/tmp/leaked.wav"),
+            return_value=(99, leaked_path),
         ), mock.patch(
             "acestep.api.http.release_task_audio_paths.os.close",
             side_effect=OSError("bad fd"),
@@ -71,7 +73,10 @@ class ReleaseTaskAudioPathsTests(unittest.TestCase):
         ) as remove_mock:
             with self.assertRaises(OSError):
                 asyncio.run(save_upload_to_temp(upload, prefix="test"))
-        remove_mock.assert_called_once_with("/tmp/leaked.wav")
+        # Inner except removes the temp file, outer except catches the re-raised
+        # OSError and attempts removal again — both calls target the same path.
+        remove_mock.assert_called_with(leaked_path)
+        self.assertEqual(remove_mock.call_count, 2)
 
     def test_save_upload_to_temp_writes_file_and_closes_upload(self):
         """Uploader helper should stream bytes through mocked file writes and close upload."""
