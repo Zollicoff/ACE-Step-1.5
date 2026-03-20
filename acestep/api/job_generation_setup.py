@@ -43,8 +43,14 @@ def _resolve_instruction(
                 instruction_to_use = raw_instruction.format(TRACK_CLASSES=classes_str)
             else:
                 instruction_to_use = task_instructions.get("complete_default", raw_instruction)
-        elif "{TRACK_NAME}" in raw_instruction and req.track_name:
-            instruction_to_use = raw_instruction.format(TRACK_NAME=req.track_name.upper())
+        elif "{TRACK_NAME}" in raw_instruction:
+            if req.track_name:
+                instruction_to_use = raw_instruction.format(TRACK_NAME=req.track_name.upper())
+            else:
+                # Fall back to default instruction when track_name is missing
+                # to avoid sending literal {TRACK_NAME} placeholder to the model
+                default_key = f"{req.task_type}_default"
+                instruction_to_use = task_instructions.get(default_key, raw_instruction)
         else:
             instruction_to_use = raw_instruction
 
