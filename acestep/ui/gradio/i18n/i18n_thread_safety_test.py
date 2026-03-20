@@ -202,21 +202,24 @@ class ContextVarIsolationTests(unittest.TestCase):
 
     def test_contextvar_isolation_in_copy_context(self):
         """contextvars.copy_context isolates changes from the parent."""
-        set_language_context("en")
-        parent_val = _current_language_var.get()
+        parent_token = set_language_context("en")
+        try:
+            parent_val = _current_language_var.get()
 
-        def _child() -> str:
-            """Run in a copied context; change should not leak back."""
-            set_language_context("zh")
-            return _current_language_var.get()
+            def _child() -> str:
+                """Run in a copied context; change should not leak back."""
+                set_language_context("zh")
+                return _current_language_var.get()
 
-        ctx = contextvars.copy_context()
-        child_val = ctx.run(_child)
+            ctx = contextvars.copy_context()
+            child_val = ctx.run(_child)
 
-        self.assertEqual(parent_val, "en")
-        self.assertEqual(child_val, "zh")
-        # Parent context is unchanged
-        self.assertEqual(_current_language_var.get(), "en")
+            self.assertEqual(parent_val, "en")
+            self.assertEqual(child_val, "zh")
+            # Parent context is unchanged
+            self.assertEqual(_current_language_var.get(), "en")
+        finally:
+            reset_language_context(parent_token)
 
 
 if __name__ == "__main__":
