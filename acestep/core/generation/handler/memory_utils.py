@@ -168,7 +168,12 @@ class MemoryUtilsMixin:
         per_sample_gb = 0.5 + max(0.0, 0.15 * (duration_sec - 60.0) / 60.0)
         if hasattr(self, "model") and self.model is not None:
             model_name = getattr(self, "config_path", "") or ""
-            if "base" in model_name.lower():
+            model_lower = model_name.lower()
+            # XL (4B DiT) models have ~70% more activations per sample
+            if "xl" in model_lower:
+                per_sample_gb *= 1.7
+            # Base/SFT models use CFG (2x forward passes)
+            if "base" in model_lower:
                 per_sample_gb *= 2.0
 
         safety_margin_gb = 1.5
