@@ -1,6 +1,7 @@
 <h1 align="center">ACE-Step 1.5</h1>
 <h1 align="center">Pushing the Boundaries of Open-Source Music Generation</h1>
 <p align="center">
+    <a href="https://acemusic.ai">ACEMusic</a> |
     <a href="https://ace-step.github.io/ace-step-v1.5.github.io/">Project</a> |
     <a href="https://huggingface.co/ACE-Step/Ace-Step1.5">Hugging Face</a> |
     <a href="https://modelscope.cn/models/ACE-Step/Ace-Step1.5">ModelScope</a> |
@@ -11,10 +12,16 @@
 </p>
 
 <p align="center">
-    <img src="./assets/organization_logos.png" width="100%" alt="StepFun Logo">
+    <img src="./assets/organization_logos.png" height="80" alt="StepFun Logo" style="vertical-align: middle;">
+    &nbsp;&nbsp;
+    <a href="https://acemusic.ai">
+        <img src="./assets/acemusic-logo.svg" height="57" alt="ACEMusic - Try ACE-Step Online" style="vertical-align: middle; position: relative; top: 2px;">
+    </a>
 </p>
 
 ## 📰 News
+
+> 🎵 **Want a faster & more stable experience? Try [acemusic.ai](https://acemusic.ai) — 100% free!**
 
 - **[2026-04-02] 🎉 ACE-Step 1.5 XL (4B DiT) Released!** — We introduce the XL series with a 4B-parameter DiT decoder for higher audio quality. Three variants available: [xl-base](https://huggingface.co/ACE-Step/acestep-v15-xl-base), [xl-sft](https://huggingface.co/ACE-Step/acestep-v15-xl-sft), [xl-turbo](https://huggingface.co/ACE-Step/acestep-v15-xl-turbo). Requires ≥12GB VRAM (with offload), ≥20GB recommended. All LM models fully compatible. See [Model Zoo](#-model-zoo) for details.
 
@@ -86,6 +93,8 @@ Star ACE-Step on GitHub and be instantly notified of new releases
 </p>
 
 ## ⚡ Quick Start
+
+> 🎵 **Don't want to install locally? Try [acemusic.ai](https://acemusic.ai) — 100% free, no GPU required!**
 
 > **Requirements:** Python 3.11-3.12, CUDA GPU recommended (also supports MPS / ROCm / Intel XPU / CPU)
 > 
