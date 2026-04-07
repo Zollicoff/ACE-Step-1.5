@@ -139,7 +139,7 @@ def build_dit_controls(ui_config: dict[str, Any]) -> dict[str, Any]:
         _show_mlx_chunk = is_mps_platform()
         with gr.Row(visible=_show_mlx_chunk):
             mlx_vae_chunk_size = gr.Slider(
-                minimum=64,
+                minimum=192,
                 maximum=2048,
                 value=_gpu_config.mlx_vae_chunk_size,
                 step=64,

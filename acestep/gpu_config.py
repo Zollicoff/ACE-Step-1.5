@@ -799,13 +799,14 @@ def _auto_mlx_vae_chunk_size(mem_gb: Optional[float] = None) -> int:
     if mem_gb is None:
         mem_gb = get_gpu_memory_gb()
     if mem_gb <= 16:
-        return 256
+        size = 256
     elif mem_gb <= 36:
-        return 512
+        size = 512
     elif mem_gb <= 64:
-        return 1024
+        size = 1024
     else:
-        return 2048
+        size = 2048
+    return max(192, size)
 
 
 def get_gpu_config(gpu_memory_gb: Optional[float] = None) -> GPUConfig:
