@@ -61,7 +61,7 @@ class AutoMlxVaeChunkSizeTests(unittest.TestCase):
         import os
         from acestep.gpu_config import _auto_mlx_vae_chunk_size
         with patch.dict(os.environ, {"ACESTEP_MLX_VAE_CHUNK": "32"}):
-            self.assertEqual(_auto_mlx_vae_chunk_size(mem_gb=16), 64)
+            self.assertEqual(_auto_mlx_vae_chunk_size(mem_gb=16), 192)
 
     def test_invalid_env_var_falls_back_to_memory(self):
         import os

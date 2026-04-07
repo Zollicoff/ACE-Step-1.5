@@ -788,12 +788,13 @@ def _auto_mlx_vae_chunk_size(mem_gb: Optional[float] = None) -> int:
             via :func:`get_gpu_memory_gb`.
 
     Returns:
-        Chunk size as a positive integer (minimum 64).
+        Chunk size as a positive integer (minimum 192, to keep
+        ``stride = chunk - 2 * overlap`` positive with overlap=64).
     """
     env_val = os.environ.get("ACESTEP_MLX_VAE_CHUNK")
     if env_val is not None:
         try:
-            return max(64, int(env_val))
+            return max(192, int(env_val))
         except ValueError:
             pass
     if mem_gb is None:
