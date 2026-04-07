@@ -195,5 +195,24 @@ class MlxVaeNativeMixinTests(unittest.TestCase):
         self.assertIn("mlx_vae is not initialized", str(ctx.exception))
 
 
+    def test_mlx_decode_single_default_chunk_tiles_at_512(self):
+        """Default chunk=512 tiles sequences that previously decoded in one shot."""
+        host = _Host()
+        fake_mx_core = _fake_mx_core_module()
+        fake_mlx_pkg = types.ModuleType("mlx")
+        fake_mlx_pkg.__path__ = []
+        z_nlc = np.ones((1, 1500, 1), dtype=np.float32)
+        call_sizes = []
+        def tracking_decode(chunk):
+            call_sizes.append(chunk.shape[1])
+            return np.repeat(chunk, 2, axis=1)
+        with patch.dict(sys.modules, {"mlx": fake_mlx_pkg, "mlx.core": fake_mx_core}):
+            out = host._mlx_decode_single(z_nlc, decode_fn=tracking_decode)
+        self.assertEqual(tuple(out.shape), (1, 3000, 1))
+        self.assertGreater(len(call_sizes), 1)
+        for size in call_sizes:
+            self.assertLessEqual(size, 512)
+
+
 if __name__ == "__main__":
     unittest.main()
