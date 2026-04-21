@@ -1842,6 +1842,7 @@ class AceStepConditionGenerationModel(AceStepPreTrainedModel):
         attention_mask: torch.Tensor = None,
         seed: int = None,
         fix_nfe: int = 8,
+        infer_steps: Optional[int] = None,
         infer_method: str = "ode",
         use_cache: bool = True,
         audio_cover_strength: float = 1.0,
@@ -1917,7 +1918,22 @@ class AceStepConditionGenerationModel(AceStepPreTrainedModel):
                     logger.warning(f"timesteps mapped to nearest valid values: {original_timesteps} -> {mapped_timesteps}")
                 
                 t_schedule_list = mapped_timesteps
-        
+
+        # Variable-step schedule: respect `infer_steps` (UI exposes 1–20).
+        # Mirrors the base model's `torch.linspace` + shift transform so users
+        # can trade quality for speed on turbo models too.  Only fires when
+        # the caller did NOT pass an explicit `timesteps` list.
+        if t_schedule_list is None and infer_steps is not None and infer_steps > 0:
+            n = min(int(infer_steps), 20)
+            if n != int(infer_steps):
+                logger.warning(
+                    "infer_steps=%d exceeds maximum 20, clamping to 20.", infer_steps
+                )
+            raw = [1.0 - i / n for i in range(n)]
+            if shift != 1.0:
+                raw = [shift * t / (1.0 + (shift - 1.0) * t) for t in raw]
+            t_schedule_list = raw
+
         if t_schedule_list is None:
             # Use shift-based schedule: round to nearest valid shift
             original_shift = shift
