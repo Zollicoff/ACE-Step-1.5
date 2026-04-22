@@ -375,15 +375,20 @@ class LLMHandler:
         """Build unconditional prompt for CFG based on generation phase and batch mode"""
         if is_batch or generation_phase == "codes":
             # Codes phase or batch mode: use empty CoT in unconditional prompt
-            return self.build_formatted_prompt_with_cot(
+            prompt = self.build_formatted_prompt_with_cot(
                 caption, lyrics, cot_text, is_negative_prompt=True, negative_prompt=negative_prompt
             )
         else:
             # CoT phase (single mode only): unconditional prompt
             # If negative_prompt is provided, use it as caption; otherwise remove caption and keep only lyrics
-            return self.build_formatted_prompt(
+            prompt = self.build_formatted_prompt(
                 caption, lyrics, is_negative_prompt=True, generation_phase="cot", negative_prompt=negative_prompt
             )
+        logger.info(
+            f"CFG unconditional prompt (phase={generation_phase}, is_batch={is_batch}, "
+            f"negative_prompt={negative_prompt!r}):\n{prompt}"
+        )
+        return prompt
 
     def _load_pytorch_model(self, model_path: str, device: str) -> Tuple[bool, str]:
         """Load PyTorch model from path and return (success, status_message)"""
