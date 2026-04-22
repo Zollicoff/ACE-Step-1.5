@@ -1760,8 +1760,13 @@ class LLMHandler:
             user_prompt = f"# Caption\n{caption}\n\n# Lyric\n{lyrics}\n"
 
         # Keep the assistant turn OPEN so the model continues inside it with audio
-        # codes, matching the training layout `<think>...</think>{codes}<|im_end|>`.
-        # Adding cot as a role="assistant" message would close the turn with <|im_end|>.
+        # codes, matching the training layout `<think>...</think>\n\n{codes}<|im_end|>`.
+        # Qwen's chat template inserts `\n\n` between `</think>` and the content
+        # following it when rendering a full assistant message; reproduce that
+        # separator here so training and inference see the same prefix just before
+        # the first code token. Adding cot as a role="assistant" message would
+        # close the turn with <|im_end|>, which the model treats as end-of-turn
+        # rather than "codes go here".
         formatted = self.llm_tokenizer.apply_chat_template(
             [
                 {"role": "system", "content": f"# Instruction\n{DEFAULT_LM_INSTRUCTION}\n\n"},
@@ -1770,7 +1775,7 @@ class LLMHandler:
             tokenize=False,
             add_generation_prompt=True,
         )
-        formatted += cot_for_prompt
+        formatted += cot_for_prompt + "\n\n"
         return formatted
 
     def build_formatted_prompt_for_understanding(
