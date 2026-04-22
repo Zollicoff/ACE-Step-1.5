@@ -1715,9 +1715,9 @@ class LLMHandler:
         if is_negative_prompt:
             # Match training CFG-dropout format: user message is the raw negative prompt
             # (the literal "NO USER INPUT" when no override), NOT wrapped in
-            # "# Caption\n...\n\n# Lyric\n...\n". Empty CoT also has no inner newlines.
+            # "# Caption\n...\n\n# Lyric\n...\n".
             has_negative_prompt = self._has_meaningful_negative_prompt(negative_prompt)
-            cot_for_prompt = "<think></think>"
+            cot_for_prompt = "<think>\n</think>"
             user_prompt = negative_prompt if has_negative_prompt else "NO USER INPUT"
         else:
             cot_for_prompt = cot_text
