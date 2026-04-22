@@ -1713,44 +1713,28 @@ class LLMHandler:
             raise ValueError("LLM tokenizer is not initialized. Call initialize() first.")
 
         if is_negative_prompt:
-            # Unconditional prompt for codes phase
-            # Check if user provided a meaningful negative prompt
+            # Match training CFG-dropout format: user message is the raw negative prompt
+            # (the literal "NO USER INPUT" when no override), NOT wrapped in
+            # "# Caption\n...\n\n# Lyric\n...\n". Empty CoT also has no inner newlines.
             has_negative_prompt = self._has_meaningful_negative_prompt(negative_prompt)
-
-            # Use empty CoT for unconditional
-            cot_for_prompt = "<think>\n</think>"
-
-            if has_negative_prompt:
-                # If negative prompt provided, use it as caption
-                caption_for_prompt = negative_prompt
-            else:
-                # No negative prompt: use original caption
-                caption_for_prompt = caption
+            cot_for_prompt = "<think></think>"
+            user_prompt = negative_prompt if has_negative_prompt else "NO USER INPUT"
         else:
-            # Conditional prompt: use the full CoT and original caption
             cot_for_prompt = cot_text
-            caption_for_prompt = caption
+            user_prompt = f"# Caption\n{caption}\n\n# Lyric\n{lyrics}\n"
 
-        # Build user prompt with caption and lyrics ONLY (no COT)
-        # COT should be in the assistant's message, not user's
-        user_prompt = f"# Caption\n{caption_for_prompt}\n\n# Lyric\n{lyrics}\n"
-
-        # Build the chat with assistant message containing the COT
-        # The model will continue generation after the COT
+        # Keep the assistant turn OPEN so the model continues inside it with audio
+        # codes, matching the training layout `<think>...</think>{codes}<|im_end|>`.
+        # Adding cot as a role="assistant" message would close the turn with <|im_end|>.
         formatted = self.llm_tokenizer.apply_chat_template(
             [
                 {"role": "system", "content": f"# Instruction\n{DEFAULT_LM_INSTRUCTION}\n\n"},
                 {"role": "user", "content": user_prompt},
-                {"role": "assistant", "content": cot_for_prompt},
             ],
             tokenize=False,
-            add_generation_prompt=False,  # Don't add generation prompt, COT is already in assistant
+            add_generation_prompt=True,
         )
-
-        # Add a newline after </think> so model generates audio codes on next line
-        if not formatted.endswith('\n'):
-            formatted += '\n'
-
+        formatted += cot_for_prompt
         return formatted
 
     def build_formatted_prompt_for_understanding(
