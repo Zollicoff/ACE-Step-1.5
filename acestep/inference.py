@@ -142,9 +142,13 @@ class GenerationParams:
     # On by default to mitigate SNR-t bias via per-band wavelet-domain correction
     # at each sampler step.  Uses `pytorch_wavelets` + `PyWavelets` (managed deps).
     dcw_enabled: bool = True
-    dcw_mode: str = "low"           # "low" | "high" | "double" | "pix"
-    dcw_scaler: float = 0.02        # low-band scaler (or single scaler for "high"/"pix")
-    dcw_high_scaler: float = 0.0    # high-band scaler (used only in "double" mode)
+    # Defaults tuned by grid search on the pure-DiT path; "double" with
+    # low_scaler=0.05 and high_scaler=0.02 was the top configuration.  In
+    # LLM-think mode DCW's gain is small and these defaults still sit near
+    # the think-mode optimum band, so we keep a single global default.
+    dcw_mode: str = "double"        # "low" | "high" | "double" | "pix"
+    dcw_scaler: float = 0.05        # low-band scaler (or single scaler for "high"/"pix")
+    dcw_high_scaler: float = 0.02   # high-band scaler (used only in "double" mode)
     dcw_wavelet: str = "haar"       # PyWavelets basis, e.g. "haar", "db4", "sym8"
     # Custom timesteps (parsed from string like "0.97,0.76,0.615,0.5,0.395,0.28,0.18,0.085,0")
     # If provided, overrides inference_steps and shift

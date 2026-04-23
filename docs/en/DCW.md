@@ -79,9 +79,9 @@ are forwarded through the generation handler chain into the base model's
 | Field | Type | Default | Description |
 |---|---|---|---|
 | `dcw_enabled` | `bool` | `True` | Master switch. Set to `False` for a clean A/B against the uncorrected sampler. |
-| `dcw_mode` | `str` | `"low"` | One of `"low"`, `"high"`, `"double"`, `"pix"`. |
-| `dcw_scaler` | `float` | `0.02` | Low-band correction strength (or the single scaler for `"high"` / `"pix"`). Usable range `0–0.1`. |
-| `dcw_high_scaler` | `float` | `0.0` | High-band correction strength (used only when `dcw_mode == "double"`). Usable range `0–0.1`. |
+| `dcw_mode` | `str` | `"double"` | One of `"low"`, `"high"`, `"double"`, `"pix"`. |
+| `dcw_scaler` | `float` | `0.05` | Low-band correction strength (or the single scaler for `"high"` / `"pix"`). Usable range `0–0.1`. |
+| `dcw_high_scaler` | `float` | `0.02` | High-band correction strength (used only when `dcw_mode == "double"`). Usable range `0–0.1`. |
 | `dcw_wavelet` | `str` | `"haar"` | PyWavelets basis name — e.g. `"haar"`, `"db4"`, `"sym8"`. |
 
 ### Mode reference
@@ -121,8 +121,9 @@ params = GenerationParams(
     guidance_scale=7.5,
     # Enable DCW:
     dcw_enabled=True,
-    dcw_mode="low",
-    dcw_scaler=0.02,
+    dcw_mode="double",
+    dcw_scaler=0.05,
+    dcw_high_scaler=0.02,
     dcw_wavelet="haar",
 )
 config = GenerationConfig(batch_size=1)
@@ -139,21 +140,23 @@ result = generate_music(
 Open the standard Gradio UI, expand **Advanced DiT** → **🧪 DCW – Differential
 Correction in Wavelet domain (experimental)**, and tune the four
 sliders/dropdowns inside. **Enable DCW** is on by default with
-`mode="low"`, `scaler=0.02`, `wavelet="haar"` — uncheck it to A/B
-against the uncorrected sampler.
+`mode="double"`, `scaler=0.05`, `high_scaler=0.02`, `wavelet="haar"` —
+uncheck it to A/B against the uncorrected sampler.
 
 ## Recommended starting values
 
-The defaults are intentionally conservative. For informal listening tests
-with `inference_steps ∈ {16, 32}`:
+The defaults come from a grid search on the pure-DiT path (no LLM
+think-CoT): `dcw_mode="double"`, `dcw_scaler=0.05`,
+`dcw_high_scaler=0.02`, `dcw_wavelet="haar"`.  In LLM-think mode the
+overall DCW gain is small and the optimum band drifts slightly
+(`scaler≈0.02`, `high_scaler≈0.06`) — the global default still sits
+near that region, so we keep a single default and let power users
+override via the UI / API.
 
-- Start with `dcw_mode="low"`, `dcw_scaler=0.02`, `dcw_wavelet="haar"`.
-  Usable scaler range is `0–0.1`; going above that tends to introduce
+- `"low"` alone (`dcw_scaler=0.02`) is a safer, more conservative
+  setting if `"double"` sounds too aggressive for a given track.
+- Usable scaler range is `0–0.1`; going above that tends to introduce
   audible artefacts.
-- If the output sounds *over-smoothed*, try `dcw_mode="double"` with
-  small values for both bands (e.g. `dcw_scaler=0.02` and
-  `dcw_high_scaler=0.01`) to let the sampler recover high-frequency
-  detail as well.
 - Try different wavelet bases (`db4`, `sym8`) for smoother low-band
   extraction; `haar` is the default and fastest, with a blocky low-pass
   response.

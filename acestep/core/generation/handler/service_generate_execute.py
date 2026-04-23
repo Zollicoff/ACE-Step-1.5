@@ -81,9 +81,9 @@ class ServiceGenerateExecuteMixin:
         velocity_norm_threshold: float = 0.0,
         velocity_ema_factor: float = 0.0,
         dcw_enabled: bool = True,
-        dcw_mode: str = "low",
-        dcw_scaler: float = 0.02,
-        dcw_high_scaler: float = 0.0,
+        dcw_mode: str = "double",
+        dcw_scaler: float = 0.05,
+        dcw_high_scaler: float = 0.02,
         dcw_wavelet: str = "haar",
     ) -> Dict[str, Any]:
         """Build kwargs passed to model generation backends."""
@@ -224,9 +224,9 @@ class ServiceGenerateExecuteMixin:
                             velocity_norm_threshold=generate_kwargs.get("velocity_norm_threshold", 0.0),
                             velocity_ema_factor=generate_kwargs.get("velocity_ema_factor", 0.0),
                             dcw_enabled=generate_kwargs.get("dcw_enabled", True),
-                            dcw_mode=generate_kwargs.get("dcw_mode", "low"),
-                            dcw_scaler=generate_kwargs.get("dcw_scaler", 0.02),
-                            dcw_high_scaler=generate_kwargs.get("dcw_high_scaler", 0.0),
+                            dcw_mode=generate_kwargs.get("dcw_mode", "double"),
+                            dcw_scaler=generate_kwargs.get("dcw_scaler", 0.05),
+                            dcw_high_scaler=generate_kwargs.get("dcw_high_scaler", 0.02),
                             dcw_wavelet=generate_kwargs.get("dcw_wavelet", "haar"),
                         )
                         _tc = outputs.get("time_costs", {})

@@ -65,9 +65,9 @@ class BatchManagementHelperTests(unittest.TestCase):
             0.0,             # velocity_norm_threshold
             0.0,             # velocity_ema_factor
             True,            # dcw_enabled
-            "low",           # dcw_mode
-            0.02,            # dcw_scaler
-            0.0,             # dcw_high_scaler
+            "double",        # dcw_mode
+            0.05,            # dcw_scaler
+            0.02,            # dcw_high_scaler
             "haar",          # dcw_wavelet
             "flac",          # audio_format
             "128k",          # mp3_bitrate
@@ -103,7 +103,7 @@ class BatchManagementHelperTests(unittest.TestCase):
         self.assertEqual(params["mp3_sample_rate"], 48000)
         self.assertEqual(params["sampler_mode"], "euler")
         self.assertEqual(params["dcw_enabled"], True)
-        self.assertEqual(params["dcw_mode"], "low")
+        self.assertEqual(params["dcw_mode"], "double")
         self.assertEqual(params["dcw_wavelet"], "haar")
         self.assertIn("latent_rescale", params)
         self.assertIn("fade_in_duration", params)
@@ -125,9 +125,9 @@ class BatchManagementHelperTests(unittest.TestCase):
         self.assertEqual(params["fade_in_duration"], 0.0)
         self.assertEqual(params["fade_out_duration"], 0.0)
         self.assertEqual(params["dcw_enabled"], True)
-        self.assertEqual(params["dcw_mode"], "low")
-        self.assertEqual(params["dcw_scaler"], 0.02)
-        self.assertEqual(params["dcw_high_scaler"], 0.0)
+        self.assertEqual(params["dcw_mode"], "double")
+        self.assertEqual(params["dcw_scaler"], 0.05)
+        self.assertEqual(params["dcw_high_scaler"], 0.02)
         self.assertEqual(params["dcw_wavelet"], "haar")
 
     def test_extract_scores_handles_wrapped_values_and_missing_indices(self):

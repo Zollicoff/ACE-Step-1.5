@@ -111,7 +111,11 @@ def test_corrector_disabled_is_identity():
 
 
 def test_corrector_zero_scaler_is_identity():
-    corrector = dcw_correction.DCWCorrector(enabled=True, scaler=0.0)
+    # Pin both scalers to 0 so the test reflects its intent ("scaler=0 → no-op")
+    # independently of the module-level default values.
+    corrector = dcw_correction.DCWCorrector(
+        enabled=True, mode="double", scaler=0.0, high_scaler=0.0
+    )
     x = _latent()
     y = _latent(seed=1)
     assert torch.equal(corrector.apply(x, y, t_curr=0.7), x)

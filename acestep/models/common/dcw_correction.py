@@ -77,9 +77,9 @@ class DCWCorrector:
     def __init__(
         self,
         enabled: bool = False,
-        mode: str = "low",
-        scaler: float = 0.02,
-        high_scaler: float = 0.0,
+        mode: str = "double",
+        scaler: float = 0.05,
+        high_scaler: float = 0.02,
         wavelet: str = "haar",
     ) -> None:
         if mode not in VALID_DCW_MODES:

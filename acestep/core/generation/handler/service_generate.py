@@ -51,9 +51,9 @@ class ServiceGenerateMixin:
         velocity_norm_threshold: float = 0.0,
         velocity_ema_factor: float = 0.0,
         dcw_enabled: bool = True,
-        dcw_mode: str = "low",
-        dcw_scaler: float = 0.02,
-        dcw_high_scaler: float = 0.0,
+        dcw_mode: str = "double",
+        dcw_scaler: float = 0.05,
+        dcw_high_scaler: float = 0.02,
         dcw_wavelet: str = "haar",
     ) -> Dict[str, Any]:
         """Generate music latents and metadata from text/audio conditioning inputs.
