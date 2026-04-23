@@ -99,18 +99,18 @@ def build_dit_controls(ui_config: dict[str, Any]) -> dict[str, Any]:
             with gr.Row():
                 dcw_scaler = gr.Slider(
                     minimum=0.0,
-                    maximum=1.0,
-                    value=0.1,
-                    step=0.01,
+                    maximum=0.1,
+                    value=0.02,
+                    step=0.005,
                     label=t("generation.dcw_scaler_label"),
                     info=t("generation.dcw_scaler_info"),
                     elem_classes=["has-info-container"],
                 )
                 dcw_high_scaler = gr.Slider(
                     minimum=0.0,
-                    maximum=1.0,
+                    maximum=0.1,
                     value=0.0,
-                    step=0.01,
+                    step=0.005,
                     label=t("generation.dcw_high_scaler_label"),
                     info=t("generation.dcw_high_scaler_info"),
                     elem_classes=["has-info-container"],

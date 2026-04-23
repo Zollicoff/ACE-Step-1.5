@@ -1874,7 +1874,7 @@ class AceStepConditionGenerationModel(AceStepPreTrainedModel):
         velocity_ema_factor: float = 0.0,
         dcw_enabled: bool = False,
         dcw_mode: str = "low",
-        dcw_scaler: float = 0.1,
+        dcw_scaler: float = 0.02,
         dcw_high_scaler: float = 0.0,
         dcw_wavelet: str = "haar",
         # --- CFG-related params accepted for API parity but unused on turbo.

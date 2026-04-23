@@ -50,14 +50,15 @@ so DCW uses a 1-D DWT along the `T` axis.
 
 ## Installation
 
-DCW needs two extra packages (not installed by default):
+DCW's PyTorch-path wavelet transforms use `pytorch_wavelets` + `PyWavelets`.
+Both are declared in `pyproject.toml`, so a normal `uv sync` already
+installs them — nothing extra to do. On the MLX path, `haar` runs natively
+in MLX (no Python wavelet deps needed); non-Haar bases bridge to the same
+`pytorch_wavelets` modules.
 
-```bash
-pip install pytorch_wavelets PyWavelets
-```
-
-If DCW is enabled without these packages installed, the pipeline logs a
-clear warning and falls back to the normal sampler — no crash.
+If, for some reason, `pytorch_wavelets` is missing from the environment
+when DCW is enabled, the pipeline logs a clear warning and falls back to
+the normal sampler — no crash.
 
 ## Parameters
 
@@ -69,8 +70,8 @@ are forwarded through the generation handler chain into the base model's
 |---|---|---|---|
 | `dcw_enabled` | `bool` | `False` | Master switch. Off preserves current behaviour bit-for-bit. |
 | `dcw_mode` | `str` | `"low"` | One of `"low"`, `"high"`, `"double"`, `"pix"`. |
-| `dcw_scaler` | `float` | `0.1` | Low-band correction strength (or the single scaler for `"high"` / `"pix"`). |
-| `dcw_high_scaler` | `float` | `0.0` | High-band correction strength (used only when `dcw_mode == "double"`). |
+| `dcw_scaler` | `float` | `0.02` | Low-band correction strength (or the single scaler for `"high"` / `"pix"`). Usable range `0–0.1`. |
+| `dcw_high_scaler` | `float` | `0.0` | High-band correction strength (used only when `dcw_mode == "double"`). Usable range `0–0.1`. |
 | `dcw_wavelet` | `str` | `"haar"` | PyWavelets basis name — e.g. `"haar"`, `"db4"`, `"sym8"`. |
 
 ### Mode reference
@@ -101,7 +102,7 @@ params = GenerationParams(
     # Enable DCW:
     dcw_enabled=True,
     dcw_mode="low",
-    dcw_scaler=0.1,
+    dcw_scaler=0.02,
     dcw_wavelet="haar",
 )
 config = GenerationConfig(batch_size=1)
@@ -124,12 +125,16 @@ the four sliders/dropdowns. Off by default; toggle on for an A/B comparison.
 The defaults are intentionally conservative. For informal listening tests
 with `inference_steps ∈ {16, 32}`:
 
-- Start with `dcw_mode="low"` and `dcw_scaler=0.1`.
+- Start with `dcw_mode="low"`, `dcw_scaler=0.02`, `dcw_wavelet="haar"`.
+  Usable scaler range is `0–0.1`; going above that tends to introduce
+  audible artefacts.
 - If the output sounds *over-smoothed*, try `dcw_mode="double"` with
-  `dcw_scaler=0.05` and `dcw_high_scaler=0.05` to let the sampler recover
-  high-frequency detail as well.
+  small values for both bands (e.g. `dcw_scaler=0.02` and
+  `dcw_high_scaler=0.01`) to let the sampler recover high-frequency
+  detail as well.
 - Try different wavelet bases (`db4`, `sym8`) for smoother low-band
-  extraction; `haar` is fastest but has a blocky low-pass response.
+  extraction; `haar` is the default and fastest, with a blocky low-pass
+  response.
 
 ## Scope
 

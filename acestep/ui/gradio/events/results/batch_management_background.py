@@ -92,7 +92,7 @@ def generate_next_batch_background(
             velocity_ema_factor=params.get("velocity_ema_factor", 0.0),
             dcw_enabled=params.get("dcw_enabled", False),
             dcw_mode=params.get("dcw_mode", "low"),
-            dcw_scaler=params.get("dcw_scaler", 0.1),
+            dcw_scaler=params.get("dcw_scaler", 0.02),
             dcw_high_scaler=params.get("dcw_high_scaler", 0.0),
             dcw_wavelet=params.get("dcw_wavelet", "haar"),
             custom_timesteps=params.get("custom_timesteps"),

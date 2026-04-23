@@ -66,7 +66,7 @@ class BatchManagementHelperTests(unittest.TestCase):
             0.0,             # velocity_ema_factor
             False,           # dcw_enabled
             "low",           # dcw_mode
-            0.1,             # dcw_scaler
+            0.02,            # dcw_scaler
             0.0,             # dcw_high_scaler
             "haar",          # dcw_wavelet
             "flac",          # audio_format
@@ -126,7 +126,7 @@ class BatchManagementHelperTests(unittest.TestCase):
         self.assertEqual(params["fade_out_duration"], 0.0)
         self.assertEqual(params["dcw_enabled"], False)
         self.assertEqual(params["dcw_mode"], "low")
-        self.assertEqual(params["dcw_scaler"], 0.1)
+        self.assertEqual(params["dcw_scaler"], 0.02)
         self.assertEqual(params["dcw_high_scaler"], 0.0)
         self.assertEqual(params["dcw_wavelet"], "haar")
 

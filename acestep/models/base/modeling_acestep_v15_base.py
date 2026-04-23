@@ -1872,7 +1872,7 @@ class AceStepConditionGenerationModel(AceStepPreTrainedModel):
         timesteps: Optional[torch.Tensor] = None,
         dcw_enabled: bool = False,
         dcw_mode: str = "low",
-        dcw_scaler: float = 0.1,
+        dcw_scaler: float = 0.02,
         dcw_high_scaler: float = 0.0,
         dcw_wavelet: str = "haar",
         **kwargs,

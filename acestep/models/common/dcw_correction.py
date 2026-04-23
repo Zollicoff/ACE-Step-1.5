@@ -67,7 +67,7 @@ class DCWCorrector:
         self,
         enabled: bool = False,
         mode: str = "low",
-        scaler: float = 0.1,
+        scaler: float = 0.02,
         high_scaler: float = 0.0,
         wavelet: str = "haar",
     ) -> None:

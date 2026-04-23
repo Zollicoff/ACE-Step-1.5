@@ -143,7 +143,7 @@ class GenerationParams:
     # correction at each sampler step.  Requires `pytorch_wavelets` + `PyWavelets`.
     dcw_enabled: bool = False
     dcw_mode: str = "low"           # "low" | "high" | "double" | "pix"
-    dcw_scaler: float = 0.1         # low-band scaler (or single scaler for "high"/"pix")
+    dcw_scaler: float = 0.02        # low-band scaler (or single scaler for "high"/"pix")
     dcw_high_scaler: float = 0.0    # high-band scaler (used only in "double" mode)
     dcw_wavelet: str = "haar"       # PyWavelets basis, e.g. "haar", "db4", "sym8"
     # Custom timesteps (parsed from string like "0.97,0.76,0.615,0.5,0.395,0.28,0.18,0.085,0")
