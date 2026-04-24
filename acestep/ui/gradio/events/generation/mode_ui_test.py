@@ -25,6 +25,7 @@ _IDX_SRC_AUDIO = 45
 _IDX_TASK_TYPE = 5
 _IDX_SRC_AUDIO_ROW = 6
 _IDX_THINK_CHECKBOX = 14
+_IDX_REMIX_STRENGTH = 17
 _IDX_COVER_NOISE = 18
 _EXPECTED_TUPLE_LENGTH = 46
 _IDX_BPM = 21
@@ -100,6 +101,8 @@ class ModeUiStateClearingTests(unittest.TestCase):
         self.assertFalse(result[_IDX_AUDIO_CODES].get("visible"))
         self.assertNotIn("value", result[_IDX_SRC_AUDIO])
         self.assertTrue(result[_IDX_COVER_NOISE].get("visible"))
+        self.assertEqual(result[_IDX_REMIX_STRENGTH].get("value"), 0.0)
+        self.assertEqual(result[_IDX_COVER_NOISE].get("value"), 0.2)
 
         think_update = result[_IDX_THINK_CHECKBOX]
         self.assertFalse(think_update.get("value"))
