@@ -33,7 +33,7 @@ def build_cover_strength_controls() -> dict[str, Any]:
         no_fsq = gr.Checkbox(
             label="no_fsq",
             value=False,
-            info="Bypass FSQ roundtrip and remix from raw VAE latents.",
+            info="Use source-audio latents directly instead of FSQ-quantized audio codes.",
         )
     cover_noise_strength = gr.Slider(
         minimum=0.0,

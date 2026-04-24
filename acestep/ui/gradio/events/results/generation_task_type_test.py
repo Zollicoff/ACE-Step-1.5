@@ -9,7 +9,7 @@ class GenerationTaskTypeTests(unittest.TestCase):
     """Validate UI task-type resolution before inference."""
 
     def test_no_fsq_cover_uses_raw_cover_task(self):
-        """Checking no_fsq in Remix should select the raw VAE backend task."""
+        """Checking no_fsq in Remix should select the non-FSQ backend task."""
         self.assertEqual(resolve_no_fsq_task_type("cover", True), "cover-nofsq")
 
     def test_unchecked_cover_uses_standard_cover_task(self):

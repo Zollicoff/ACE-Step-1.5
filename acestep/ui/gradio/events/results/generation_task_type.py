@@ -6,7 +6,7 @@ def resolve_no_fsq_task_type(task_type: str, no_fsq: bool) -> str:
 
     Args:
         task_type: Current hidden Gradio task type.
-        no_fsq: Whether Remix should bypass the FSQ roundtrip.
+        no_fsq: Whether Remix should skip FSQ-quantized source conditioning.
 
     Returns:
         ``cover-nofsq`` only for Remix/cover with the checkbox enabled;
