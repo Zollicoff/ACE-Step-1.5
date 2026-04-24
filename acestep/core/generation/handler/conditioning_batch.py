@@ -52,6 +52,7 @@ class ConditioningBatchMixin:
             instructions: Optional per-item generation instructions.
             audio_code_hints: Optional per-item serialized audio-code hints.
             audio_cover_strength: Blend factor for cover/non-cover conditioning.
+            task_type: Generation task selector forwarded to mask preparation.
 
         Returns:
             Batch dictionary containing padded tensors and conditioning metadata
