@@ -45,10 +45,15 @@ def _is_generation_mode_change_call(node: ast.AST) -> bool:
 def _call_uses_keyword_function(node: ast.Call, function_name: str) -> bool:
     """Return whether a call passes ``function_name`` as its ``fn=`` keyword."""
 
-    for keyword in node.keywords:
-        if keyword.arg == "fn" and call_name(keyword.value) == function_name:
-            return True
-    return False
+    return any(k.arg == "fn" and call_name(k.value) == function_name for k in node.keywords)
+
+
+def _event_chain_root(node: ast.AST) -> ast.AST:
+    """Return the originating event for chained ``.then()`` calls."""
+
+    while isinstance(node, ast.Call) and call_name(node.func) == "then":
+        node = node.func.value
+    return node
 
 
 class DecompositionContractGenerationTests(unittest.TestCase):
@@ -117,7 +122,12 @@ class DecompositionContractGenerationTests(unittest.TestCase):
         mode_change_event_names = set()
 
         for node in ast.walk(wiring_node):
-            if isinstance(node, ast.Assign) and _is_generation_mode_change_call(node.value):
+            if not isinstance(node, ast.Assign):
+                continue
+            event_root = _event_chain_root(node.value)
+            if _is_generation_mode_change_call(event_root) or (
+                isinstance(event_root, ast.Name) and event_root.id in mode_change_event_names
+            ):
                 for target in node.targets:
                     if isinstance(target, ast.Name):
                         mode_change_event_names.add(target.id)
@@ -129,7 +139,7 @@ class DecompositionContractGenerationTests(unittest.TestCase):
                 continue
             if not _call_uses_keyword_function(node, "update_dcw_defaults_for_think"):
                 continue
-            event_source = node.func.value
+            event_source = _event_chain_root(node.func.value)
             if _is_generation_mode_change_call(event_source):
                 self.fail("generation_mode.change must not chain DCW default updates")
             if isinstance(event_source, ast.Name) and event_source.id in mode_change_event_names:
