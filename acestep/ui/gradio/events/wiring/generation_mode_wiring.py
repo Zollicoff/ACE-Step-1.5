@@ -63,15 +63,10 @@ def register_generation_mode_handlers(
     ]
 
     # ========== Generation Mode Change ==========
-    mode_change_event = generation_section["generation_mode"].change(
+    generation_section["generation_mode"].change(
         fn=_handle_mode_change,
         inputs=mode_change_inputs,
         outputs=mode_ui_outputs,
-    )
-    mode_change_event.then(
-        fn=gen_h.update_dcw_defaults_for_think,
-        inputs=[generation_section["think_checkbox"]],
-        outputs=dcw_default_outputs,
     )
 
     # ========== Initial Mode State on Page Load ==========
@@ -134,7 +129,6 @@ def register_generation_mode_handlers(
         outputs=[generation_section["simple_vocal_language"]],
     )
 
-    # ========== Random Description Button ==========
     generation_section["random_desc_btn"].click(
         fn=gen_h.load_random_simple_description,
         inputs=[],
@@ -145,7 +139,6 @@ def register_generation_mode_handlers(
         ],
     )
 
-    # ========== Create Sample Button (Simple Mode) ==========
     generation_section["create_sample_btn"].click(
         fn=lambda query, instrumental, vocal_lang, temp, top_k, top_p, debug: gen_h.handle_create_sample(
             llm_handler, query, instrumental, vocal_lang, temp, top_k, top_p, debug
@@ -182,7 +175,6 @@ def register_generation_mode_handlers(
         outputs=list(auto_checkbox_outputs),
     )
 
-    # ========== Repaint Mode <-> Strength Bidirectional Sync ==========
     generation_section["repaint_mode"].change(
         fn=_on_repaint_mode_change,
         inputs=[

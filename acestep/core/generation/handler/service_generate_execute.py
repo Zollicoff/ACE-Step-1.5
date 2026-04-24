@@ -172,8 +172,9 @@ class ServiceGenerateExecuteMixin:
                     if generate_kwargs.get("dcw_enabled") and generate_kwargs.get("dcw_wavelet", "haar") != "haar":
                         logger.info(
                             "[service_generate] DCW enabled on MLX path with "
-                            "wavelet='{}'; only 'haar' is implemented natively "
-                            "on MLX, the helper will warn and fall back to Haar.",
+                            "wavelet='{}'; non-Haar wavelets use the PyTorch "
+                            "bridge and fall back to native Haar only if the "
+                            "bridge dependencies are unavailable.",
                             generate_kwargs.get("dcw_wavelet"),
                         )
                     try:
