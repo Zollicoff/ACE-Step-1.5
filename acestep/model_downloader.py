@@ -707,7 +707,7 @@ def list_available_vae_variants() -> List[str]:
     return [DEFAULT_VAE_VARIANT, *VAE_REGISTRY.keys()]
 
 
-def resolve_vae_path(checkpoint_dir, vae_variant: Optional[str]) -> Path:
+def resolve_vae_path(checkpoint_dir: "str | Path", vae_variant: Optional[str]) -> Path:
     """Resolve a VAE variant id (or absolute path) to its on-disk directory.
 
     Args:
@@ -812,6 +812,18 @@ def ensure_vae_model(
 
     if check_vae_exists(vae_variant, checkpoints_dir):
         return True, f"VAE variant '{vae_variant}' is available"
+
+    # Absolute paths are user-supplied and cannot be downloaded. Fail with a
+    # clear, path-specific diagnostic instead of routing through download_vae,
+    # which would surface a misleading "Unknown VAE variant" error.
+    if os.path.isabs(vae_variant):
+        path = Path(vae_variant)
+        if not path.exists():
+            return False, f"VAE path '{vae_variant}' does not exist."
+        return False, (
+            f"VAE path '{vae_variant}' does not contain VAE weights "
+            "(expected diffusion_pytorch_model.safetensors)."
+        )
 
     print("\n" + "=" * 60)
     print(f"VAE variant '{vae_variant}' not found. Starting automatic download...")

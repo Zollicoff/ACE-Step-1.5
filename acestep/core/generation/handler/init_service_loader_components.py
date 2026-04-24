@@ -39,6 +39,8 @@ class InitServiceLoaderComponentsMixin:
 
         Raises:
             FileNotFoundError: If the resolved VAE directory does not exist.
+            ValueError: If ``vae_variant`` is not a known registry id, the
+                default, or an absolute path.
             Exception: Propagates loader, device transfer, or compile errors.
         """
         from diffusers.models import AutoencoderOobleck

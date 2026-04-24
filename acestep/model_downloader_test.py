@@ -211,7 +211,7 @@ class TestResolveVaePath(unittest.TestCase):
 
     def test_default_resolves_to_bundled_vae_directory(self):
         """None / empty / 'official' all map to <ckpt>/vae."""
-        ckpt = Path("/tmp/some-ckpts")
+        ckpt = Path(tempfile.gettempdir()) / "some-ckpts"
         expected = ckpt / "vae"
         self.assertEqual(self.mod.resolve_vae_path(ckpt, None), expected)
         self.assertEqual(self.mod.resolve_vae_path(ckpt, ""), expected)
@@ -220,7 +220,7 @@ class TestResolveVaePath(unittest.TestCase):
 
     def test_registered_variant_maps_to_subdirectory(self):
         """A variant id from VAE_REGISTRY resolves to <ckpt>/<variant>."""
-        ckpt = Path("/tmp/some-ckpts")
+        ckpt = Path(tempfile.gettempdir()) / "some-ckpts"
         for variant in self.mod.VAE_REGISTRY:
             self.assertEqual(
                 self.mod.resolve_vae_path(ckpt, variant), ckpt / variant
@@ -228,8 +228,8 @@ class TestResolveVaePath(unittest.TestCase):
 
     def test_absolute_path_passes_through(self):
         """An absolute path is returned verbatim."""
-        ckpt = Path("/tmp/some-ckpts")
         with tempfile.TemporaryDirectory() as tmp_dir:
+            ckpt = Path(tempfile.gettempdir()) / "some-ckpts"
             self.assertEqual(
                 self.mod.resolve_vae_path(ckpt, tmp_dir), Path(tmp_dir)
             )
@@ -237,7 +237,9 @@ class TestResolveVaePath(unittest.TestCase):
     def test_unknown_variant_raises(self):
         """Unrecognized variant ids surface a ValueError listing the registry."""
         with self.assertRaises(ValueError) as ctx:
-            self.mod.resolve_vae_path(Path("/tmp/c"), "no-such-vae")
+            self.mod.resolve_vae_path(
+                Path(tempfile.gettempdir()) / "c", "no-such-vae"
+            )
         msg = str(ctx.exception)
         self.assertIn("no-such-vae", msg)
         self.assertIn("official", msg)
@@ -312,6 +314,51 @@ class TestDownloadVaeRejectsOfficial(unittest.TestCase):
             success, msg = self.mod.download_vae("no-such-vae", Path(tmp_dir))
         self.assertFalse(success)
         self.assertIn("no-such-vae", msg)
+
+
+class TestEnsureVaeModelAbsolutePath(unittest.TestCase):
+    """ensure_vae_model must short-circuit absolute paths instead of routing to download_vae."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.mod = _load_module()
+
+    def test_absolute_path_with_weights_returns_success(self):
+        """A pre-populated absolute VAE path should be reported as available."""
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            vae_dir = Path(tmp_dir) / "my-vae"
+            vae_dir.mkdir()
+            (vae_dir / "diffusion_pytorch_model.safetensors").write_bytes(b"x")
+            ckpt_dir = Path(tmp_dir) / "checkpoints"
+            ckpt_dir.mkdir()
+            success, msg = self.mod.ensure_vae_model(str(vae_dir), ckpt_dir)
+        self.assertTrue(success)
+        self.assertIn(str(vae_dir), msg)
+
+    def test_absolute_path_without_weights_returns_clear_error(self):
+        """An absolute path missing weights should not be misreported as 'Unknown variant'."""
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            vae_dir = Path(tmp_dir) / "empty-vae"
+            vae_dir.mkdir()
+            ckpt_dir = Path(tmp_dir) / "checkpoints"
+            ckpt_dir.mkdir()
+            success, msg = self.mod.ensure_vae_model(str(vae_dir), ckpt_dir)
+        self.assertFalse(success)
+        self.assertIn(str(vae_dir), msg)
+        self.assertIn("does not contain VAE weights", msg)
+        self.assertNotIn("Unknown VAE variant", msg)
+
+    def test_absolute_path_missing_directory_returns_clear_error(self):
+        """A non-existent absolute path should report 'does not exist', not download."""
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            missing = Path(tmp_dir) / "nope"
+            ckpt_dir = Path(tmp_dir) / "checkpoints"
+            ckpt_dir.mkdir()
+            success, msg = self.mod.ensure_vae_model(str(missing), ckpt_dir)
+        self.assertFalse(success)
+        self.assertIn(str(missing), msg)
+        self.assertIn("does not exist", msg)
+        self.assertNotIn("Unknown VAE variant", msg)
 
 
 if __name__ == "__main__":

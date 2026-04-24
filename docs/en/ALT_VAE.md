@@ -40,12 +40,21 @@ export ACESTEP_VAE_CHECKPOINT=scragvae
 acestep                    # any entry point — Gradio, CLI, API
 ```
 
+In Gradio, the env var **seeds the dropdown's initial value** on first
+launch. Once initialized, the dropdown is the source of truth — change
+it and click **Initialize Service** to switch.
+
 You can also pass an absolute path to a directory containing a valid
-Oobleck VAE checkpoint:
+Oobleck VAE checkpoint (CLI / Python API only — the Gradio dropdown
+only lists registered variant ids):
 
 ```bash
 export ACESTEP_VAE_CHECKPOINT=/path/to/my/local/vae
 ```
+
+If the absolute path doesn't exist or doesn't contain a
+`diffusion_pytorch_model.safetensors`, init fails with a clear
+diagnostic — we never try to "download" an absolute path.
 
 ### 3. Python API
 

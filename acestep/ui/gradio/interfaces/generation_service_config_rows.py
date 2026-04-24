@@ -1,5 +1,6 @@
 """Row builders for generation service configuration section."""
 
+import os
 from typing import Any
 
 import gradio as gr
@@ -146,11 +147,16 @@ def build_model_device_controls(
         )
     with gr.Row():
         vae_choices = list_available_vae_variants()
+        # When ACESTEP_VAE_CHECKPOINT names a known variant, seed the UI with
+        # it on first launch so the env var actually takes effect from
+        # Gradio. Once initialized, prefer the previously chosen value.
+        env_vae = os.environ.get("ACESTEP_VAE_CHECKPOINT") or ""
+        env_seed = env_vae if env_vae in vae_choices else DEFAULT_VAE_VARIANT
         vae_default = (
-            params.get("vae_checkpoint", DEFAULT_VAE_VARIANT)
+            params.get("vae_checkpoint", env_seed)
             if service_pre_initialized
-            and params.get("vae_checkpoint", DEFAULT_VAE_VARIANT) in vae_choices
-            else DEFAULT_VAE_VARIANT
+            and params.get("vae_checkpoint", env_seed) in vae_choices
+            else env_seed
         )
         vae_checkpoint = gr.Dropdown(
             label=t("service.vae_label"),
